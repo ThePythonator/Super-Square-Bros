@@ -1,0 +1,8 @@
+# All these assets will be created in assets.cpp, which CMake will
+# link automagically.
+# References can be picked up by including assets.hpp
+
+assets.cpp:
+  assets/no-image.png:
+    name: asset_no_image
+

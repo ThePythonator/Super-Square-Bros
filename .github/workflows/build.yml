@@ -1,0 +1,135 @@
+# Build Github Action, to run a test build on all targets
+# (Linux, Blit, MacOS, Visual Studio) when the project is checked in.
+#
+# Thanks in large part to the phenomenal examples of DaftFreak.
+
+name: Build
+
+on:
+  push:
+  pull_request:
+  release:
+    types: [created]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+
+  build:
+
+    name: ${{matrix.name}}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            name: Linux
+            release-suffix: LIN64
+            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+            apt-packages: libsdl2-dev libsdl2-image-dev libsdl2-net-dev python3-setuptools
+
+          - os: ubuntu-20.04
+            name: STM32
+            release-suffix: STM32
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/32blit/32blit.toolchain
+            apt-packages: gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib python3-setuptools
+
+          - os: macos-latest
+            name: macOS
+            release-suffix: MACOS
+            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+            brew-packages: sdl2 sdl2_image sdl2_net
+
+          - os: windows-latest
+            name: Visual Studio
+            release-suffix: WIN64
+            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+
+    runs-on: ${{matrix.os}}
+
+    env:
+      RELEASE_FILE: ${{github.event.repository.name}}-${{github.event.release.tag_name}}-${{matrix.release-suffix}}
+
+    steps:
+    # Check out the main repo
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        path: main
+
+    # Check out the 32Blit API we build against
+    - name: Checkout 32Blit API
+      uses: actions/checkout@v2
+      with:
+        repository: pimoroni/32blit-beta
+        path: 32blit
+
+    # Linux dependencies
+    - name: Install Linux deps
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update && sudo apt install ${{matrix.apt-packages}}
+        pip3 install 32blit
+
+    # MacOS dependencies
+    - name: Install macOS deps
+      if: runner.os == 'macOS'
+      run: |
+        brew install ${{matrix.brew-packages}}
+        python3 -m pip install 32blit
+
+    # Windows dependencies
+    - name: Install Windows deps
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        python -m pip install 32blit
+
+    # Set up the cmake build environment
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{runner.workspace}}/main/build
+
+    # Ask cmake to build the makefiles
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{runner.workspace}}/main/build
+      run: cmake $GITHUB_WORKSPACE/main -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_PACKAGE_FILE_NAME=${{env.RELEASE_FILE}} ${{matrix.cmake-args}}
+
+    # And then run the build itself
+    - name: Build
+      working-directory: ${{runner.workspace}}/main/build
+      shell: bash
+      run: |
+        cmake --build . --config $BUILD_TYPE -j 2
+
+    # When it's a release, generate tar/zip files of the build
+    - name: Package Release
+      if: github.event_name == 'release' && matrix.release-suffix != ''
+      shell: bash
+      working-directory: ${{runner.workspace}}/main/build
+      run: |
+        cmake --build . --target package
+
+    # Push the tar file to the release
+    - name: Upload tar
+      if: github.event_name == 'release' && matrix.release-suffix != ''
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      with:
+        asset_path: ${{runner.workspace}}/main/build/${{env.RELEASE_FILE}}.tar.gz
+        upload_url: ${{github.event.release.upload_url}}
+        asset_name: ${{env.RELEASE_FILE}}.tar.gz
+        asset_content_type: application/octet-stream
+
+    # Push the zip file to the release
+    - name: Upload zip
+      if: github.event_name == 'release' && matrix.release-suffix != ''
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      with:
+        asset_path: ${{runner.workspace}}/main/build/${{env.RELEASE_FILE}}.zip
+        upload_url: ${{github.event.release.upload_url}}
+        asset_name: ${{env.RELEASE_FILE}}.zip
+        asset_content_type: application/zip
