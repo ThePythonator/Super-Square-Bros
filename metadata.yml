@@ -1,6 +1,6 @@
-title: game title
-description: game description
-author: you
+title: Super Square Bros.
+description: It's a platformer.
+author: ThePythonator
 splash:
   file: assets/no-image.png
 icon:
