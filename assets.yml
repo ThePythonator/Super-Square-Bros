@@ -3,6 +3,15 @@
 # References can be picked up by including assets.hpp
 
 assets.cpp:
-  assets/no-image.png:
-    name: asset_no_image
+
+  prefix: asset_
+
+  assets/spritesheet.png:
+    name: asset_sprites
+
+  assets/level.tmx:
+    name: asset_level
+
+  assets/level*.tmx:
+    name:
 
