@@ -4,14 +4,14 @@
 
 assets.cpp:
 
-  prefix: asset_
-
   assets/spritesheet.png:
     name: asset_sprites
 
-  assets/level.tmx:
-    name: asset_level
+  #assets/level.tmx:
+    #name: asset_level
 
-  assets/level*.tmx:
-    name:
+  assets/level0.tmx:
+    name: asset_level0
+    empty_tile: 255
+    output_struct: true
 
