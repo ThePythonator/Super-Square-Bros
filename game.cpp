@@ -222,8 +222,8 @@ public:
     }
 
     void update_camera(Camera camera) {
-        camera.x += (x - camera.x) * CAMERA_SCALE;
-        camera.y += (y - camera.x) * CAMERA_SCALE;
+        /*camera.x += (x - camera.x) * CAMERA_SCALE;
+        camera.y += (y - camera.x) * CAMERA_SCALE;*/
     }
 
 protected:
