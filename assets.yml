@@ -6,6 +6,9 @@ assets.cpp:
 
   assets/spritesheet.png:
     name: asset_sprites
+    
+  assets/background.png:
+    name: asset_background
 
   #assets/level.tmx:
     #name: asset_level

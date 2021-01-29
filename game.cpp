@@ -4,8 +4,12 @@
 #define SCREEN_WIDTH 160
 #define SCREEN_HEIGHT 120
 
+#define FRAME_LENGTH 0.15
+
 #define TILE_ID_EMPTY 255
-#define TILE_ID_COIN 24
+#define TILE_ID_COIN 96
+#define TILE_ID_PLAYER 64
+#define TILE_ID_HEART 112
 
 #define CAMERA_SCALE 10
 
@@ -37,10 +41,14 @@ const uint8_t SPRITE_HALF = SPRITE_SIZE / 2;
 double dt;
 uint32_t lastTime = 0;
 
+Surface* background_image = Surface::load(asset_background);
+
 
 const uint8_t* asset_levels[] = {
     asset_level0
 };
+
+const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
 
 
@@ -155,12 +163,14 @@ std::vector<Tile> background;
 
 class Pickup : public LevelObject {
 public:
-    Pickup() : LevelObject() {
+    bool collected;
 
+    Pickup() : LevelObject() {
+        collected = false;
     }
 
     Pickup(uint16_t xPosition, uint16_t yPosition) : LevelObject(xPosition, yPosition) {
-
+        collected = false;
     }
 
     virtual void update(double dt, ButtonStates buttonStates) = 0;
@@ -174,23 +184,37 @@ protected:
 class AnimatedPickup : public Pickup {
 public:
     AnimatedPickup() : Pickup() {
-
+        animationTimer = 0;
+        currentFrame = 0;
     }
 
-    AnimatedPickup(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> frames) : Pickup(xPosition, yPosition) {
+    AnimatedPickup(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> animationFrames) : Pickup(xPosition, yPosition) {
+        animationTimer = 0;
+        currentFrame = 0;
 
+        frames = animationFrames;
     }
 
     void update(double dt, ButtonStates buttonStates) {
+        animationTimer += dt;
 
+        if (animationTimer >= FRAME_LENGTH) {
+            animationTimer -= FRAME_LENGTH;
+            currentFrame++;
+            currentFrame %= frames.size();
+        }
     }
 
     void render(Camera camera) {
-
+        if (!collected) {
+            screen.sprite(frames[currentFrame], Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        }
     }
 
 protected:
+    double animationTimer;
     std::vector<uint8_t> frames;
+    uint8_t currentFrame;
 };
 
 class Coin : public AnimatedPickup {
@@ -199,16 +223,16 @@ public:
 
     }
 
-    Coin(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> frames) : AnimatedPickup(xPosition, yPosition, frames) {
+    Coin(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> animationFrames) : AnimatedPickup(xPosition, yPosition, animationFrames) {
 
     }
 
     void update(double dt, ButtonStates buttonStates) {
-
+        AnimatedPickup::update(dt, buttonStates);
     }
 
     void render(Camera camera) {
-
+        AnimatedPickup::render(camera);
     }
 
 protected:
@@ -216,31 +240,39 @@ protected:
 };
 std::vector<Coin> coins;
 
-class Entity { // : public LevelObject
+class Entity {
 public:
     float x, y;
     uint8_t health;
 
-    Entity() { // : LevelObject()
+    Entity() {
         x = y = 0;
         xVel = yVel = 0;
 
-        state = IDLE;
+        anchorFrame = 0;
+
+        lastDirection = 1; // 1 = right, 0 = left
+
+        //state = IDLE;
 
         locked = false;
 
         health = 1;
     }
 
-    Entity(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth) { // : LevelObject(xPosition, yPosition)
+    Entity(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) {
         x = xPosition;
         y = yPosition;
 
         xVel = yVel = 0;
 
+        anchorFrame = frame;
+
+        lastDirection = 1;
+
         health = startHealth;
 
-        state = IDLE;
+        //state = IDLE;
 
         locked = false;
     }
@@ -257,14 +289,14 @@ public:
             // Here check collisions...
             
             for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground.at(i))) {
+                if (colliding(foreground[i])) {
                     if (yVel > 0) {
                         // Collided from top
-                        y = foreground.at(i).y - SPRITE_SIZE;
+                        y = foreground[i].y - SPRITE_SIZE;
                     }
                     else {
                         // Collided from bottom
-                        y = foreground.at(i).y + SPRITE_SIZE;
+                        y = foreground[i].y + SPRITE_SIZE;
                     }
                     yVel = 0;
                 }
@@ -275,14 +307,14 @@ public:
             
             // Here check collisions...
             for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground.at(i))) {
+                if (colliding(foreground[i])) {
                     if (xVel > 0) {
                         // Collided from left
-                        x = foreground.at(i).x - SPRITE_SIZE;
+                        x = foreground[i].x - SPRITE_SIZE;
                     }
                     else {
                         // Collided from right
-                        x = foreground.at(i).x + SPRITE_SIZE;
+                        x = foreground[i].x + SPRITE_SIZE;
                     }
                     xVel = 0;
                 }
@@ -292,8 +324,15 @@ public:
                 health = 0;
             }
 
+            if (xVel > 0) {
+                lastDirection = 1;
+            }
+            else if (xVel < 0) {
+                lastDirection = 0;
+            }
+
             if (health == 0) {
-                state = DEAD;
+                //state = DEAD;
                 // do something?
                 x = y = 20; health = 3; yVel = -10;//remove
             }
@@ -301,7 +340,21 @@ public:
     }
 
     void render(Camera camera) {
+        uint8_t frame = anchorFrame;
 
+        if (yVel < -50) {
+            frame = anchorFrame + 1;
+        }
+        else if (yVel > 160) {
+            frame = anchorFrame + 2;
+        }
+
+        if (lastDirection == 1) {
+            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+        }
+        else {
+            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        }
     }
 
     bool colliding(Tile tile) {
@@ -311,27 +364,31 @@ public:
 
 protected:
     bool locked;
-    enum EntityState {
-        IDLE,
-        WALK,
-        //RUN,
-        JUMP,
-        //CROUCH,
-        //INJURED,
-        DEAD
-    } state;
+    //enum EntityState {
+    //    IDLE,
+    //    WALK,
+    //    //RUN,
+    //    JUMP,
+    //    //CROUCH,
+    //    //INJURED,
+    //    DEAD
+    //} state;
 
     float xVel, yVel;
+    uint8_t anchorFrame;
+    uint8_t lastDirection;
 };
 
 class Player : public Entity {
 public:
-    Player() : Entity() {
+    uint8_t score;
 
+    Player() : Entity() {
+        score = 0;
     }
 
-    Player(uint16_t xPosition, uint16_t yPosition) : Entity(xPosition, yPosition, PLAYER_MAX_HEALTH) {
-
+    Player(uint16_t xPosition, uint16_t yPosition) : Entity(xPosition, yPosition, TILE_ID_PLAYER, PLAYER_MAX_HEALTH) {
+        score = 0;
     }
 
     void update(double dt, ButtonStates buttonStates) {
@@ -340,11 +397,11 @@ public:
 
         if (buttonStates.A) {
             for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (y + SPRITE_SIZE == foreground.at(i).y && foreground.at(i).x + SPRITE_SIZE > x && foreground.at(i).x < x + SPRITE_SIZE) {
+                if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
                     // On top of block
                     // Jump
                     yVel = -PLAYER_MAX_JUMP;
-                    state = JUMP;
+                    //state = JUMP;
                 }
             }
         }
@@ -357,11 +414,21 @@ public:
             xVel += PLAYER_MAX_SPEED;
         }
 
+
+        for (uint16_t i = 0; i < coins.size(); i++) {
+            if (!coins[i].collected && coins[i].x + SPRITE_SIZE > x && coins[i].x < x + SPRITE_SIZE && coins[i].y + SPRITE_SIZE > y && coins[i].y < y + SPRITE_SIZE) {
+                // Hit coin, add 1 to player score
+                coins[i].collected = true;
+                score++;
+                
+            }
+        }
+
         Entity::update(dt, buttonStates);
     }
 
     void render(Camera camera) {
-        screen.sprite(40, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y)); //remove
+        Entity::render(camera);
     }
 
 protected:
@@ -375,7 +442,7 @@ public:
 
     }
 
-    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth) : Entity(xPosition, yPosition, startHealth) {
+    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) : Entity(xPosition, yPosition, frame, startHealth) {
 
     }
 
@@ -384,7 +451,7 @@ public:
     }
 
     void render(Camera camera) {
-
+        Entity::render(camera);
     }
 
 protected:
@@ -395,22 +462,28 @@ std::vector<Enemy> enemies;
 //maybe inherit from entity to create specific enemy types, but all should fit into a vector<Enemy> - same interface for each
 
 
+
+
 void render_tiles(std::vector<Tile> tiles) {
     for (int i = 0; i < tiles.size(); i++) {
-        tiles.at(i).render(camera);
+        tiles[i].render(camera);
     }
 }
 
 void render_coins(std::vector<Coin> coins) {
     for (int i = 0; i < coins.size(); i++) {
-        coins.at(i).render(camera);
+        coins[i].render(camera);
     }
 }
 
 void render_enemies(std::vector<Enemy> enemies) {
     for (int i = 0; i < enemies.size(); i++) {
-        enemies.at(i).render(camera);
+        enemies[i].render(camera);
     }
+}
+
+void render_background() {
+    screen.blit(background_image, Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), Point(0, 0), false);
 }
 
 void render_level() {
@@ -424,6 +497,16 @@ void render_entities() {
     render_enemies(enemies);
 
     player.render(camera);
+}
+
+void render_hud() {
+    // Player health
+    for (uint8_t i = 0; i < player.health; i++) {
+        screen.sprite(TILE_ID_HEART, Point(2 + i * SPRITE_SIZE, 2));
+    }
+
+    // Player score
+    blit::screen.text(std::to_string(player.score), minimal_font, Point(SCREEN_WIDTH - 2, 2), true, blit::TextAlign::top_right);
 }
 
 void load_level(uint8_t levelNumber) {
@@ -451,7 +534,7 @@ void load_level(uint8_t levelNumber) {
             // Is a blank tile, don't do anything
         }
         else if (tmx->data[i] == TILE_ID_COIN) {
-
+            coins.push_back(Coin((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, coinFrames));
         }
         else {
             foreground.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i]));
@@ -480,9 +563,13 @@ void render_menu() {
 }
 
 void render_game() {
+    render_background();
+
     render_level();
 
     render_entities();
+
+    render_hud();
 }
 
 void update_menu(double dt, ButtonStates buttonStates) {
@@ -495,6 +582,11 @@ void update_menu(double dt, ButtonStates buttonStates) {
 
 void update_game(double dt, ButtonStates buttonStates) {
     player.update(dt, buttonStates);
+
+
+    for (int i = 0; i < coins.size(); i++) {
+        coins[i].update(dt, buttonStates);
+    }
 
 
     camera.ease_to(dt, player.x, player.y);
@@ -556,6 +648,8 @@ void update(uint32_t time) {
     // Get dt
     dt = (time - lastTime) / 1000.0;
     lastTime = time;
+
+    //printf("%f\n", dt);
 
     // Update buttonStates
     if (buttons & Button::A) {
