@@ -8,10 +8,17 @@
 
 #define TILE_ID_EMPTY 255
 #define TILE_ID_COIN 96
-#define TILE_ID_PLAYER 64
+#define TILE_ID_PLAYER_1 64
+#define TILE_ID_PLAYER_2 68
 #define TILE_ID_HEART 112
+#define TILE_ID_CAMERA 253
+#define TILE_ID_ENEMY_1 80
+#define TILE_ID_ENEMY_2 84
+#define TILE_ID_ENEMY_3 88
+#define TILE_ID_ENEMY_4 92
 
 #define CAMERA_SCALE 10
+#define CAMERA_PAN_TIME 3
 
 #define SPRITE_SIZE 8
 
@@ -37,18 +44,24 @@ const uint8_t SCREEN_MID_HEIGHT = SCREEN_HEIGHT / 2;
 
 const uint8_t SPRITE_HALF = SPRITE_SIZE / 2;
 
+const uint8_t enemyHealths[] = { 2, 1, 2, 2 };
+
+const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
+
+const uint8_t* asset_levels[] = {
+    asset_level0
+};
+
 
 double dt;
 uint32_t lastTime = 0;
 
 Surface* background_image = Surface::load(asset_background);
 
+bool cameraIntro = false;
+uint16_t cameraStartX, cameraStartY;
+uint16_t finishX, finishY, playerStartX, playerStartY;
 
-const uint8_t* asset_levels[] = {
-    asset_level0
-};
-
-const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
 
 
@@ -109,6 +122,24 @@ public:
         if (!locked) {
             x += (targetX - x) * CAMERA_SCALE * dt;
             y += (targetY - y) * CAMERA_SCALE * dt;
+        }
+    }
+
+    void linear_to(double dt, float startX, float startY, float targetX, float targetY, float time) {
+        if (!locked) {
+            if (std::abs(targetX - x) < std::abs(((targetX - startX) / time) * dt)) {
+                x = targetX;
+            }
+            else {
+                x += ((targetX - startX) / time) * dt;
+            }
+
+            if (std::abs(targetY - y) < std::abs(((targetY - startY) / time) * dt)) {
+                y = targetY;
+            }
+            else {
+                y += ((targetY - startY) / time) * dt;
+            }
         }
     }
 };
@@ -244,6 +275,7 @@ class Entity {
 public:
     float x, y;
     uint8_t health;
+    bool locked;
 
     Entity() {
         x = y = 0;
@@ -310,11 +342,11 @@ public:
                 if (colliding(foreground[i])) {
                     if (xVel > 0) {
                         // Collided from left
-                        x = foreground[i].x - SPRITE_SIZE;
+                        x = foreground[i].x - SPRITE_SIZE + 1;
                     }
                     else {
                         // Collided from right
-                        x = foreground[i].x + SPRITE_SIZE;
+                        x = foreground[i].x + SPRITE_SIZE - 1;
                     }
                     xVel = 0;
                 }
@@ -322,6 +354,7 @@ public:
 
             if (y > levelData.levelHeight * SPRITE_SIZE) {
                 health = 0;
+                // cause particle stuff, don't reset position until particles done/ timer done
             }
 
             if (xVel > 0) {
@@ -329,12 +362,6 @@ public:
             }
             else if (xVel < 0) {
                 lastDirection = 0;
-            }
-
-            if (health == 0) {
-                //state = DEAD;
-                // do something?
-                x = y = 20; health = 3; yVel = -10;//remove
             }
         }
     }
@@ -359,11 +386,10 @@ public:
 
     bool colliding(Tile tile) {
         // Replace use of this with actual code?
-        return (tile.x + SPRITE_SIZE > x && tile.x < x + SPRITE_SIZE && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
     }
 
 protected:
-    bool locked;
     //enum EntityState {
     //    IDLE,
     //    WALK,
@@ -387,7 +413,7 @@ public:
         score = 0;
     }
 
-    Player(uint16_t xPosition, uint16_t yPosition) : Entity(xPosition, yPosition, TILE_ID_PLAYER, PLAYER_MAX_HEALTH) {
+    Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) : Entity(xPosition, yPosition, TILE_ID_PLAYER_1 + colour * 4, PLAYER_MAX_HEALTH) {
         score = 0;
     }
 
@@ -397,7 +423,7 @@ public:
 
         if (buttonStates.A) {
             for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
+                if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
                     // On top of block
                     // Jump
                     yVel = -PLAYER_MAX_JUMP;
@@ -425,6 +451,16 @@ public:
         }
 
         Entity::update(dt, buttonStates);
+
+        if (health == 0) {
+            //state = DEAD;
+            // do something?
+            health = 3; //remove?
+            yVel = 0;
+            lastDirection = 1;
+            x = playerStartX;
+            y = playerStartY;
+        }
     }
 
     void render(Camera camera) {
@@ -439,15 +475,47 @@ Player player;
 class Enemy : public Entity {
 public:
     Enemy() : Entity() {
-
+        enemyType = basic;
     }
 
-    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) : Entity(xPosition, yPosition, frame, startHealth) {
-
+    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
+        enemyType = (EnemyType)type;
     }
 
     void update(double dt, ButtonStates buttonStates) {
         Entity::update(dt, buttonStates);
+
+        if (enemyType == basic) {
+            /*
+            bool reverseDirection = false;
+
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (y + SPRITE_SIZE == foreground[i].y) {
+                    // maybe rework this (checks if is about to not be on a block), since it's v. rushed
+                    if (lastDirection == 1) {
+                        if (foreground[i].x + SPRITE_SIZE < x + SPRITE_SIZE && foreground[i].x + SPRITE_SIZE * 2 > x + SPRITE_SIZE) {
+                            reverseDirection = true;
+                        }
+                    }
+                    else {
+                        if (foreground[i].x > x && foreground[i].x - SPRITE_SIZE < x) {
+                            reverseDirection = true;
+                        }
+                    }
+                }
+            }
+
+            if (reverseDirection) {
+                lastDirection = 1 - lastDirection;
+            }
+
+            if (lastDirection) {
+                xVel = PLAYER_MAX_SPEED;
+            }
+            else {
+                xVel = -PLAYER_MAX_SPEED;
+            }*/
+        }
     }
 
     void render(Camera camera) {
@@ -455,7 +523,13 @@ public:
     }
 
 protected:
-
+    enum EnemyType {
+        basic, // type 1
+        ranged, // type 2
+        persuit, // type 3
+        flying // type 4
+    } enemyType;
+    // boss is probably separate class
 };
 std::vector<Enemy> enemies;
 
@@ -511,8 +585,9 @@ void render_hud() {
 
 void load_level(uint8_t levelNumber) {
     // Variables for finding start and finish positions
-    uint16_t finishX, finishY, startX, startY;
-    finishX = finishY = startX = startY = 0;
+    finishX = finishY = playerStartX = playerStartY = 0;
+
+    cameraStartX = cameraStartY = 0;
 
     // Get a pointer to the map header
     TMX* tmx = (TMX*)asset_levels[levelNumber];
@@ -545,16 +620,42 @@ void load_level(uint8_t levelNumber) {
         if (tmx->data[i + levelSize] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
         }
-        /*else if (tmx->data[i + levelSize] == TILE_ID_COIN) {
-
-        }*/
+        else if (tmx->data[i + levelSize] == TILE_ID_PLAYER_1) {
+            playerStartX = (i % levelWidth) * SPRITE_SIZE;
+            playerStartY = (i / levelWidth) * SPRITE_SIZE;
+        }
+        else if (tmx->data[i + levelSize] == TILE_ID_CAMERA) {
+            cameraStartX = (i % levelWidth) * SPRITE_SIZE;
+            cameraStartY = (i / levelWidth) * SPRITE_SIZE;
+        }
+        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_1) {
+            enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[0], 0));
+        }
+        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_2) {
+            enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[1], 1));
+        }
+        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_3) {
+            enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[2], 2));
+        }
+        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_4) {
+            enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[3], 3));
+        }
         else {
             background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize]));
         }
     }
 
     // Reset player attributes
-    player = Player(startX, startY);
+    player = Player(playerStartX, playerStartY, 0); // change colour param later
+    
+    // Reset camera position
+    camera.x = cameraStartX;
+    camera.y = cameraStartY;
+}
+
+void start_level() {
+    player.locked = true;
+    cameraIntro = true;
 }
 
 void render_menu() {
@@ -577,19 +678,35 @@ void update_menu(double dt, ButtonStates buttonStates) {
         gameState = STATE_IN_GAME; // change to LEVEL_SELECT later
 
         load_level(0); // move to update_level later
+
+        start_level();
     }
 }
 
 void update_game(double dt, ButtonStates buttonStates) {
     player.update(dt, buttonStates);
 
+    for (int i = 0; i < enemies.size(); i++) {
+        enemies[i].update(dt, buttonStates);
+    }
+
 
     for (int i = 0; i < coins.size(); i++) {
         coins[i].update(dt, buttonStates);
     }
 
+    if (cameraIntro) {
+        camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
+        //camera.ease_to(dt/5, player.x, player.y);
 
-    camera.ease_to(dt, player.x, player.y);
+        if (player.x == camera.x && player.y == camera.y) {
+            cameraIntro = false;
+            player.locked = false;
+        }
+    }
+    else {
+        camera.ease_to(dt, player.x, player.y);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
