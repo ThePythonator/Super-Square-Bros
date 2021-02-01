@@ -271,13 +271,15 @@ protected:
 };
 std::vector<Coin> coins;
 
-class Entity {
+
+
+class Enemy {
 public:
     float x, y;
     uint8_t health;
     bool locked;
 
-    Entity() {
+    Enemy() {
         x = y = 0;
         xVel = yVel = 0;
 
@@ -290,15 +292,17 @@ public:
         locked = false;
 
         health = 1;
+
+        enemyType = basic;
     }
 
-    Entity(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) {
+    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) {
         x = xPosition;
         y = yPosition;
 
         xVel = yVel = 0;
 
-        anchorFrame = frame;
+        anchorFrame = TILE_ID_ENEMY_1 + type * 4;
 
         lastDirection = 1;
 
@@ -307,9 +311,47 @@ public:
         //state = IDLE;
 
         locked = false;
+
+        enemyType = (EnemyType)type;
     }
 
     void update(double dt, ButtonStates buttonStates) {
+        update_collisions(dt, buttonStates);
+
+        if (enemyType == basic) {
+            /*
+            bool reverseDirection = false;
+
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (y + SPRITE_SIZE == foreground[i].y) {
+                    // maybe rework this (checks if is about to not be on a block), since it's v. rushed
+                    if (lastDirection == 1) {
+                        if (foreground[i].x + SPRITE_SIZE < x + SPRITE_SIZE && foreground[i].x + SPRITE_SIZE * 2 > x + SPRITE_SIZE) {
+                            reverseDirection = true;
+                        }
+                    }
+                    else {
+                        if (foreground[i].x > x && foreground[i].x - SPRITE_SIZE < x) {
+                            reverseDirection = true;
+                        }
+                    }
+                }
+            }
+
+            if (reverseDirection) {
+                lastDirection = 1 - lastDirection;
+            }
+
+            if (lastDirection) {
+                xVel = PLAYER_MAX_SPEED;
+            }
+            else {
+                xVel = -PLAYER_MAX_SPEED;
+            }*/
+        }
+    }
+
+    void update_collisions(double dt, ButtonStates buttonStates) {
         if (!locked) {
             // Update gravity
             yVel += GRAVITY * dt;
@@ -319,7 +361,7 @@ public:
             y += yVel * dt;
 
             // Here check collisions...
-            
+
             for (uint16_t i = 0; i < foreground.size(); i++) {
                 if (colliding(foreground[i])) {
                     if (yVel > 0) {
@@ -334,9 +376,23 @@ public:
                 }
             }
 
+            //for (uint16_t i = 0; i < enemies.size(); i++) {
+            //    if (colliding(enemies[i])) {
+            //        if (yVel > 0) {
+            //            // Collided from top
+            //            y = enemies[i].y - SPRITE_SIZE;
+            //        }
+            //        else {
+            //            // Collided from bottom
+            //            y = enemies[i].y + SPRITE_SIZE;
+            //        }
+            //        yVel = 0;
+            //    }
+            //}
+
             // Move entity x
             x += xVel * dt;
-            
+
             // Here check collisions...
             for (uint16_t i = 0; i < foreground.size(); i++) {
                 if (colliding(foreground[i])) {
@@ -351,6 +407,22 @@ public:
                     xVel = 0;
                 }
             }
+
+            //for (uint16_t i = 0; i < enemies.size(); i++) {
+            //    if (colliding(enemies[i])) {
+            //        if (xVel > 0) {
+            //            // Collided from left
+            //            x = enemies[i].x - SPRITE_SIZE + 1;
+            //        }
+            //        else {
+            //            // Collided from right
+            //            x = enemies[i].x + SPRITE_SIZE - 1;
+            //        }
+            //        xVel = 0;
+            //    }
+            //}
+
+
 
             if (y > levelData.levelHeight * SPRITE_SIZE) {
                 health = 0;
@@ -390,6 +462,13 @@ public:
     }
 
 protected:
+    enum EnemyType {
+        basic, // type 1
+        ranged, // type 2
+        persuit, // type 3
+        flying // type 4
+    } enemyType;
+
     //enum EntityState {
     //    IDLE,
     //    WALK,
@@ -404,16 +483,49 @@ protected:
     uint8_t anchorFrame;
     uint8_t lastDirection;
 };
+std::vector<Enemy> enemies;
 
-class Player : public Entity {
+
+class Player {
 public:
+    float x, y;
+    uint8_t health;
+    bool locked;
     uint8_t score;
 
-    Player() : Entity() {
+    Player() {
+        x = y = 0;
+        xVel = yVel = 0;
+
+        anchorFrame = 0;
+
+        lastDirection = 1; // 1 = right, 0 = left
+
+        //state = IDLE;
+
+        locked = false;
+
+        health = 1;
+
         score = 0;
     }
 
-    Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) : Entity(xPosition, yPosition, TILE_ID_PLAYER_1 + colour * 4, PLAYER_MAX_HEALTH) {
+    Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) {
+        x = xPosition;
+        y = yPosition;
+
+        xVel = yVel = 0;
+
+        anchorFrame = TILE_ID_PLAYER_1 + colour * 4;
+
+        lastDirection = 1;
+
+        health = PLAYER_MAX_HEALTH;
+
+        //state = IDLE;
+
+        locked = false;
+
         score = 0;
     }
 
@@ -441,16 +553,27 @@ public:
         }
 
 
-        for (uint16_t i = 0; i < coins.size(); i++) {
-            if (!coins[i].collected && coins[i].x + SPRITE_SIZE > x && coins[i].x < x + SPRITE_SIZE && coins[i].y + SPRITE_SIZE > y && coins[i].y < y + SPRITE_SIZE) {
-                // Hit coin, add 1 to player score
-                coins[i].collected = true;
-                score++;
-                
-            }
-        }
+        //for (uint16_t i = 0; i < coins.size(); i++) {
+        //    if (!coins[i].collected && coins[i].x + SPRITE_SIZE > x && coins[i].x < x + SPRITE_SIZE && coins[i].y + SPRITE_SIZE > y && coins[i].y < y + SPRITE_SIZE) {
+        //        // Hit coin, add 1 to player score
+        //        coins[i].collected = true;
+        //        score++;
 
-        Entity::update(dt, buttonStates);
+        //    }
+        //}
+
+        uint8_t coinCount = coins.size();
+
+        // Remove coins if player jumps on them
+        coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
+        
+        // Add points to player score (1 point per coin which has been deleted)
+        score += coinCount - coins.size();
+
+        // Remove enemies if player jumps on them
+        enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [this](Enemy enemy) { return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y == y + SPRITE_SIZE); }), enemies.end());
+
+        update_collisions(dt, buttonStates);
 
         if (health == 0) {
             //state = DEAD;
@@ -463,79 +586,137 @@ public:
         }
     }
 
-    void render(Camera camera) {
-        Entity::render(camera);
-    }
+    void update_collisions(double dt, ButtonStates buttonStates) {
+        if (!locked) {
+            // Update gravity
+            yVel += GRAVITY * dt;
+            yVel = std::min(yVel, (float)GRAVITY_MAX);
 
-protected:
+            // Move entity y
+            y += yVel * dt;
 
-};
-Player player;
-
-class Enemy : public Entity {
-public:
-    Enemy() : Entity() {
-        enemyType = basic;
-    }
-
-    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
-        enemyType = (EnemyType)type;
-    }
-
-    void update(double dt, ButtonStates buttonStates) {
-        Entity::update(dt, buttonStates);
-
-        if (enemyType == basic) {
-            /*
-            bool reverseDirection = false;
+            // Here check collisions...
 
             for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (y + SPRITE_SIZE == foreground[i].y) {
-                    // maybe rework this (checks if is about to not be on a block), since it's v. rushed
-                    if (lastDirection == 1) {
-                        if (foreground[i].x + SPRITE_SIZE < x + SPRITE_SIZE && foreground[i].x + SPRITE_SIZE * 2 > x + SPRITE_SIZE) {
-                            reverseDirection = true;
-                        }
+                if (colliding(foreground[i])) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = foreground[i].y - SPRITE_SIZE;
                     }
                     else {
-                        if (foreground[i].x > x && foreground[i].x - SPRITE_SIZE < x) {
-                            reverseDirection = true;
-                        }
+                        // Collided from bottom
+                        y = foreground[i].y + SPRITE_SIZE;
                     }
+                    yVel = 0;
                 }
             }
 
-            if (reverseDirection) {
-                lastDirection = 1 - lastDirection;
+            for (uint16_t i = 0; i < enemies.size(); i++) {
+                if (colliding(enemies[i])) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = enemies[i].y - SPRITE_SIZE;
+                    }
+                    else {
+                        // Collided from bottom
+                        y = enemies[i].y + SPRITE_SIZE;
+                    }
+                    yVel = 0;
+                }
             }
 
-            if (lastDirection) {
-                xVel = PLAYER_MAX_SPEED;
+            // Move entity x
+            x += xVel * dt;
+
+            // Here check collisions...
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (colliding(foreground[i])) {
+                    if (xVel > 0) {
+                        // Collided from left
+                        x = foreground[i].x - SPRITE_SIZE + 1;
+                    }
+                    else {
+                        // Collided from right
+                        x = foreground[i].x + SPRITE_SIZE - 1;
+                    }
+                    xVel = 0;
+                }
             }
-            else {
-                xVel = -PLAYER_MAX_SPEED;
-            }*/
+
+            for (uint16_t i = 0; i < enemies.size(); i++) {
+                if (colliding(enemies[i])) {
+                    if (xVel > 0) {
+                        // Collided from left
+                        x = enemies[i].x - SPRITE_SIZE;
+                    }
+                    else {
+                        // Collided from right
+                        x = enemies[i].x + SPRITE_SIZE;
+                    }
+                    xVel = 0;
+                }
+            }
+
+
+
+            if (y > levelData.levelHeight * SPRITE_SIZE) {
+                health = 0;
+                // cause particle stuff, don't reset position until particles done/ timer done
+            }
+
+            if (xVel > 0) {
+                lastDirection = 1;
+            }
+            else if (xVel < 0) {
+                lastDirection = 0;
+            }
         }
     }
 
     void render(Camera camera) {
-        Entity::render(camera);
+        uint8_t frame = anchorFrame;
+
+        if (yVel < -50) {
+            frame = anchorFrame + 1;
+        }
+        else if (yVel > 160) {
+            frame = anchorFrame + 2;
+        }
+
+        if (lastDirection == 1) {
+            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+        }
+        else {
+            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        }
+    }
+
+    bool colliding(Tile tile) {
+        // Replace use of this with actual code?
+        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+    }
+
+    bool colliding(Enemy enemy) {
+        // Replace use of this with actual code?
+        return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y + SPRITE_SIZE > y && enemy.y < y + SPRITE_SIZE);
     }
 
 protected:
-    enum EnemyType {
-        basic, // type 1
-        ranged, // type 2
-        persuit, // type 3
-        flying // type 4
-    } enemyType;
-    // boss is probably separate class
+    //enum EntityState {
+    //    IDLE,
+    //    WALK,
+    //    //RUN,
+    //    JUMP,
+    //    //CROUCH,
+    //    //INJURED,
+    //    DEAD
+    //} state;
+
+    float xVel, yVel;
+    uint8_t anchorFrame;
+    uint8_t lastDirection;
 };
-std::vector<Enemy> enemies;
-
-//maybe inherit from entity to create specific enemy types, but all should fit into a vector<Enemy> - same interface for each
-
-
+Player player;
 
 
 void render_tiles(std::vector<Tile> tiles) {
