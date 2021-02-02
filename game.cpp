@@ -241,8 +241,8 @@ std::vector<Particle> generate_particles(float x, float y, float gravity, std::v
     for (uint8_t i = 0; i < count; i++) {
         float angle = rand() % 360;
 
-        float xVel = ((rand() % 100) / 100.0f) * cos(angle) * speed;
-        float yVel = ((rand() % 100) / 100.0f) * sin(angle) * speed;
+        float xVel = ((rand() % 100) / 100.0f) * std::cos(angle) * speed;
+        float yVel = ((rand() % 100) / 100.0f) * std::sin(angle) * speed;
 
         particles.push_back(Particle(x, y, xVel, yVel, gravity, colours[rand() % colours.size()]));
     }
