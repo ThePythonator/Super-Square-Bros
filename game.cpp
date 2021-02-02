@@ -118,14 +118,14 @@ public:
         locked = false;
     }
 
-    void ease_to(double dt, float targetX, float targetY) {
+    void ease_to(float dt, float targetX, float targetY) {
         if (!locked) {
             x += (targetX - x) * CAMERA_SCALE * dt;
             y += (targetY - y) * CAMERA_SCALE * dt;
         }
     }
 
-    void linear_to(double dt, float startX, float startY, float targetX, float targetY, float time) {
+    void linear_to(float dt, float startX, float startY, float targetX, float targetY, float time) {
         if (!locked) {
             if (std::abs(targetX - x) < std::abs(((targetX - startX) / time) * dt)) {
                 x = targetX;
@@ -160,7 +160,7 @@ public:
         y = yPosition;
     }
 
-    virtual void update(double dt, ButtonStates buttonStates) = 0;
+    virtual void update(float dt, ButtonStates buttonStates) = 0;
 
     virtual void render(Camera camera) = 0; 
 
@@ -177,7 +177,7 @@ public:
         id = tileID;
     }
 
-    void update(double dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates buttonStates) {
 
     }
 
@@ -204,7 +204,7 @@ public:
         collected = false;
     }
 
-    virtual void update(double dt, ButtonStates buttonStates) = 0;
+    virtual void update(float dt, ButtonStates buttonStates) = 0;
 
     virtual void render(Camera camera) = 0;
 
@@ -226,7 +226,7 @@ public:
         frames = animationFrames;
     }
 
-    void update(double dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates buttonStates) {
         animationTimer += dt;
 
         if (animationTimer >= FRAME_LENGTH) {
@@ -243,7 +243,7 @@ public:
     }
 
 protected:
-    double animationTimer;
+    float animationTimer;
     std::vector<uint8_t> frames;
     uint8_t currentFrame;
 };
@@ -258,7 +258,7 @@ public:
 
     }
 
-    void update(double dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates buttonStates) {
         AnimatedPickup::update(dt, buttonStates);
     }
 
@@ -306,7 +306,7 @@ public:
         health = startHealth;
     }
 
-    void update(double dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates buttonStates) {
 
     }
 
@@ -406,7 +406,7 @@ public:
         enemyType = (EnemyType)type;
     }
 
-    void update(double dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates buttonStates) {
         Entity::update_collisions();
 
         if (enemyType == basic) {
@@ -479,7 +479,7 @@ public:
         score = 0;
     }
 
-    void update(double dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates buttonStates) {
 
         xVel = 0; // remove later? - change to fast acceleration?
 
@@ -787,7 +787,7 @@ void render_game() {
     render_hud();
 }
 
-void update_menu(double dt, ButtonStates buttonStates) {
+void update_menu(float dt, ButtonStates buttonStates) {
     if (buttonStates.A == 2) {
         gameState = STATE_IN_GAME; // change to LEVEL_SELECT later
 
@@ -797,7 +797,7 @@ void update_menu(double dt, ButtonStates buttonStates) {
     }
 }
 
-void update_game(double dt, ButtonStates buttonStates) {
+void update_game(float dt, ButtonStates buttonStates) {
     player.update(dt, buttonStates);
 
     for (int i = 0; i < enemies.size(); i++) {
