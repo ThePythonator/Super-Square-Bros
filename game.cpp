@@ -12,25 +12,37 @@
 #define TILE_ID_PLAYER_2 68
 #define TILE_ID_HEART 112
 #define TILE_ID_CAMERA 253
+#define TILE_ID_FINISH 128
 #define TILE_ID_ENEMY_1 80
 #define TILE_ID_ENEMY_2 84
 #define TILE_ID_ENEMY_3 88
 #define TILE_ID_ENEMY_4 92
 
-#define CAMERA_SCALE 10
+#define CAMERA_SCALE_X 10
+#define CAMERA_SCALE_Y 5
 #define CAMERA_PAN_TIME 3
+
+#define LEVEL_DEATH_BOUNDARY_SCALE 1.5
 
 #define SPRITE_SIZE 8
 
 
-#define PLAYER_MAX_HEALTH 3
+#define ENTITY_DEATH_PARTICLE_COUNT 100
+#define ENTITY_DEATH_PARTICLE_GRAVITY 40.0f
+#define ENTITY_DEATH_PARTICLE_AGE 0.8f
+#define ENTITY_DEATH_PARTICLE_SPEED 60.0f
 
 
 #define GRAVITY 600.0f
 #define GRAVITY_MAX 200.0f
 
+
+#define PLAYER_MAX_HEALTH 3
 #define PLAYER_MAX_JUMP 190.0f
 #define PLAYER_MAX_SPEED 80.0f
+#define PLAYER_IMMUNE_TIME 3.0f
+
+#define ENTITY_IDLE_SPEED 40.0f
 
 using namespace blit;
 
@@ -48,10 +60,13 @@ const uint8_t enemyHealths[] = { 2, 1, 2, 2 };
 
 const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
+const std::vector<uint8_t> finishFrames = { TILE_ID_FINISH, TILE_ID_FINISH + 1, TILE_ID_FINISH + 2, TILE_ID_FINISH + 3, TILE_ID_FINISH + 4, TILE_ID_FINISH + 5 };
+
 const uint8_t* asset_levels[] = {
     asset_level0
 };
 
+uint16_t levelDeathBoundary;
 
 float dt;
 uint32_t lastTime = 0;
@@ -60,7 +75,7 @@ Surface* background_image = Surface::load(asset_background);
 
 bool cameraIntro = false;
 uint16_t cameraStartX, cameraStartY;
-uint16_t finishX, finishY, playerStartX, playerStartY;
+uint16_t playerStartX, playerStartY;
 
 
 
@@ -107,6 +122,32 @@ struct LevelData {
     uint16_t levelWidth, levelHeight;
 } levelData;
 
+class Colour {
+public:
+    uint8_t r, g, b, a;
+
+    Colour() {
+        r = g = b = a = 255;
+    }
+
+    Colour(uint8_t r, uint8_t g, uint8_t b) {
+        this->r = r;
+        this->g = g;
+        this->b = b;
+        a = 255;
+    }
+
+    Colour(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        this->r = r;
+        this->g = g;
+        this->b = b;
+        this->a = a;
+    }
+};
+
+
+const std::vector<Colour> entityDeathParticleColours = { Colour(255, 255, 242), Colour(184, 197, 216), Colour(107, 122, 153) };
+
 class Camera {
 public:
     float x, y;
@@ -120,8 +161,8 @@ public:
 
     void ease_to(float dt, float targetX, float targetY) {
         if (!locked) {
-            x += (targetX - x) * CAMERA_SCALE * dt;
-            y += (targetY - y) * CAMERA_SCALE * dt;
+            x += (targetX - x) * CAMERA_SCALE_X * dt;
+            y += (targetY - y) * CAMERA_SCALE_Y * dt;
         }
     }
 
@@ -144,6 +185,70 @@ public:
     }
 };
 Camera camera;
+
+
+class Particle {
+public:
+    float x, y;
+    float xVel, yVel;
+    float gravity;
+    Colour colour;
+    float age;
+
+    Particle() {
+        x = y = 0;
+        xVel = yVel = 0;
+
+        gravity = 0;
+        colour = Colour(0, 0, 0);
+
+        age = 0;
+    }
+
+    Particle(float xPosition, float yPosition, float xVelocity, float yVelocity, float particleGravity, Colour particleColour) {
+        x = xPosition;
+        y = yPosition;
+        xVel = xVelocity;
+        yVel = yVelocity;
+
+        gravity = particleGravity;
+        colour = particleColour;
+
+        age = 0;
+    }
+
+    void render(Camera camera) {
+        screen.pen = Pen(colour.r, colour.g, colour.b, colour.a);
+        screen.pixel(Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+    }
+
+    void update(float dt) {
+        age += dt;
+        colour.a = std::max(0.0f, colour.a - age * 10);
+
+        y += gravity * dt;
+
+        x += xVel * dt;
+        y += yVel * dt;
+    }
+};
+
+
+
+std::vector<Particle> generate_particles(float x, float y, float gravity, std::vector<Colour> colours, float speed, uint8_t count) {
+    std::vector<Particle> particles;
+
+    for (uint8_t i = 0; i < count; i++) {
+        uint8_t angle = rand() % 360;
+
+        float xVel = ((rand() % 100) / 100.0f) * cos(angle) * speed;
+        float yVel = ((rand() % 100) / 100.0f) * sin(angle) * speed;
+
+        particles.push_back(Particle(x, y, xVel, yVel, gravity, colours[rand() % colours.size()]));
+    }
+
+    return particles;
+}
 
 
 
@@ -271,6 +376,25 @@ protected:
 };
 std::vector<Coin> coins;
 
+class Finish : public AnimatedPickup {
+public:
+    Finish() : AnimatedPickup() {
+
+    }
+
+    Finish(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> animationFrames) : AnimatedPickup(xPosition, yPosition, animationFrames) {
+
+    }
+
+    void update(float dt, ButtonStates buttonStates) {
+        AnimatedPickup::update(dt, buttonStates);
+    }
+
+    void render(Camera camera) {
+        AnimatedPickup::render(camera);
+    }
+};
+Finish finish;
 
 
 class Entity {
@@ -278,6 +402,7 @@ public:
     float x, y;
     uint8_t health;
     bool locked;
+    std::vector<Particle> particles;
 
     Entity() {
         x = y = 0;
@@ -288,8 +413,11 @@ public:
         lastDirection = 1; // 1 = right, 0 = left
         //state = IDLE;
         locked = false;
+        deathParticles = false;
 
         health = 1;
+
+        immuneTimer = 0;
     }
 
     Entity(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) {
@@ -302,8 +430,11 @@ public:
         lastDirection = 1;
         //state = IDLE;
         locked = false;
+        deathParticles = false;
 
         health = startHealth;
+
+        immuneTimer = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -352,11 +483,6 @@ public:
                 }
             }
 
-            if (y > levelData.levelHeight * SPRITE_SIZE) {
-                health = 0;
-                // cause particle stuff, don't reset position until particles done/ timer done
-            }
-
             if (xVel > 0) {
                 lastDirection = 1;
             }
@@ -367,20 +493,45 @@ public:
     }
     
     void render(Camera camera) {
-        uint8_t frame = anchorFrame;
+        if (health != 0) {
+            bool visible = false;
 
-        if (yVel < -50) {
-            frame = anchorFrame + 1;
-        }
-        else if (yVel > 160) {
-            frame = anchorFrame + 2;
+            if (immuneTimer) {
+                uint16_t immuneTimer_ms = (uint16_t)(immuneTimer * 1000);
+                if (immuneTimer_ms % 150 < 75) {
+                    visible = true;
+                }
+            }
+            else {
+                visible = true;
+            }
+
+            if (visible) {
+                uint8_t frame = anchorFrame;
+
+                if (yVel < -50) {
+                    frame = anchorFrame + 1;
+                }
+                else if (yVel > 160) {
+                    frame = anchorFrame + 2;
+                }
+
+                /*if (immuneTimer) {
+                    frame = anchorFrame + 3;
+                }*/
+
+                if (lastDirection == 1) {
+                    screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                }
+                else {
+                    screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                }
+            }
         }
 
-        if (lastDirection == 1) {
-            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
-        }
-        else {
-            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        // Particles
+        for (uint8_t i = 0; i < particles.size(); i++) {
+            particles[i].render(camera);
         }
     }
 
@@ -393,7 +544,11 @@ protected:
     float xVel, yVel;
     uint8_t anchorFrame;
     uint8_t lastDirection;
+    bool deathParticles;
+    float immuneTimer;
 };
+
+
 
 class Enemy : public Entity {
 public:
@@ -407,38 +562,84 @@ public:
     }
 
     void update(float dt, ButtonStates buttonStates) {
-        Entity::update_collisions();
 
-        if (enemyType == basic) {
-            /*
-            bool reverseDirection = false;
+        if (health > 0) {
 
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (y + SPRITE_SIZE == foreground[i].y) {
-                    // maybe rework this (checks if is about to not be on a block), since it's v. rushed
-                    if (lastDirection == 1) {
-                        if (foreground[i].x + SPRITE_SIZE < x + SPRITE_SIZE && foreground[i].x + SPRITE_SIZE * 2 > x + SPRITE_SIZE) {
-                            reverseDirection = true;
-                        }
-                    }
-                    else {
-                        if (foreground[i].x > x && foreground[i].x - SPRITE_SIZE < x) {
-                            reverseDirection = true;
-                        }
+            if (enemyType == basic) {
+                if (lastDirection) {
+                    xVel = ENTITY_IDLE_SPEED;
+                }
+                else {
+                    xVel = -ENTITY_IDLE_SPEED;
+                }
+
+                Entity::update_collisions();
+
+
+                bool reverseDirection = true;
+
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
+                        // On block
+                        reverseDirection = false;
                     }
                 }
+
+                if (reverseDirection) {
+                    lastDirection = 1 - lastDirection;
+
+                    // Move entity back so that it is no longer off platform
+                    x -= xVel * dt;
+                }
+            }
+            else if (enemyType == ranged) {
+                Entity::update_collisions();
+            }
+            else if (enemyType == persuit) {
+                Entity::update_collisions();
+            }
+            else if (enemyType == flying) {
+                Entity::update_collisions();
             }
 
-            if (reverseDirection) {
-                lastDirection = 1 - lastDirection;
-            }
 
-            if (lastDirection) {
-                xVel = PLAYER_MAX_SPEED;
+            if (y > levelDeathBoundary) {
+                health = 0;
+                xVel = yVel = 0;
+            }
+        }
+
+        if (health == 0) {
+            //state = DEAD;
+
+            if (deathParticles) {
+                if (particles.size() == 0) {
+                    // No particles left
+
+                    health = 3; //remove?
+
+                    // Reset player position
+                    yVel = 0;
+                    lastDirection = 1;
+                    x = playerStartX;
+                    y = playerStartY;
+
+                    deathParticles = false;
+                }
+                else {
+                    for (uint8_t i = 0; i < particles.size(); i++) {
+                        particles[i].update(dt);
+                    }
+
+                    // Remove any particles which are too old
+                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+                }
             }
             else {
-                xVel = -PLAYER_MAX_SPEED;
-            }*/
+                // Generate particles
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, entityDeathParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                deathParticles = true;
+            }
         }
     }
 
@@ -480,60 +681,97 @@ public:
     }
 
     void update(float dt, ButtonStates buttonStates) {
+        if (immuneTimer) {
+            immuneTimer -= dt;
+            if (immuneTimer < 0) {
+                immuneTimer = 0;
+            }
+        }
 
-        xVel = 0; // remove later? - change to fast acceleration?
+        if (health > 0) {
 
-        if (buttonStates.A) {
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
-                    // On top of block
-                    // Jump
-                    yVel = -PLAYER_MAX_JUMP;
-                    //state = JUMP;
+            xVel = 0; // remove later? - change to fast acceleration?
+
+            if (buttonStates.A) {
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
+                        // On top of block
+                        // Jump
+                        yVel = -PLAYER_MAX_JUMP;
+                        //state = JUMP;
+                    }
                 }
+            }
+
+
+            if (buttonStates.LEFT) {
+                xVel -= PLAYER_MAX_SPEED;
+            }
+            if (buttonStates.RIGHT) {
+                xVel += PLAYER_MAX_SPEED;
+            }
+
+            uint8_t coinCount = coins.size();
+
+            // Remove coins if player jumps on them
+            coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
+
+            // Add points to player score (1 point per coin which has been deleted)
+            score += coinCount - coins.size();
+
+            // Remove enemies if player jumps on them
+            //NOTE: HOW DO I IMPLEMENT HEALTH THEN?
+            enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
+
+            //enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [this](Enemy enemy) { return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y == y + SPRITE_SIZE); }), enemies.end());
+
+            for (uint8_t i = 0; i < enemies.size(); i++) {
+                if (enemies[i].x + SPRITE_SIZE > x && enemies[i].x < x + SPRITE_SIZE && enemies[i].y == y + SPRITE_SIZE && enemies[0].health) {
+                    enemies[i].health = 0; // or --?
+                }
+            }
+
+            update_collisions();
+
+
+            if (y > levelDeathBoundary) {
+                health = 0;
+                xVel = yVel = 0;
             }
         }
 
 
-        if (buttonStates.LEFT) {
-            xVel -= PLAYER_MAX_SPEED;
-        }
-        if (buttonStates.RIGHT) {
-            xVel += PLAYER_MAX_SPEED;
-        }
-
-
-        //for (uint16_t i = 0; i < coins.size(); i++) {
-        //    if (!coins[i].collected && coins[i].x + SPRITE_SIZE > x && coins[i].x < x + SPRITE_SIZE && coins[i].y + SPRITE_SIZE > y && coins[i].y < y + SPRITE_SIZE) {
-        //        // Hit coin, add 1 to player score
-        //        coins[i].collected = true;
-        //        score++;
-
-        //    }
-        //}
-
-        uint8_t coinCount = coins.size();
-
-        // Remove coins if player jumps on them
-        coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
-        
-        // Add points to player score (1 point per coin which has been deleted)
-        score += coinCount - coins.size();
-
-        // Remove enemies if player jumps on them
-        //NOTE: HOW DO I IMPLEMENT HEALTH THEN?
-        enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [this](Enemy enemy) { return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y == y + SPRITE_SIZE); }), enemies.end());
-
-        update_collisions();
-
         if (health == 0) {
             //state = DEAD;
-            // do something?
-            health = 3; //remove?
-            yVel = 0;
-            lastDirection = 1;
-            x = playerStartX;
-            y = playerStartY;
+
+            if (deathParticles) {
+                if (particles.size() == 0) {
+                    // No particles left
+
+                    health = 3; //remove?
+
+                    // Reset player position
+                    yVel = -PLAYER_MAX_JUMP;
+                    lastDirection = 1;
+                    x = playerStartX;
+                    y = playerStartY;
+
+                    deathParticles = false;
+                }
+                else {
+                    for (uint8_t i = 0; i < particles.size(); i++) {
+                        particles[i].update(dt);
+                    }
+
+                    // Remove any particles which are too old
+                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+                }
+            }
+            else {
+                // Generate particles
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, entityDeathParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                deathParticles = true;
+            }
         }
     }
 
@@ -563,16 +801,16 @@ public:
             }
 
             for (uint16_t i = 0; i < enemies.size(); i++) {
-                if (colliding(enemies[i])) {
+                if (colliding(enemies[i]) && enemies[i].health) {
                     if (yVel > 0) {
                         // Collided from top
                         y = enemies[i].y - SPRITE_SIZE;
+                        yVel = 0;
                     }
-                    else {
-                        // Collided from bottom
-                        y = enemies[i].y + SPRITE_SIZE;
-                    }
-                    yVel = 0;
+                    //else {
+                    //    // Collided from bottom
+                    //    y = enemies[i].y + SPRITE_SIZE;
+                    //}
                 }
             }
 
@@ -594,25 +832,27 @@ public:
                 }
             }
 
-            for (uint16_t i = 0; i < enemies.size(); i++) {
-                if (colliding(enemies[i])) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = enemies[i].x - SPRITE_SIZE;
+            //for (uint16_t i = 0; i < enemies.size(); i++) {
+            //    if (colliding(enemies[i]) && enemies[i].health) {
+            //        if (xVel > 0) {
+            //            // Collided from left
+            //            x = enemies[i].x - SPRITE_SIZE;
+            //        }
+            //        else {
+            //            // Collided from right
+            //            x = enemies[i].x + SPRITE_SIZE;
+            //        }
+            //        xVel = 0;
+            //    }
+            //}
+
+            if (!immuneTimer) {
+                for (uint16_t i = 0; i < enemies.size(); i++) {
+                    if (colliding(enemies[i]) && enemies[i].health) {
+                        health--;
+                        immuneTimer = PLAYER_IMMUNE_TIME;
                     }
-                    else {
-                        // Collided from right
-                        x = enemies[i].x + SPRITE_SIZE;
-                    }
-                    xVel = 0;
                 }
-            }
-
-
-
-            if (y > levelData.levelHeight * SPRITE_SIZE) {
-                health = 0;
-                // cause particle stuff, don't reset position until particles done/ timer done
             }
 
             if (xVel > 0) {
@@ -652,6 +892,12 @@ protected:
 Player player;
 
 
+
+
+
+
+
+
 void render_tiles(std::vector<Tile> tiles) {
     for (int i = 0; i < tiles.size(); i++) {
         tiles[i].render(camera);
@@ -670,6 +916,10 @@ void render_enemies(std::vector<Enemy> enemies) {
     }
 }
 
+void render_finish(Finish finish) {
+    finish.render(camera);
+}
+
 void render_background() {
     screen.blit(background_image, Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), Point(0, 0), false);
 }
@@ -679,6 +929,8 @@ void render_level() {
     render_tiles(foreground);
 
     render_coins(coins);
+
+    render_finish(finish);
 }
 
 void render_entities() {
@@ -688,6 +940,8 @@ void render_entities() {
 }
 
 void render_hud() {
+    screen.pen = Pen(255, 255, 255);
+
     // Player health
     for (uint8_t i = 0; i < player.health; i++) {
         screen.sprite(TILE_ID_HEART, Point(2 + i * SPRITE_SIZE, 2));
@@ -699,7 +953,10 @@ void render_hud() {
 
 void load_level(uint8_t levelNumber) {
     // Variables for finding start and finish positions
-    finishX = finishY = playerStartX = playerStartY = 0;
+    playerStartX = playerStartY = 0;
+
+    uint16_t finishX, finishY;
+    finishX = finishY = 0;
 
     cameraStartX = cameraStartY = 0;
 
@@ -712,6 +969,8 @@ void load_level(uint8_t levelNumber) {
 
     levelData.levelWidth = levelWidth;
     levelData.levelHeight = levelHeight;
+
+    levelDeathBoundary = levelData.levelHeight * SPRITE_SIZE * LEVEL_DEATH_BOUNDARY_SCALE;
 
     foreground.clear();
     background.clear();
@@ -742,6 +1001,10 @@ void load_level(uint8_t levelNumber) {
             cameraStartX = (i % levelWidth) * SPRITE_SIZE;
             cameraStartY = (i / levelWidth) * SPRITE_SIZE;
         }
+        else if (tmx->data[i + levelSize] == TILE_ID_FINISH) {
+            finishX = (i % levelWidth) * SPRITE_SIZE;
+            finishY = (i / levelWidth) * SPRITE_SIZE;
+        }
         else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_1) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[0], 0));
         }
@@ -761,6 +1024,8 @@ void load_level(uint8_t levelNumber) {
 
     // Reset player attributes
     player = Player(playerStartX, playerStartY, 0); // change colour param later
+
+    finish = Finish(finishX, finishY, finishFrames);
     
     // Reset camera position
     camera.x = cameraStartX;
@@ -808,6 +1073,22 @@ void update_game(float dt, ButtonStates buttonStates) {
     for (int i = 0; i < coins.size(); i++) {
         coins[i].update(dt, buttonStates);
     }
+
+    finish.update(dt, buttonStates);
+
+
+    if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
+        // lock player to finish
+        player.x = finish.x;
+        player.y = finish.y - 1;
+    }
+
+    //if (player.x + SPRITE_SIZE > finish.x - SPRITE_SIZE && player.x < finish.x + SPRITE_SIZE * 2 && player.y + SPRITE_SIZE > finish.y - SPRITE_SIZE && player.y < finish.y + SPRITE_SIZE * 2) {
+    //    // 'pull' player to finish
+
+    //    player.x += (finish.x - player.x) * 4 * dt;
+    //    player.y += (finish.y - player.y) * 4 * dt;
+    //}
 
     if (cameraIntro) {
         camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
