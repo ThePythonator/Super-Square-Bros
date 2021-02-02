@@ -239,7 +239,7 @@ std::vector<Particle> generate_particles(float x, float y, float gravity, std::v
     std::vector<Particle> particles;
 
     for (uint8_t i = 0; i < count; i++) {
-        uint8_t angle = rand() % 360;
+        float angle = rand() % 360;
 
         float xVel = ((rand() % 100) / 100.0f) * cos(angle) * speed;
         float yVel = ((rand() % 100) / 100.0f) * sin(angle) * speed;
