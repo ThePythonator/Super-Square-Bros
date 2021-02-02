@@ -26,11 +26,11 @@
 #define PLAYER_MAX_HEALTH 3
 
 
-#define GRAVITY 600
-#define GRAVITY_MAX 200
+#define GRAVITY 600.0f
+#define GRAVITY_MAX 200.0f
 
-#define PLAYER_MAX_JUMP 190
-#define PLAYER_MAX_SPEED 80
+#define PLAYER_MAX_JUMP 190.0f
+#define PLAYER_MAX_SPEED 80.0f
 
 using namespace blit;
 
@@ -53,7 +53,7 @@ const uint8_t* asset_levels[] = {
 };
 
 
-double dt;
+float dt;
 uint32_t lastTime = 0;
 
 Surface* background_image = Surface::load(asset_background);
@@ -273,50 +273,141 @@ std::vector<Coin> coins;
 
 
 
-class Enemy {
+class Entity {
 public:
     float x, y;
     uint8_t health;
     bool locked;
 
-    Enemy() {
+    Entity() {
         x = y = 0;
         xVel = yVel = 0;
 
         anchorFrame = 0;
 
         lastDirection = 1; // 1 = right, 0 = left
-
         //state = IDLE;
-
         locked = false;
 
         health = 1;
+    }
 
+    Entity(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) {
+        x = xPosition;
+        y = yPosition;
+        xVel = yVel = 0;
+
+        anchorFrame = frame;
+
+        lastDirection = 1;
+        //state = IDLE;
+        locked = false;
+
+        health = startHealth;
+    }
+
+    void update(double dt, ButtonStates buttonStates) {
+
+    }
+
+    void update_collisions() {
+        if (!locked) {
+            // Update gravity
+            yVel += GRAVITY * dt;
+            yVel = std::min(yVel, (float)GRAVITY_MAX);
+
+            // Move entity y
+            y += yVel * dt;
+
+            // Here check collisions...
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (colliding(foreground[i])) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = foreground[i].y - SPRITE_SIZE;
+                    }
+                    else {
+                        // Collided from bottom
+                        y = foreground[i].y + SPRITE_SIZE;
+                    }
+                    yVel = 0;
+                }
+            }
+
+            // Move entity x
+            x += xVel * dt;
+
+            // Here check collisions...
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (colliding(foreground[i])) {
+                    if (xVel > 0) {
+                        // Collided from left
+                        x = foreground[i].x - SPRITE_SIZE + 1;
+                    }
+                    else {
+                        // Collided from right
+                        x = foreground[i].x + SPRITE_SIZE - 1;
+                    }
+                    xVel = 0;
+                }
+            }
+
+            if (y > levelData.levelHeight * SPRITE_SIZE) {
+                health = 0;
+                // cause particle stuff, don't reset position until particles done/ timer done
+            }
+
+            if (xVel > 0) {
+                lastDirection = 1;
+            }
+            else if (xVel < 0) {
+                lastDirection = 0;
+            }
+        }
+    }
+    
+    void render(Camera camera) {
+        uint8_t frame = anchorFrame;
+
+        if (yVel < -50) {
+            frame = anchorFrame + 1;
+        }
+        else if (yVel > 160) {
+            frame = anchorFrame + 2;
+        }
+
+        if (lastDirection == 1) {
+            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+        }
+        else {
+            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        }
+    }
+
+    bool colliding(Tile tile) {
+        // Replace use of this with actual code?
+        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+    }
+
+protected:
+    float xVel, yVel;
+    uint8_t anchorFrame;
+    uint8_t lastDirection;
+};
+
+class Enemy : public Entity {
+public:
+
+    Enemy() : Entity() {
         enemyType = basic;
     }
 
-    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) {
-        x = xPosition;
-        y = yPosition;
-
-        xVel = yVel = 0;
-
-        anchorFrame = TILE_ID_ENEMY_1 + type * 4;
-
-        lastDirection = 1;
-
-        health = startHealth;
-
-        //state = IDLE;
-
-        locked = false;
-
+    Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
         enemyType = (EnemyType)type;
     }
 
     void update(double dt, ButtonStates buttonStates) {
-        update_collisions(dt, buttonStates);
+        Entity::update_collisions();
 
         if (enemyType == basic) {
             /*
@@ -351,114 +442,8 @@ public:
         }
     }
 
-    void update_collisions(double dt, ButtonStates buttonStates) {
-        if (!locked) {
-            // Update gravity
-            yVel += GRAVITY * dt;
-            yVel = std::min(yVel, (float)GRAVITY_MAX);
-
-            // Move entity y
-            y += yVel * dt;
-
-            // Here check collisions...
-
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
-                    if (yVel > 0) {
-                        // Collided from top
-                        y = foreground[i].y - SPRITE_SIZE;
-                    }
-                    else {
-                        // Collided from bottom
-                        y = foreground[i].y + SPRITE_SIZE;
-                    }
-                    yVel = 0;
-                }
-            }
-
-            //for (uint16_t i = 0; i < enemies.size(); i++) {
-            //    if (colliding(enemies[i])) {
-            //        if (yVel > 0) {
-            //            // Collided from top
-            //            y = enemies[i].y - SPRITE_SIZE;
-            //        }
-            //        else {
-            //            // Collided from bottom
-            //            y = enemies[i].y + SPRITE_SIZE;
-            //        }
-            //        yVel = 0;
-            //    }
-            //}
-
-            // Move entity x
-            x += xVel * dt;
-
-            // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = foreground[i].x - SPRITE_SIZE + 1;
-                    }
-                    else {
-                        // Collided from right
-                        x = foreground[i].x + SPRITE_SIZE - 1;
-                    }
-                    xVel = 0;
-                }
-            }
-
-            //for (uint16_t i = 0; i < enemies.size(); i++) {
-            //    if (colliding(enemies[i])) {
-            //        if (xVel > 0) {
-            //            // Collided from left
-            //            x = enemies[i].x - SPRITE_SIZE + 1;
-            //        }
-            //        else {
-            //            // Collided from right
-            //            x = enemies[i].x + SPRITE_SIZE - 1;
-            //        }
-            //        xVel = 0;
-            //    }
-            //}
-
-
-
-            if (y > levelData.levelHeight * SPRITE_SIZE) {
-                health = 0;
-                // cause particle stuff, don't reset position until particles done/ timer done
-            }
-
-            if (xVel > 0) {
-                lastDirection = 1;
-            }
-            else if (xVel < 0) {
-                lastDirection = 0;
-            }
-        }
-    }
-
     void render(Camera camera) {
-        uint8_t frame = anchorFrame;
-
-        if (yVel < -50) {
-            frame = anchorFrame + 1;
-        }
-        else if (yVel > 160) {
-            frame = anchorFrame + 2;
-        }
-
-        if (lastDirection == 1) {
-            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
-        }
-        else {
-            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
-        }
-    }
-
-    bool colliding(Tile tile) {
-        // Replace use of this with actual code?
-        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+        Entity::render(camera);
     }
 
 protected:
@@ -478,54 +463,19 @@ protected:
     //    //INJURED,
     //    DEAD
     //} state;
-
-    float xVel, yVel;
-    uint8_t anchorFrame;
-    uint8_t lastDirection;
 };
 std::vector<Enemy> enemies;
 
 
-class Player {
+class Player : public Entity {
 public:
-    float x, y;
-    uint8_t health;
-    bool locked;
     uint8_t score;
 
-    Player() {
-        x = y = 0;
-        xVel = yVel = 0;
-
-        anchorFrame = 0;
-
-        lastDirection = 1; // 1 = right, 0 = left
-
-        //state = IDLE;
-
-        locked = false;
-
-        health = 1;
-
+    Player() : Entity() {
         score = 0;
     }
 
-    Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) {
-        x = xPosition;
-        y = yPosition;
-
-        xVel = yVel = 0;
-
-        anchorFrame = TILE_ID_PLAYER_1 + colour * 4;
-
-        lastDirection = 1;
-
-        health = PLAYER_MAX_HEALTH;
-
-        //state = IDLE;
-
-        locked = false;
-
+    Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) : Entity(xPosition, yPosition, TILE_ID_PLAYER_1 + colour * 4, PLAYER_MAX_HEALTH) {
         score = 0;
     }
 
@@ -571,9 +521,10 @@ public:
         score += coinCount - coins.size();
 
         // Remove enemies if player jumps on them
+        //NOTE: HOW DO I IMPLEMENT HEALTH THEN?
         enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [this](Enemy enemy) { return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y == y + SPRITE_SIZE); }), enemies.end());
 
-        update_collisions(dt, buttonStates);
+        update_collisions();
 
         if (health == 0) {
             //state = DEAD;
@@ -586,11 +537,11 @@ public:
         }
     }
 
-    void update_collisions(double dt, ButtonStates buttonStates) {
+    void update_collisions() {
         if (!locked) {
             // Update gravity
             yVel += GRAVITY * dt;
-            yVel = std::min(yVel, (float)GRAVITY_MAX);
+            yVel = std::min(yVel, GRAVITY_MAX);
 
             // Move entity y
             y += yVel * dt;
@@ -674,21 +625,7 @@ public:
     }
 
     void render(Camera camera) {
-        uint8_t frame = anchorFrame;
-
-        if (yVel < -50) {
-            frame = anchorFrame + 1;
-        }
-        else if (yVel > 160) {
-            frame = anchorFrame + 2;
-        }
-
-        if (lastDirection == 1) {
-            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
-        }
-        else {
-            screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
-        }
+        Entity::render(camera);
     }
 
     bool colliding(Tile tile) {
@@ -711,10 +648,6 @@ protected:
     //    //INJURED,
     //    DEAD
     //} state;
-
-    float xVel, yVel;
-    uint8_t anchorFrame;
-    uint8_t lastDirection;
 };
 Player player;
 
