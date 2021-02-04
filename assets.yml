@@ -18,3 +18,8 @@ assets.cpp:
     empty_tile: 255
     output_struct: true
 
+  assets/level_title.tmx:
+    name: asset_level_title
+    empty_tile: 255
+    output_struct: true
+

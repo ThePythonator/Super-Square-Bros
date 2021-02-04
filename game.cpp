@@ -4,6 +4,8 @@
 #define SCREEN_WIDTH 160
 #define SCREEN_HEIGHT 120
 
+#define LEVEL_COUNT 1
+
 #define FRAME_LENGTH 0.15
 
 #define TILE_ID_EMPTY 255
@@ -44,6 +46,8 @@
 
 #define ENTITY_IDLE_SPEED 40.0f
 
+#define TEXT_FLASH_TIME 0.8f
+
 using namespace blit;
 
 
@@ -56,14 +60,25 @@ const uint8_t SCREEN_MID_HEIGHT = SCREEN_HEIGHT / 2;
 
 const uint8_t SPRITE_HALF = SPRITE_SIZE / 2;
 
-const uint8_t enemyHealths[] = { 2, 1, 2, 2 };
+const uint8_t enemyHealths[] = { 1, 1, 1, 1 }; // maybe obsolete
 
 const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
 const std::vector<uint8_t> finishFrames = { TILE_ID_FINISH, TILE_ID_FINISH + 1, TILE_ID_FINISH + 2, TILE_ID_FINISH + 3, TILE_ID_FINISH + 4, TILE_ID_FINISH + 5 };
 
+const float parallaxFactorLayersX[2] = {
+    0.4,
+    0.2
+};
+
+const float parallaxFactorLayersY[2] = {
+    0.4,
+    0.2
+};
+
 const uint8_t* asset_levels[] = {
-    asset_level0
+    asset_level0,
+    asset_level_title
 };
 
 uint16_t levelDeathBoundary;
@@ -76,6 +91,9 @@ Surface* background_image = Surface::load(asset_background);
 bool cameraIntro = false;
 uint16_t cameraStartX, cameraStartY;
 uint16_t playerStartX, playerStartY;
+
+
+float textFlashTimer = 0.0f;
 
 
 
@@ -146,7 +164,16 @@ public:
 };
 
 
-const std::vector<Colour> entityDeathParticleColours = { Colour(255, 255, 242), Colour(184, 197, 216), Colour(107, 122, 153) };
+const std::vector<Colour> playerDeathParticleColours[2] = {
+    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(107, 122, 153) },
+    { Colour(255, 255, 242), Colour(204, 137, 124), Colour(153, 76, 76) }
+};
+const std::vector<Colour> enemyDeathParticleColours[4] = {
+    { Colour(255, 255, 242), Colour(204, 137, 124), Colour(178, 53, 53) },
+    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(62, 108, 178) },
+    { Colour(255, 255, 242), Colour(178, 214, 96), Colour(37, 124, 73) },
+    { Colour(255, 255, 242), Colour(255, 235, 140), Colour(255, 199, 89) }
+};
 
 class Camera {
 public:
@@ -296,6 +323,37 @@ protected:
 };
 std::vector<Tile> foreground;
 std::vector<Tile> background;
+
+
+class ParallaxTile : public Tile {
+public:
+    ParallaxTile() : Tile() {
+        id = TILE_ID_EMPTY;
+        layer = 0;
+    }
+
+    ParallaxTile(uint16_t xPosition, uint16_t yPosition, uint8_t tileID, uint8_t parallaxLayer) : Tile(xPosition, yPosition, tileID) {
+        id = tileID;
+        layer = parallaxLayer;
+    }
+
+    void update(float dt, ButtonStates buttonStates) {
+        
+    }
+
+    void render(Camera camera)
+    {
+        //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - (camera.x * parallaxFactorLayersX[layer]), SCREEN_MID_HEIGHT + y - (camera.y * parallaxFactorLayersY[layer])));
+        // Not shifting sprite to center seems to give better coverage of parallax
+        screen.sprite(id, Point(x - (camera.x * parallaxFactorLayersX[layer]), y - (camera.y * parallaxFactorLayersY[layer])));
+    }
+
+protected:
+    uint8_t id;
+    uint8_t layer;
+};
+std::vector<ParallaxTile> parallax;
+
 
 class Pickup : public LevelObject {
 public:
@@ -540,6 +598,10 @@ public:
         return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
     }
 
+    void set_immune() {
+        immuneTimer = PLAYER_IMMUNE_TIME;
+    }
+
 protected:
     float xVel, yVel;
     uint8_t anchorFrame;
@@ -637,7 +699,7 @@ public:
             }
             else {
                 // Generate particles
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, entityDeathParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, enemyDeathParticleColours[(uint8_t)enemyType], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
             }
         }
@@ -671,13 +733,16 @@ std::vector<Enemy> enemies;
 class Player : public Entity {
 public:
     uint8_t score;
+    uint8_t id;
 
     Player() : Entity() {
         score = 0;
+        id = 0;
     }
 
     Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) : Entity(xPosition, yPosition, TILE_ID_PLAYER_1 + colour * 4, PLAYER_MAX_HEALTH) {
         score = 0;
+        id = colour;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -746,17 +811,19 @@ public:
 
             if (deathParticles) {
                 if (particles.size() == 0) {
-                    // No particles left
+                    // No particles left, reset values which need to be
 
-                    health = 3; //remove?
+                    deathParticles = false;
 
-                    // Reset player position
+                    // Reset player position and health, maybe remove all this?
+                    health = 3;
                     yVel = -PLAYER_MAX_JUMP;
                     lastDirection = 1;
                     x = playerStartX;
                     y = playerStartY;
 
-                    deathParticles = false;
+                    // Make player immune when respawning?
+                    //set_immune();
                 }
                 else {
                     for (uint8_t i = 0; i < particles.size(); i++) {
@@ -769,7 +836,7 @@ public:
             }
             else {
                 // Generate particles
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, entityDeathParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, playerDeathParticleColours[id], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
             }
         }
@@ -850,7 +917,7 @@ public:
                 for (uint16_t i = 0; i < enemies.size(); i++) {
                     if (colliding(enemies[i]) && enemies[i].health) {
                         health--;
-                        immuneTimer = PLAYER_IMMUNE_TIME;
+                        set_immune();
                     }
                 }
             }
@@ -904,6 +971,12 @@ void render_tiles(std::vector<Tile> tiles) {
     }
 }
 
+void render_parallax(std::vector<ParallaxTile> parallax) {
+    for (int i = 0; i < parallax.size(); i++) {
+        parallax[i].render(camera);
+    }
+}
+
 void render_coins(std::vector<Coin> coins) {
     for (int i = 0; i < coins.size(); i++) {
         coins[i].render(camera);
@@ -925,6 +998,8 @@ void render_background() {
 }
 
 void render_level() {
+    render_parallax(parallax);
+
     render_tiles(background);
     render_tiles(foreground);
 
@@ -974,6 +1049,7 @@ void load_level(uint8_t levelNumber) {
 
     foreground.clear();
     background.clear();
+    parallax.clear();
     coins.clear();
     enemies.clear();
 
@@ -1022,6 +1098,30 @@ void load_level(uint8_t levelNumber) {
         }
     }
 
+
+    // maybe adjust position of tile so that don't need to bunch all up in corner while designing level
+
+    // go backwards through parallax layers so that rendering is correct
+
+    for (int i = 0; i < levelSize; i++) {
+        if (tmx->data[i + levelSize * 3] == TILE_ID_EMPTY) {
+            // Is a blank tile, don't do anything
+        }
+        else {
+            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 3], 0));
+        }
+    }
+
+    for (int i = 0; i < levelSize; i++) {
+        if (tmx->data[i + levelSize * 2] == TILE_ID_EMPTY) {
+            // Is a blank tile, don't do anything
+        }
+        else {
+            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 2], 1));
+        }
+    }
+
+
     // Reset player attributes
     player = Player(playerStartX, playerStartY, 0); // change colour param later
 
@@ -1038,8 +1138,17 @@ void start_level() {
 }
 
 void render_menu() {
-    screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 20), true, TextAlign::center_center);
-    screen.text("Press A to Start", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+    render_background();
+
+    render_level();
+
+    render_entities();
+
+    screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+        screen.text("Press A to Start", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+    }
 }
 
 void render_game() {
@@ -1053,6 +1162,16 @@ void render_game() {
 }
 
 void update_menu(float dt, ButtonStates buttonStates) {
+    //player.update(dt, buttonStates);
+
+    for (int i = 0; i < coins.size(); i++) {
+        coins[i].update(dt, buttonStates);
+    }
+
+    //finish.update(dt, buttonStates);
+
+    // Button handling
+
     if (buttonStates.A == 2) {
         gameState = STATE_IN_GAME; // change to LEVEL_SELECT later
 
@@ -1097,6 +1216,8 @@ void update_game(float dt, ButtonStates buttonStates) {
         if (player.x == camera.x && player.y == camera.y) {
             cameraIntro = false;
             player.locked = false;
+            // Make player immune when spawning?
+            //player.set_immune();
         }
     }
     else {
@@ -1114,6 +1235,8 @@ void init() {
     set_screen_mode(ScreenMode::lores);
 
     screen.sprites = Surface::load(asset_sprites);
+
+    load_level(LEVEL_COUNT);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1160,6 +1283,11 @@ void update(uint32_t time) {
     // Get dt
     dt = (time - lastTime) / 1000.0;
     lastTime = time;
+
+    textFlashTimer += dt;
+    if (textFlashTimer >= TEXT_FLASH_TIME) {
+        textFlashTimer -= TEXT_FLASH_TIME;
+    }
 
     //printf("%f\n", dt);
 
