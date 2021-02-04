@@ -7,6 +7,8 @@
 #define LEVEL_COUNT 1
 
 #define FRAME_LENGTH 0.15
+#define TRANSITION_FRAME_LENGTH 0.1
+#define TRANSITION_CLOSE_LENGTH 0.4
 
 #define TILE_ID_EMPTY 255
 #define TILE_ID_COIN 96
@@ -14,6 +16,7 @@
 #define TILE_ID_PLAYER_2 68
 #define TILE_ID_HEART 112
 #define TILE_ID_CAMERA 253
+#define TILE_ID_TRANSITION 224
 #define TILE_ID_FINISH 128
 #define TILE_ID_ENEMY_1 80
 #define TILE_ID_ENEMY_2 84
@@ -60,11 +63,17 @@ const uint8_t SCREEN_MID_HEIGHT = SCREEN_HEIGHT / 2;
 
 const uint8_t SPRITE_HALF = SPRITE_SIZE / 2;
 
+const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
+
 const uint8_t enemyHealths[] = { 1, 1, 1, 1 }; // maybe obsolete
 
 const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
 const std::vector<uint8_t> finishFrames = { TILE_ID_FINISH, TILE_ID_FINISH + 1, TILE_ID_FINISH + 2, TILE_ID_FINISH + 3, TILE_ID_FINISH + 4, TILE_ID_FINISH + 5 };
+
+//const std::vector<uint8_t> transitionFrames = { TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3 };
+const std::vector<uint8_t> transitionFramesClose = { TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 7 };
+const std::vector<uint8_t> transitionFramesOpen = { TILE_ID_TRANSITION + 8, TILE_ID_TRANSITION + 9, TILE_ID_TRANSITION + 10, TILE_ID_TRANSITION + 11, TILE_ID_TRANSITION + 12, TILE_ID_TRANSITION + 13 };
 
 const float parallaxFactorLayersX[2] = {
     0.4,
@@ -454,6 +463,95 @@ public:
 };
 Finish finish;
 
+class AnimatedTransition {
+public:
+    uint8_t x, y;
+
+    AnimatedTransition() {
+        state = OPEN;
+        x = y = 0;
+    }
+
+    AnimatedTransition(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> open, std::vector<uint8_t> close) {
+        openingFrames = open;
+        closingFrames = close;
+        state = OPEN;
+        x = xPosition;
+        y = yPosition;
+    }
+
+    void update(float dt, ButtonStates buttonStates) {
+        if (state == CLOSING || state == OPENING) {
+            animationTimer += dt;
+
+            if (animationTimer >= TRANSITION_FRAME_LENGTH) {
+                animationTimer -= TRANSITION_FRAME_LENGTH;
+                currentFrame++;
+
+                if (state == CLOSING) {
+                    if (currentFrame == closingFrames.size()) {
+                        state = CLOSED;
+                    }
+                }
+                else {
+                    if (currentFrame == openingFrames.size()) {
+                        state = OPEN;
+                    }
+                }
+            }
+        }
+    }
+
+    void render(Camera camera) {
+        if (state == CLOSING) {
+            screen.sprite(closingFrames[currentFrame], Point(x, y));
+        }
+        else if (state == OPENING) {
+            screen.sprite(openingFrames[currentFrame], Point(x, y));
+        }
+        else if (state == CLOSED) {
+            screen.sprite(closingFrames[closingFrames.size() - 1], Point(x, y));
+        }
+        else if (state == OPEN) {
+            // Don't do anything
+        }
+    }
+
+    void close() {
+        state = CLOSING;
+        animationTimer = 0;
+        currentFrame = 0;
+    }
+
+    void open() {
+        state = OPENING;
+        animationTimer = 0;
+        currentFrame = 0;
+    }
+
+    bool is_closed() {
+        return state == CLOSED;
+    }
+
+    bool is_open() {
+        return state == OPEN;
+    }
+
+protected:
+    enum TransitionState {
+        OPENING,
+        OPEN,
+        CLOSING,
+        CLOSED
+    } state;
+
+    float animationTimer;
+    std::vector<uint8_t> openingFrames, closingFrames;
+    uint8_t currentFrame;
+};
+AnimatedTransition transition[SCREEN_TILE_SIZE];
+
+
 
 class Entity {
 public:
@@ -646,6 +744,14 @@ public:
                         reverseDirection = false;
                     }
                 }
+
+                //uint8_t tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+                //for (uint16_t i = 0; i < foreground.size(); i++) {
+                //    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
+                //        // About to be on block
+                //        reverseDirection = false;
+                //    }
+                //}
 
                 if (reverseDirection) {
                     lastDirection = 1 - lastDirection;
@@ -960,9 +1066,29 @@ Player player;
 
 
 
+void open_transition() {
+    for (uint16_t i = 0; i < SCREEN_TILE_SIZE; i++) {
+        transition[i].open();
+    }
+}
 
+void close_transition() {
+    for (uint16_t i = 0; i < SCREEN_TILE_SIZE; i++) {
+        transition[i].close();
+    }
+}
 
+void render_transition() {
+    for (uint16_t i = 0; i < SCREEN_TILE_SIZE; i++) {
+        transition[i].render(camera);
+    }
+}
 
+void update_transition(float dt, ButtonStates buttonStates) {
+    for (uint16_t i = 0; i < SCREEN_TILE_SIZE; i++) {
+        transition[i].update(dt, buttonStates);
+    }
+}
 
 
 void render_tiles(std::vector<Tile> tiles) {
@@ -1135,6 +1261,8 @@ void load_level(uint8_t levelNumber) {
 void start_level() {
     player.locked = true;
     cameraIntro = true;
+
+    open_transition();
 }
 
 void render_menu() {
@@ -1172,7 +1300,11 @@ void update_menu(float dt, ButtonStates buttonStates) {
 
     // Button handling
 
-    if (buttonStates.A == 2) {
+    if (buttonStates.A == 2 && transition[0].is_open()) {
+        close_transition();
+    }
+
+    if (transition[0].is_closed()) {
         gameState = STATE_IN_GAME; // change to LEVEL_SELECT later
 
         load_level(0); // move to update_level later
@@ -1208,20 +1340,21 @@ void update_game(float dt, ButtonStates buttonStates) {
     //    player.x += (finish.x - player.x) * 4 * dt;
     //    player.y += (finish.y - player.y) * 4 * dt;
     //}
+    if (transition[0].is_open()) {
+        if (cameraIntro) {
+            camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
+            //camera.ease_to(dt/5, player.x, player.y);
 
-    if (cameraIntro) {
-        camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
-        //camera.ease_to(dt/5, player.x, player.y);
-
-        if (player.x == camera.x && player.y == camera.y) {
-            cameraIntro = false;
-            player.locked = false;
-            // Make player immune when spawning?
-            //player.set_immune();
+            if (player.x == camera.x && player.y == camera.y) {
+                cameraIntro = false;
+                player.locked = false;
+                // Make player immune when spawning?
+                //player.set_immune();
+            }
         }
-    }
-    else {
-        camera.ease_to(dt, player.x, player.y);
+        else {
+            camera.ease_to(dt, player.x, player.y);
+        }
     }
 }
 
@@ -1237,6 +1370,13 @@ void init() {
     screen.sprites = Surface::load(asset_sprites);
 
     load_level(LEVEL_COUNT);
+
+
+    for (int y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
+        for (int x = 0; x < SCREEN_WIDTH / SPRITE_SIZE; x++) {
+            transition[y * (SCREEN_WIDTH / SPRITE_SIZE) + x] = AnimatedTransition(x * SPRITE_SIZE, y * SPRITE_SIZE, transitionFramesOpen, transitionFramesClose);
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1268,6 +1408,8 @@ void render(uint32_t time) {
     else if (gameState == STATE_LOST) {
 
     }
+
+    render_transition();
 
     screen.pen = Pen(0, 0, 0);
 }
@@ -1402,4 +1544,6 @@ void update(uint32_t time) {
     else if (gameState == STATE_LOST) {
 
     }
+
+    update_transition(dt, buttonStates);
 }
