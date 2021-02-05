@@ -8,7 +8,7 @@
 
 #define FRAME_LENGTH 0.15
 #define TRANSITION_FRAME_LENGTH 0.1
-#define TRANSITION_CLOSE_LENGTH 0.4
+#define TRANSITION_CLOSE_LENGTH 0.5
 
 #define TILE_ID_EMPTY 255
 #define TILE_ID_COIN 96
@@ -25,7 +25,7 @@
 
 #define CAMERA_SCALE_X 10
 #define CAMERA_SCALE_Y 5
-#define CAMERA_PAN_TIME 3
+#define CAMERA_PAN_TIME 4
 
 #define LEVEL_DEATH_BOUNDARY_SCALE 1.5
 
@@ -87,7 +87,8 @@ const float parallaxFactorLayersY[2] = {
 
 const uint8_t* asset_levels[] = {
     asset_level0,
-    asset_level_title
+    asset_level_title,
+    asset_level_char_select
 };
 
 uint16_t levelDeathBoundary;
@@ -103,7 +104,7 @@ uint16_t playerStartX, playerStartY;
 
 
 float textFlashTimer = 0.0f;
-
+uint8_t playerSelected = 0;
 
 
 
@@ -121,12 +122,13 @@ struct TMX {
 #pragma pack(pop)
 
 enum GameState {
+    STATE_CHARACTER_SELECT,
     STATE_MENU,
     STATE_LEVEL_SELECT,
     STATE_IN_GAME,
     STATE_LOST
 };
-GameState gameState = STATE_MENU;
+GameState gameState = STATE_CHARACTER_SELECT;
 
 struct ButtonStates {
     uint8_t UP;
@@ -195,7 +197,7 @@ public:
         locked = false;
     }
 
-    void ease_to(float dt, float targetX, float targetY) {
+    void ease_out_to(float dt, float targetX, float targetY) {
         if (!locked) {
             x += (targetX - x) * CAMERA_SCALE_X * dt;
             y += (targetY - y) * CAMERA_SCALE_Y * dt;
@@ -219,6 +221,35 @@ public:
             }
         }
     }
+
+    //void ease_in_out_to(float dt, float startX, float startY, float targetX, float targetY, float time) {
+    //    if (!locked) {
+    //        /*if (std::abs(targetX - x) < std::abs(((targetX - startX) / time) * dt)) {
+    //            x = targetX;
+    //        }
+    //        else {
+    //            x += ((targetX - startX) / time) * dt;
+    //        }
+
+    //        if (std::abs(targetY - y) < std::abs(((targetY - startY) / time) * dt)) {
+    //            y = targetY;
+    //        }
+    //        else {
+    //            y += ((targetY - startY) / time) * dt;
+    //        }*/
+
+
+    //        if (x - startX < (targetX - startX) / 2.0f && y - startY < (targetY - startY) / 2.0f) {
+    //            x += (targetX - x) * CAMERA_SCALE_X * dt;
+    //            y += (targetY - y) * CAMERA_SCALE_Y * dt;
+    //        }
+    //        else {
+
+    //            x -= (startX - x) * CAMERA_SCALE_X * dt;
+    //            y -= (startY - y) * CAMERA_SCALE_Y * dt;
+    //        }
+    //    }
+    //}
 };
 Camera camera;
 
@@ -466,18 +497,28 @@ Finish finish;
 class AnimatedTransition {
 public:
     uint8_t x, y;
+    float closedTimer;
 
     AnimatedTransition() {
+        animationTimer = 0;
+        currentFrame = 0;
+
         state = OPEN;
         x = y = 0;
+        closedTimer = 0;
     }
 
     AnimatedTransition(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> open, std::vector<uint8_t> close) {
+        animationTimer = 0;
+        currentFrame = 0;
+
         openingFrames = open;
         closingFrames = close;
         state = OPEN;
         x = xPosition;
         y = yPosition;
+
+        closedTimer = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -491,6 +532,7 @@ public:
                 if (state == CLOSING) {
                     if (currentFrame == closingFrames.size()) {
                         state = CLOSED;
+                        closedTimer = 0;
                     }
                 }
                 else {
@@ -498,6 +540,12 @@ public:
                         state = OPEN;
                     }
                 }
+            }
+        }
+        else if (state == CLOSED) {
+            closedTimer += dt;
+            if (closedTimer >= TRANSITION_CLOSE_LENGTH) {
+                state = READY_TO_OPEN;
             }
         }
     }
@@ -509,7 +557,7 @@ public:
         else if (state == OPENING) {
             screen.sprite(openingFrames[currentFrame], Point(x, y));
         }
-        else if (state == CLOSED) {
+        else if (state == CLOSED || state == READY_TO_OPEN) {
             screen.sprite(closingFrames[closingFrames.size() - 1], Point(x, y));
         }
         else if (state == OPEN) {
@@ -533,6 +581,10 @@ public:
         return state == CLOSED;
     }
 
+    bool is_ready_to_open() {
+        return state == READY_TO_OPEN;
+    }
+
     bool is_open() {
         return state == OPEN;
     }
@@ -542,7 +594,8 @@ protected:
         OPENING,
         OPEN,
         CLOSING,
-        CLOSED
+        CLOSED,
+        READY_TO_OPEN
     } state;
 
     float animationTimer;
@@ -559,6 +612,7 @@ public:
     uint8_t health;
     bool locked;
     std::vector<Particle> particles;
+    uint8_t lastDirection;
 
     Entity() {
         x = y = 0;
@@ -703,7 +757,6 @@ public:
 protected:
     float xVel, yVel;
     uint8_t anchorFrame;
-    uint8_t lastDirection;
     bool deathParticles;
     float immuneTimer;
 };
@@ -1154,12 +1207,12 @@ void render_hud() {
 
 void load_level(uint8_t levelNumber) {
     // Variables for finding start and finish positions
-    playerStartX = playerStartY = 0;
-
     uint16_t finishX, finishY;
+
+    playerStartX = playerStartY = 0;
+    cameraStartX = cameraStartY = 0;
     finishX = finishY = 0;
 
-    cameraStartX = cameraStartY = 0;
 
     // Get a pointer to the map header
     TMX* tmx = (TMX*)asset_levels[levelNumber];
@@ -1234,7 +1287,7 @@ void load_level(uint8_t levelNumber) {
             // Is a blank tile, don't do anything
         }
         else {
-            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 3], 0));
+            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 3], 1));
         }
     }
 
@@ -1243,13 +1296,13 @@ void load_level(uint8_t levelNumber) {
             // Is a blank tile, don't do anything
         }
         else {
-            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 2], 1));
+            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 2], 0));
         }
     }
 
 
     // Reset player attributes
-    player = Player(playerStartX, playerStartY, 0); // change colour param later
+    player = Player(playerStartX, playerStartY, playerSelected);
 
     finish = Finish(finishX, finishY, finishFrames);
     
@@ -1263,6 +1316,27 @@ void start_level() {
     cameraIntro = true;
 
     open_transition();
+}
+
+void render_character_select() {
+    render_background();
+
+    render_level();
+
+    render_entities();
+
+    if (playerSelected) {
+        screen.sprite(TILE_ID_PLAYER_1, Point(SCREEN_MID_WIDTH + playerStartX - camera.x, SCREEN_MID_HEIGHT + playerStartY - camera.y), SpriteTransform::HORIZONTAL);
+    }
+    else {
+        screen.sprite(TILE_ID_PLAYER_2, Point(SCREEN_MID_WIDTH + playerStartX - camera.x + SPRITE_SIZE * 7, SCREEN_MID_HEIGHT + playerStartY - camera.y));
+    }
+
+    screen.text("Select Player", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+        screen.text("Press A to Start", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+    }
 }
 
 void render_menu() {
@@ -1279,6 +1353,10 @@ void render_menu() {
     }
 }
 
+void render_level_select() {
+
+}
+
 void render_game() {
     render_background();
 
@@ -1287,6 +1365,34 @@ void render_game() {
     render_entities();
 
     render_hud();
+}
+
+void update_character_select(float dt, ButtonStates buttonStates) {
+    ButtonStates dummyStates = { 0 };
+    dummyStates.A = 1;
+    player.update(dt, dummyStates);
+
+    if (buttonStates.A == 2 && transition[0].is_open()) {
+        close_transition();
+    }
+
+    if (buttonStates.RIGHT && !playerSelected) {
+        playerSelected = 1;
+        player = Player(player.x + SPRITE_SIZE * 7, playerStartY, 1);
+        player.lastDirection = 0;
+    }
+    else if (buttonStates.LEFT && playerSelected) {
+        playerSelected = 0;
+        player = Player(playerStartX, playerStartY, 0);
+    }
+
+    if (transition[0].is_ready_to_open()) {
+        gameState = STATE_MENU;
+
+        load_level(LEVEL_COUNT);
+
+        open_transition();
+    }
 }
 
 void update_menu(float dt, ButtonStates buttonStates) {
@@ -1304,13 +1410,17 @@ void update_menu(float dt, ButtonStates buttonStates) {
         close_transition();
     }
 
-    if (transition[0].is_closed()) {
+    if (transition[0].is_ready_to_open()) {
         gameState = STATE_IN_GAME; // change to LEVEL_SELECT later
 
         load_level(0); // move to update_level later
 
         start_level();
     }
+}
+
+void update_level_select(float dt, ButtonStates buttonStates) {
+
 }
 
 void update_game(float dt, ButtonStates buttonStates) {
@@ -1342,7 +1452,9 @@ void update_game(float dt, ButtonStates buttonStates) {
     //}
     if (transition[0].is_open()) {
         if (cameraIntro) {
+            //camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
             camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
+
             //camera.ease_to(dt/5, player.x, player.y);
 
             if (player.x == camera.x && player.y == camera.y) {
@@ -1353,7 +1465,7 @@ void update_game(float dt, ButtonStates buttonStates) {
             }
         }
         else {
-            camera.ease_to(dt, player.x, player.y);
+            camera.ease_out_to(dt, player.x, player.y);
         }
     }
 }
@@ -1369,7 +1481,7 @@ void init() {
 
     screen.sprites = Surface::load(asset_sprites);
 
-    load_level(LEVEL_COUNT);
+    load_level(LEVEL_COUNT + 1);
 
 
     for (int y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
@@ -1396,11 +1508,14 @@ void render(uint32_t time) {
     screen.mask = nullptr;
     screen.pen = Pen(255, 255, 255);
 
-    if (gameState == STATE_MENU) {
+    if (gameState == STATE_CHARACTER_SELECT) {
+        render_character_select();
+    }
+    else if (gameState == STATE_MENU) {
         render_menu();
     }
     else if (gameState == STATE_LEVEL_SELECT) {
-
+        render_level_select();
     }
     else if (gameState == STATE_IN_GAME) {
         render_game();
@@ -1532,11 +1647,14 @@ void update(uint32_t time) {
 
 
     // Update game
-    if (gameState == STATE_MENU) {
+    if (gameState == STATE_CHARACTER_SELECT) {
+        update_character_select(dt, buttonStates);
+    }
+    else if (gameState == STATE_MENU) {
         update_menu(dt, buttonStates);
     }
     else if (gameState == STATE_LEVEL_SELECT) {
-
+        update_level_select(dt, buttonStates);
     }
     else if (gameState == STATE_IN_GAME) {
         update_game(dt, buttonStates);

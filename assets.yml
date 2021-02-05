@@ -22,4 +22,9 @@ assets.cpp:
     name: asset_level_title
     empty_tile: 255
     output_struct: true
+    
+  assets/level_character.tmx:
+    name: asset_level_char_select
+    empty_tile: 255
+    output_struct: true
 
