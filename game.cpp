@@ -22,6 +22,7 @@
 #define TILE_ID_ENEMY_2 84
 #define TILE_ID_ENEMY_3 88
 #define TILE_ID_ENEMY_4 92
+#define TILE_ID_ENEMY_PROJECTILE 114
 
 #define CAMERA_SCALE_X 10
 #define CAMERA_SCALE_Y 5
@@ -40,6 +41,8 @@
 
 #define GRAVITY 600.0f
 #define GRAVITY_MAX 200.0f
+#define PROJECTILE_GRAVITY 60.0f
+#define PROJECTILE_GRAVITY_MAX 20.0f
 
 
 #define PLAYER_MAX_HEALTH 3
@@ -48,6 +51,9 @@
 #define PLAYER_IMMUNE_TIME 3.0f
 
 #define ENTITY_IDLE_SPEED 40.0f
+
+#define RANGED_MAX_RANGE 64.0f
+#define RANGED_RELOAD_TIME 2.0f
 
 #define TEXT_FLASH_TIME 0.8f
 
@@ -151,6 +157,14 @@ struct LevelData {
     uint16_t levelWidth, levelHeight;
 } levelData;
 
+//struct PositionF {
+//    float x, y;
+//};
+//
+//struct PositionI {
+//    int x, y;
+//};
+
 class Colour {
 public:
     uint8_t r, g, b, a;
@@ -174,16 +188,16 @@ public:
     }
 };
 
-
+// Particle colours
 const std::vector<Colour> playerDeathParticleColours[2] = {
-    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(107, 122, 153) },
-    { Colour(255, 255, 242), Colour(204, 137, 124), Colour(153, 76, 76) }
+    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(178, 53, 53) },
+    { Colour(255, 255, 242), Colour(178, 214, 96), Colour(37, 124, 73) }
 };
 const std::vector<Colour> enemyDeathParticleColours[4] = {
-    { Colour(255, 255, 242), Colour(204, 137, 124), Colour(178, 53, 53) },
-    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(62, 108, 178) },
-    { Colour(255, 255, 242), Colour(178, 214, 96), Colour(37, 124, 73) },
-    { Colour(255, 255, 242), Colour(255, 235, 140), Colour(255, 199, 89) }
+    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) },
+    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) },
+    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(229, 114, 57) },
+    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(62, 106, 178) }
 };
 
 class Camera {
@@ -316,6 +330,48 @@ std::vector<Particle> generate_particles(float x, float y, float gravity, std::v
 
     return particles;
 }
+
+
+
+class Projectile {
+public:
+    float x, y;
+    float xVel, yVel;
+    uint8_t id;
+
+    Projectile() {
+        x = y = 0;
+        xVel = yVel = 0;
+
+        id = 0;
+    }
+
+    Projectile(float xPosition, float yPosition, float xVelocity, float yVelocity, uint8_t tileId) {
+        x = xPosition;
+        y = yPosition;
+        xVel = xVelocity;
+        yVel = yVelocity;
+        id = tileId;
+    }
+
+    void update(float dt, ButtonStates buttonStates) {
+        // Update gravity
+        yVel += PROJECTILE_GRAVITY * dt;
+        yVel = std::min(yVel, (float)PROJECTILE_GRAVITY_MAX);
+
+        // Move entity y
+        y += yVel * dt;
+
+        // Move entity x
+        x += xVel * dt;
+    }
+
+    void render(Camera camera) {
+        screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        //screen.rectangle(Rect(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y, 4, 4));
+    }
+};
+std::vector<Projectile> projectiles;
 
 
 
@@ -754,6 +810,10 @@ public:
         immuneTimer = PLAYER_IMMUNE_TIME;
     }
 
+    bool is_immune() {
+        return immuneTimer;
+    }
+
 protected:
     float xVel, yVel;
     uint8_t anchorFrame;
@@ -765,18 +825,28 @@ protected:
 
 class Enemy : public Entity {
 public:
+    float* playerX;
+    float* playerY;
 
     Enemy() : Entity() {
         enemyType = basic;
+        reloadTimer = 0;
     }
 
     Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
         enemyType = (EnemyType)type;
+        reloadTimer = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
 
         if (health > 0) {
+            if (reloadTimer) {
+                reloadTimer -= dt;
+                if (reloadTimer < 0) {
+                    reloadTimer = 0;
+                }
+            }
 
             if (enemyType == basic) {
                 if (lastDirection) {
@@ -791,30 +861,42 @@ public:
 
                 bool reverseDirection = true;
 
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
-                        // On block
-                        reverseDirection = false;
-                    }
-                }
-
-                //uint8_t tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
                 //for (uint16_t i = 0; i < foreground.size(); i++) {
-                //    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
-                //        // About to be on block
+                //    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
+                //        // On block
                 //        reverseDirection = false;
                 //    }
                 //}
+
+                float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
+                        // About to be on block
+                        reverseDirection = false;
+                    }
+                    //if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE) == foreground[i].x) {
+                    //    // Walked into side of block
+                    //    reverseDirection = true;
+                    //    break;
+                    //}
+                }
 
                 if (reverseDirection) {
                     lastDirection = 1 - lastDirection;
 
                     // Move entity back so that it is no longer off platform
-                    x -= xVel * dt;
+                    //x -= xVel * dt;
                 }
             }
             else if (enemyType == ranged) {
                 Entity::update_collisions();
+
+                if (std::abs(x - *playerX) < RANGED_MAX_RANGE && !reloadTimer) {
+                    // fire!
+                    //printf("fire|");
+                    projectiles.push_back(Projectile(x, y, 40.0f*(*playerX > x ? 1 : -1), (*playerX - x) * 0.5f, TILE_ID_ENEMY_PROJECTILE));
+                    reloadTimer = RANGED_RELOAD_TIME;
+                }
             }
             else if (enemyType == persuit) {
                 Entity::update_collisions();
@@ -868,6 +950,11 @@ public:
         Entity::render(camera);
     }
 
+    void set_player_position(float* x, float* y) {
+        playerX = x;
+        playerY = y;
+    }
+
 protected:
     enum EnemyType {
         basic, // type 1
@@ -875,6 +962,8 @@ protected:
         persuit, // type 3
         flying // type 4
     } enemyType;
+
+    float reloadTimer;
 
     //enum EntityState {
     //    IDLE,
@@ -1145,26 +1234,32 @@ void update_transition(float dt, ButtonStates buttonStates) {
 
 
 void render_tiles(std::vector<Tile> tiles) {
-    for (int i = 0; i < tiles.size(); i++) {
+    for (uint32_t i = 0; i < tiles.size(); i++) {
         tiles[i].render(camera);
     }
 }
 
 void render_parallax(std::vector<ParallaxTile> parallax) {
-    for (int i = 0; i < parallax.size(); i++) {
+    for (uint32_t i = 0; i < parallax.size(); i++) {
         parallax[i].render(camera);
     }
 }
 
 void render_coins(std::vector<Coin> coins) {
-    for (int i = 0; i < coins.size(); i++) {
+    for (uint8_t i = 0; i < coins.size(); i++) {
         coins[i].render(camera);
     }
 }
 
 void render_enemies(std::vector<Enemy> enemies) {
-    for (int i = 0; i < enemies.size(); i++) {
+    for (uint8_t i = 0; i < enemies.size(); i++) {
         enemies[i].render(camera);
+    }
+}
+
+void render_projectiles(std::vector<Projectile> projectiles) {
+    for (uint8_t i = 0; i < projectiles.size(); i++) {
+        projectiles[i].render(camera);
     }
 }
 
@@ -1191,6 +1286,8 @@ void render_entities() {
     render_enemies(enemies);
 
     player.render(camera);
+
+    render_projectiles(projectiles);
 }
 
 void render_hud() {
@@ -1309,6 +1406,10 @@ void load_level(uint8_t levelNumber) {
     // Reset camera position
     camera.x = cameraStartX;
     camera.y = cameraStartY;
+
+    for (uint8_t i = 0; i < enemies.size(); i++) {
+        enemies[i].set_player_position(&player.x, &player.y);
+    }
 }
 
 void start_level() {
@@ -1366,6 +1467,31 @@ void render_game() {
 
     render_hud();
 }
+
+
+void update_projectiles(float dt, ButtonStates buttonStates) {
+    for (uint8_t i = 0; i < projectiles.size(); i++) {
+        projectiles[i].update(dt, buttonStates);
+    }
+
+    /*for (uint8_t i = 0; i < enemies.size(); i++) {
+
+    }*/
+
+    if (!player.is_immune()) {
+        uint8_t projectileCount = projectiles.size();
+        projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile projectile) { return (projectile.x + SPRITE_HALF > player.x && projectile.x < player.x + SPRITE_SIZE && projectile.y + SPRITE_HALF > player.y && projectile.y < player.y + SPRITE_SIZE); }), projectiles.end());
+        if (projectileCount - projectiles.size() > 0) {
+            player.health -= 1;
+            player.set_immune();
+        }
+    }
+    
+
+    projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile projectile) { return (std::abs(projectile.x - player.x) > SCREEN_TILE_SIZE || std::abs(projectile.y - player.y) > SCREEN_HEIGHT); }), projectiles.end());
+
+}
+
 
 void update_character_select(float dt, ButtonStates buttonStates) {
     ButtonStates dummyStates = { 0 };
@@ -1434,6 +1560,8 @@ void update_game(float dt, ButtonStates buttonStates) {
     for (int i = 0; i < coins.size(); i++) {
         coins[i].update(dt, buttonStates);
     }
+
+    update_projectiles(dt, buttonStates);
 
     finish.update(dt, buttonStates);
 
