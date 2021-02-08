@@ -41,8 +41,8 @@
 
 #define GRAVITY 600.0f
 #define GRAVITY_MAX 200.0f
-#define PROJECTILE_GRAVITY 60.0f
-#define PROJECTILE_GRAVITY_MAX 20.0f
+#define PROJECTILE_GRAVITY 45.0f
+#define PROJECTILE_GRAVITY_MAX 50.0f
 
 
 #define PLAYER_MAX_HEALTH 3
@@ -54,6 +54,8 @@
 
 #define RANGED_MAX_RANGE 64.0f
 #define RANGED_RELOAD_TIME 2.0f
+#define RANGED_PROJECTILE_X_VEL_SCALE 0.68f
+#define RANGED_PROJECTILE_Y_VEL_SCALE 0.5f
 
 #define TEXT_FLASH_TIME 0.8f
 
@@ -891,10 +893,12 @@ public:
             else if (enemyType == ranged) {
                 Entity::update_collisions();
 
+                lastDirection = *playerX < x ? 0 : 1;
+
                 if (std::abs(x - *playerX) < RANGED_MAX_RANGE && !reloadTimer) {
                     // fire!
-                    //printf("fire|");
-                    projectiles.push_back(Projectile(x, y, 40.0f*(*playerX > x ? 1 : -1), (*playerX - x) * 0.5f, TILE_ID_ENEMY_PROJECTILE));
+                    // Maybe make these values constants?
+                    projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, TILE_ID_ENEMY_PROJECTILE));
                     reloadTimer = RANGED_RELOAD_TIME;
                 }
             }
@@ -1469,11 +1473,27 @@ void render_game() {
 }
 
 
+
+void update_enemies(float dt, ButtonStates buttonStates) {
+    for (int i = 0; i < enemies.size(); i++) {
+        enemies[i].update(dt, buttonStates);
+    }
+}
+
+
+void update_coins(float dt, ButtonStates buttonStates) {
+    for (int i = 0; i < coins.size(); i++) {
+        coins[i].update(dt, buttonStates);
+    }
+}
+
+
 void update_projectiles(float dt, ButtonStates buttonStates) {
     for (uint8_t i = 0; i < projectiles.size(); i++) {
         projectiles[i].update(dt, buttonStates);
     }
 
+    //  Allow enemies to get hit?
     /*for (uint8_t i = 0; i < enemies.size(); i++) {
 
     }*/
@@ -1494,6 +1514,7 @@ void update_projectiles(float dt, ButtonStates buttonStates) {
 
 
 void update_character_select(float dt, ButtonStates buttonStates) {
+    // Dummy states is used to make selected player continually jump (sending A key pressed).
     ButtonStates dummyStates = { 0 };
     dummyStates.A = 1;
     player.update(dt, dummyStates);
@@ -1524,9 +1545,7 @@ void update_character_select(float dt, ButtonStates buttonStates) {
 void update_menu(float dt, ButtonStates buttonStates) {
     //player.update(dt, buttonStates);
 
-    for (int i = 0; i < coins.size(); i++) {
-        coins[i].update(dt, buttonStates);
-    }
+    update_coins(dt, buttonStates);
 
     //finish.update(dt, buttonStates);
 
@@ -1552,14 +1571,9 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 void update_game(float dt, ButtonStates buttonStates) {
     player.update(dt, buttonStates);
 
-    for (int i = 0; i < enemies.size(); i++) {
-        enemies[i].update(dt, buttonStates);
-    }
+    update_enemies(dt, buttonStates);
 
-
-    for (int i = 0; i < coins.size(); i++) {
-        coins[i].update(dt, buttonStates);
-    }
+    update_coins(dt, buttonStates);
 
     update_projectiles(dt, buttonStates);
 
