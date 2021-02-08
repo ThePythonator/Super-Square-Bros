@@ -1013,7 +1013,7 @@ public:
 
             if (buttonStates.A) {
                 for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
+                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
                         // On top of block
                         // Jump
                         yVel = -PLAYER_MAX_JUMP;
