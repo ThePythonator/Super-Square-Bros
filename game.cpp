@@ -865,31 +865,22 @@ public:
 
                 bool reverseDirection = true;
 
-                //for (uint16_t i = 0; i < foreground.size(); i++) {
-                //    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x + 1 && foreground[i].x < x + SPRITE_SIZE - 1) {
-                //        // On block
-                //        reverseDirection = false;
-                //    }
-                //}
-
                 float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                         // About to be on block
                         reverseDirection = false;
                     }
-                    //if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE) == foreground[i].x) {
-                    //    // Walked into side of block
-                    //    reverseDirection = true;
-                    //    break;
-                    //}
+                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        // Walked into side of block
+                        reverseDirection = true;
+                        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                        break;
+                    }
                 }
 
                 if (reverseDirection) {
                     lastDirection = 1 - lastDirection;
-
-                    // Move entity back so that it is no longer off platform
-                    //x -= xVel * dt;
                 }
             }
             else if (enemyType == ranged) {
