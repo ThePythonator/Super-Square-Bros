@@ -47,14 +47,15 @@
 
 #define PLAYER_MAX_HEALTH 3
 #define PLAYER_MAX_JUMP 190.0f
-#define PLAYER_MAX_SPEED 80.0f
+#define PLAYER_MAX_SPEED 85.0f
 #define PLAYER_IMMUNE_TIME 3.0f
+#define PLAYER_ACCELERATION 400.0f
 
 #define ENTITY_IDLE_SPEED 40.0f
 
 #define RANGED_MAX_RANGE 64.0f
 #define RANGED_RELOAD_TIME 2.0f
-#define RANGED_PROJECTILE_X_VEL_SCALE 0.68f
+#define RANGED_PROJECTILE_X_VEL_SCALE 0.7f
 #define RANGED_PROJECTILE_Y_VEL_SCALE 0.5f
 
 #define TEXT_FLASH_TIME 0.8f
@@ -851,6 +852,7 @@ public:
             }
 
             if (enemyType == basic) {
+                // Consider adding acceleration?
                 if (lastDirection) {
                     xVel = ENTITY_IDLE_SPEED;
                 }
@@ -1007,7 +1009,7 @@ public:
 
         if (health > 0) {
 
-            xVel = 0; // remove later? - change to fast acceleration?
+            //xVel = 0; // remove later? - change to fast acceleration?
 
             if (buttonStates.A) {
                 for (uint16_t i = 0; i < foreground.size(); i++) {
@@ -1022,10 +1024,30 @@ public:
 
 
             if (buttonStates.LEFT) {
-                xVel -= PLAYER_MAX_SPEED;
+                xVel -= PLAYER_ACCELERATION * dt;
+                if (xVel < -PLAYER_MAX_SPEED) {
+                    xVel = -PLAYER_MAX_SPEED;
+                }
             }
-            if (buttonStates.RIGHT) {
-                xVel += PLAYER_MAX_SPEED;
+            else if (buttonStates.RIGHT) {
+                xVel += PLAYER_ACCELERATION * dt;
+                if (xVel > PLAYER_MAX_SPEED) {
+                    xVel = PLAYER_MAX_SPEED;
+                }
+            }
+            else {
+                if (xVel > 0) {
+                    xVel -= PLAYER_ACCELERATION * dt;
+                    if (xVel < 0) {
+                        xVel = 0;
+                    }
+                }
+                else if (xVel < 0) {
+                    xVel += PLAYER_ACCELERATION * dt;
+                    if (xVel > 0) {
+                        xVel = 0;
+                    }
+                }
             }
 
             uint8_t coinCount = coins.size();
@@ -1623,9 +1645,11 @@ void init() {
 
     screen.sprites = Surface::load(asset_sprites);
 
+
+    // Load character select level
     load_level(LEVEL_COUNT + 1);
 
-
+    // Populate transition array
     for (int y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
         for (int x = 0; x < SCREEN_WIDTH / SPRITE_SIZE; x++) {
             transition[y * (SCREEN_WIDTH / SPRITE_SIZE) + x] = AnimatedTransition(x * SPRITE_SIZE, y * SPRITE_SIZE, transitionFramesOpen, transitionFramesClose);
