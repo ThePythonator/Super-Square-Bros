@@ -3,3 +3,4 @@ build.em/
 build.stm32/
 .vs/
 out/
+*.zip
