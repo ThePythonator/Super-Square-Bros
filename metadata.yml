@@ -2,8 +2,8 @@ title: Super Square Bros.
 description: It's a platformer.
 author: ThePythonator
 splash:
-  file: assets/no-image.png
+  file: assets/image.png
 icon:
-  file: assets/no-icon.png
-version: v0.3.2
+  file: assets/icon.png
+version: v0.3.3
 
