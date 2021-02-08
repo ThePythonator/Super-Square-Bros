@@ -13,6 +13,8 @@ on:
 
 env:
   BUILD_TYPE: Release
+  EM_VERSION: 2.0.4 # Emscripten version
+  EM_CACHE_FOLDER: 'emsdk-cache' # Cache for Emscripten libs
 
 jobs:
 
@@ -33,6 +35,13 @@ jobs:
             release-suffix: STM32
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/32blit/32blit.toolchain
             apt-packages: gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib python3-setuptools
+            
+          - os: ubuntu-20.04
+            name: Emscripten
+            release-suffix: WEB
+            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+            cmake-prefix: emcmake
+            apt-packages: python3-setuptools
 
           - os: macos-latest
             name: macOS
@@ -85,6 +94,22 @@ jobs:
       run: |
         python -m pip install 32blit
 
+    # Emscripten SDK setup
+    - name: Setup Emscripten cache
+      if: matrix.name == 'Emscripten'
+      id: cache-system-libraries
+      uses: actions/cache@v2
+      with:
+        path: ${{env.EM_CACHE_FOLDER}}
+        key: ${{env.EM_VERSION}}-${{runner.os}}
+
+    - name: Setup Emscripten
+      if: matrix.name == 'Emscripten'
+      uses: mymindstorm/setup-emsdk@v7
+      with:
+        version: ${{env.EM_VERSION}}
+        actions-cache-folder: ${{env.EM_CACHE_FOLDER}}
+
     # Set up the cmake build environment
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/main/build
@@ -93,7 +118,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{runner.workspace}}/main/build
-      run: cmake $GITHUB_WORKSPACE/main -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_PACKAGE_FILE_NAME=${{env.RELEASE_FILE}} ${{matrix.cmake-args}}
+      run: ${{matrix.cmake-prefix}} cmake $GITHUB_WORKSPACE/main -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_PACKAGE_FILE_NAME=${{env.RELEASE_FILE}} ${{matrix.cmake-args}}
 
     # And then run the build itself
     - name: Build
