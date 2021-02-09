@@ -6,4 +6,8 @@ It's a platformer.
 
 ## Controls
 
-Nothing to see here....
+Left/Right to Walk, A to Jump
+
+## Dependencies
+
+Requires sdl2, sdl2-image and sdl2-net (Windows executables are already packaged with the necessary dlls)
