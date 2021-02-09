@@ -1613,6 +1613,8 @@ void render_character_select() {
         screen.sprite(TILE_ID_PLAYER_2, Point(SCREEN_MID_WIDTH + playerStartX - camera.x + SPRITE_SIZE * 7, SCREEN_MID_HEIGHT + playerStartY - camera.y));
     }
 
+
+    screen.pen = Pen(255, 255, 255);
     screen.text("Select Player", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
@@ -1627,6 +1629,8 @@ void render_menu() {
 
     render_entities();
 
+
+    screen.pen = Pen(255, 255, 255);
     screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
@@ -1642,6 +1646,10 @@ void render_level_select() {
     render_entities();
 
     render_level_triggers();
+
+
+    screen.pen = Pen(255, 255, 255);
+    screen.text("Select level", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 }
 
 void render_game() {
