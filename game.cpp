@@ -18,6 +18,7 @@
 #define TILE_ID_CAMERA 253
 #define TILE_ID_TRANSITION 224
 #define TILE_ID_FINISH 128
+#define TILE_ID_LEVEL_TRIGGER 116
 #define TILE_ID_ENEMY_1 80
 #define TILE_ID_ENEMY_2 84
 #define TILE_ID_ENEMY_3 88
@@ -52,13 +53,18 @@
 #define PLAYER_ACCELERATION 400.0f
 
 #define ENTITY_IDLE_SPEED 40.0f
+#define ENTITY_JUMP_SPEED 160.0f
 
 #define RANGED_MAX_RANGE 64.0f
 #define RANGED_RELOAD_TIME 2.0f
 #define RANGED_PROJECTILE_X_VEL_SCALE 0.7f
 #define RANGED_PROJECTILE_Y_VEL_SCALE 0.5f
 
+#define PERSUIT_MAX_RANGE 48.0f
+
 #define TEXT_FLASH_TIME 0.8f
+
+#define NO_LEVEL_SELECTED 255
 
 using namespace blit;
 
@@ -71,10 +77,11 @@ const uint8_t SCREEN_MID_HEIGHT = SCREEN_HEIGHT / 2;
 
 
 const uint8_t SPRITE_HALF = SPRITE_SIZE / 2;
+const uint8_t SPRITE_QUARTER = SPRITE_SIZE / 4;
 
 const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
 
-const uint8_t enemyHealths[] = { 1, 1, 1, 1 }; // maybe obsolete
+const uint8_t enemyHealths[] = { 1, 1, 1, 1 }; // maybe obsolete, since player currently just deletes enemy if jumping on top
 
 const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
@@ -97,7 +104,8 @@ const float parallaxFactorLayersY[2] = {
 const uint8_t* asset_levels[] = {
     asset_level0,
     asset_level_title,
-    asset_level_char_select
+    asset_level_char_select,
+    asset_level_level_select
 };
 
 uint16_t levelDeathBoundary;
@@ -115,7 +123,7 @@ uint16_t playerStartX, playerStartY;
 float textFlashTimer = 0.0f;
 uint8_t playerSelected = 0;
 
-
+uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 
 // struct to handle level data header...
 // this will probably need to be revisited/reworked if 32blit-tools has *any* kind of update to it...
@@ -202,6 +210,7 @@ const std::vector<Colour> enemyDeathParticleColours[4] = {
     { Colour(255, 255, 242), Colour(255, 204, 181), Colour(229, 114, 57) },
     { Colour(255, 255, 242), Colour(184, 197, 216), Colour(62, 106, 178) }
 };
+const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
 
 class Camera {
 public:
@@ -238,35 +247,6 @@ public:
             }
         }
     }
-
-    //void ease_in_out_to(float dt, float startX, float startY, float targetX, float targetY, float time) {
-    //    if (!locked) {
-    //        /*if (std::abs(targetX - x) < std::abs(((targetX - startX) / time) * dt)) {
-    //            x = targetX;
-    //        }
-    //        else {
-    //            x += ((targetX - startX) / time) * dt;
-    //        }
-
-    //        if (std::abs(targetY - y) < std::abs(((targetY - startY) / time) * dt)) {
-    //            y = targetY;
-    //        }
-    //        else {
-    //            y += ((targetY - startY) / time) * dt;
-    //        }*/
-
-
-    //        if (x - startX < (targetX - startX) / 2.0f && y - startY < (targetY - startY) / 2.0f) {
-    //            x += (targetX - x) * CAMERA_SCALE_X * dt;
-    //            y += (targetY - y) * CAMERA_SCALE_Y * dt;
-    //        }
-    //        else {
-
-    //            x -= (startX - x) * CAMERA_SCALE_X * dt;
-    //            y -= (startY - y) * CAMERA_SCALE_Y * dt;
-    //        }
-    //    }
-    //}
 };
 Camera camera;
 
@@ -370,7 +350,7 @@ public:
     }
 
     void render(Camera camera) {
-        screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x - SPRITE_QUARTER, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_QUARTER));
         //screen.rectangle(Rect(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y, 4, 4));
     }
 };
@@ -665,6 +645,83 @@ AnimatedTransition transition[SCREEN_TILE_SIZE];
 
 
 
+
+
+
+class LevelTrigger {
+public:
+    uint16_t x, y;
+    std::vector<Particle> particles;
+    uint8_t levelNumber;
+    bool visible;
+    bool generateParticles;
+
+    LevelTrigger(){
+        x = y = 0;
+        levelNumber = 0;
+
+        visible = true;
+        generateParticles = false;
+    }
+
+    LevelTrigger(uint16_t xPosition, uint16_t yPosition, uint8_t levelTriggerNumber) {
+        x = xPosition;
+        y = yPosition;
+
+        levelNumber = levelTriggerNumber;
+
+        visible = true;
+        generateParticles = false;
+    }
+
+    void update(float dt, ButtonStates buttonStates) {
+        if (!visible) {
+            if (generateParticles) {
+                if (particles.size() == 0) {
+                    generateParticles = false;
+                }
+                else {
+                    for (uint8_t i = 0; i < particles.size(); i++) {
+                        particles[i].update(dt);
+                    }
+
+                    // Remove any particles which are too old
+                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+                }
+            }
+            else {
+                // Generate particles
+                // TODO: change constants?
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, levelTriggerParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                generateParticles = true;
+            }
+        }
+    }
+
+    void render(Camera camera) {
+        if (visible) {
+            screen.sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        }
+
+        // Particles
+        for (uint8_t i = 0; i < particles.size(); i++) {
+            particles[i].render(camera);
+        }
+    }
+
+    void set_active() {
+        visible = false;
+    }
+
+protected:
+
+};
+std::vector<LevelTrigger> levelTriggers;
+
+
+
+
+
 class Entity {
 public:
     float x, y;
@@ -888,7 +945,7 @@ public:
 
                 lastDirection = *playerX < x ? 0 : 1;
 
-                if (std::abs(x - *playerX) < RANGED_MAX_RANGE && !reloadTimer) {
+                if (std::abs(x - *playerX) < RANGED_MAX_RANGE && std::abs(y - *playerY) < RANGED_MAX_RANGE && !reloadTimer) {
                     // fire!
                     // Maybe make these values constants?
                     projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, TILE_ID_ENEMY_PROJECTILE));
@@ -896,7 +953,72 @@ public:
                 }
             }
             else if (enemyType == persuit) {
+                // Consider adding acceleration?
+                if (lastDirection) {
+                    xVel = ENTITY_IDLE_SPEED;
+                }
+                else {
+                    xVel = -ENTITY_IDLE_SPEED;
+                }
+
                 Entity::update_collisions();
+
+
+                if (std::abs(x - *playerX) < PERSUIT_MAX_RANGE && std::abs(y - *playerY) < PERSUIT_MAX_RANGE) {
+                    // Persue!
+
+                    lastDirection = *playerX < x ? 0 : 1;
+
+                    bool jump = true;
+
+                    float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
+                            // About to be on block
+                            jump = false;
+                        }
+                        //if ((lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        //    // Walked into side of block
+                        //    jump = true;
+                        //    // Break because we definitely need to jump
+                        //    break;
+                        //}
+                    }
+
+                    if (jump) {
+                        for (uint16_t i = 0; i < foreground.size(); i++) {
+                            if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
+                                // On top of block
+                                // Jump
+                                yVel = -ENTITY_JUMP_SPEED;
+                                //state = JUMP;
+                            }
+                        }
+                    }
+                }
+                else {
+                    // Just patrol... (Same as basic enemy)
+
+                    bool reverseDirection = true;
+
+                    float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
+                            // About to be on block
+                            reverseDirection = false;
+                        }
+                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                            // Walked into side of block
+                            reverseDirection = true;
+                            // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                            break;
+                        }
+                    }
+
+                    if (reverseDirection) {
+                        lastDirection = 1 - lastDirection;
+                    }
+                }
             }
             else if (enemyType == flying) {
                 Entity::update_collisions();
@@ -1132,8 +1254,19 @@ public:
                 }
             }
 
+            for (uint16_t i = 0; i < levelTriggers.size(); i++) {
+                if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = levelTriggers[i].y - SPRITE_SIZE;
+                        yVel = 0;
+                        levelTriggers[i].set_active();
+                    }
+                }
+            }
+
             for (uint16_t i = 0; i < enemies.size(); i++) {
-                if (colliding(enemies[i]) && enemies[i].health) {
+                if (enemies[i].health && colliding(enemies[i])) {
                     if (yVel > 0) {
                         // Collided from top
                         y = enemies[i].y - SPRITE_SIZE;
@@ -1159,6 +1292,20 @@ public:
                     else {
                         // Collided from right
                         x = foreground[i].x + SPRITE_SIZE - 1;
+                    }
+                    xVel = 0;
+                }
+            }
+
+            for (uint16_t i = 0; i < levelTriggers.size(); i++) {
+                if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
+                    if (xVel > 0) {
+                        // Collided from left
+                        x = levelTriggers[i].x - SPRITE_SIZE;
+                    }
+                    else {
+                        // Collided from right
+                        x = levelTriggers[i].x + SPRITE_SIZE;
                     }
                     xVel = 0;
                 }
@@ -1210,6 +1357,11 @@ public:
         return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y + SPRITE_SIZE > y && enemy.y < y + SPRITE_SIZE);
     }
 
+    bool colliding(LevelTrigger levelTrigger) {
+        // Replace use of this with actual code?
+        return (levelTrigger.x + SPRITE_SIZE > x && levelTrigger.x < x + SPRITE_SIZE && levelTrigger.y + SPRITE_SIZE > y && levelTrigger.y < y + SPRITE_SIZE);
+    }
+
 protected:
     //enum EntityState {
     //    IDLE,
@@ -1222,6 +1374,7 @@ protected:
     //} state;
 };
 Player player;
+
 
 
 
@@ -1262,25 +1415,31 @@ void render_parallax(std::vector<ParallaxTile> parallax) {
     }
 }
 
-void render_coins(std::vector<Coin> coins) {
+void render_coins() {
     for (uint8_t i = 0; i < coins.size(); i++) {
         coins[i].render(camera);
     }
 }
 
-void render_enemies(std::vector<Enemy> enemies) {
+void render_enemies() {
     for (uint8_t i = 0; i < enemies.size(); i++) {
         enemies[i].render(camera);
     }
 }
 
-void render_projectiles(std::vector<Projectile> projectiles) {
+void render_level_triggers() {
+    for (uint8_t i = 0; i < levelTriggers.size(); i++) {
+        levelTriggers[i].render(camera);
+    }
+}
+
+void render_projectiles() {
     for (uint8_t i = 0; i < projectiles.size(); i++) {
         projectiles[i].render(camera);
     }
 }
 
-void render_finish(Finish finish) {
+void render_finish() {
     finish.render(camera);
 }
 
@@ -1294,17 +1453,15 @@ void render_level() {
     render_tiles(background);
     render_tiles(foreground);
 
-    render_coins(coins);
-
-    render_finish(finish);
+    render_coins();
 }
 
 void render_entities() {
-    render_enemies(enemies);
+    render_enemies();
 
     player.render(camera);
 
-    render_projectiles(projectiles);
+    render_projectiles();
 }
 
 void render_hud() {
@@ -1320,6 +1477,8 @@ void render_hud() {
 }
 
 void load_level(uint8_t levelNumber) {
+    uint8_t levelTriggerCount = 0;
+
     // Variables for finding start and finish positions
     uint16_t finishX, finishY;
 
@@ -1345,6 +1504,7 @@ void load_level(uint8_t levelNumber) {
     parallax.clear();
     coins.clear();
     enemies.clear();
+    levelTriggers.clear();
 
     for (int i = 0; i < levelSize; i++) {
         if (tmx->data[i] == TILE_ID_EMPTY) {
@@ -1373,6 +1533,9 @@ void load_level(uint8_t levelNumber) {
         else if (tmx->data[i + levelSize] == TILE_ID_FINISH) {
             finishX = (i % levelWidth) * SPRITE_SIZE;
             finishY = (i / levelWidth) * SPRITE_SIZE;
+        }
+        else if (tmx->data[i + levelSize] == TILE_ID_LEVEL_TRIGGER) {
+            levelTriggers.push_back(LevelTrigger((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, levelTriggerCount++));
         }
         else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_1) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[0], 0));
@@ -1472,13 +1635,21 @@ void render_menu() {
 }
 
 void render_level_select() {
+    render_background();
 
+    render_level();
+
+    render_entities();
+
+    render_level_triggers();
 }
 
 void render_game() {
     render_background();
 
     render_level();
+
+    render_finish();
 
     render_entities();
 
@@ -1493,6 +1664,16 @@ void update_enemies(float dt, ButtonStates buttonStates) {
     }
 }
 
+void update_level_triggers(float dt, ButtonStates buttonStates) {
+    for (int i = 0; i < levelTriggers.size(); i++) {
+        levelTriggers[i].update(dt, buttonStates);
+        if (!levelTriggers[i].visible && levelTriggers[i].particles.size() == 0) {
+            currentLevelNumber = levelTriggers[i].levelNumber;
+        }
+    }
+
+    levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger levelTrigger) { return (!levelTrigger.visible && levelTrigger.particles.size() == 0); }), levelTriggers.end());
+}
 
 void update_coins(float dt, ButtonStates buttonStates) {
     for (int i = 0; i < coins.size(); i++) {
@@ -1569,16 +1750,47 @@ void update_menu(float dt, ButtonStates buttonStates) {
     }
 
     if (transition[0].is_ready_to_open()) {
-        gameState = STATE_IN_GAME; // change to LEVEL_SELECT later
+        gameState = STATE_LEVEL_SELECT;
 
-        load_level(0); // move to update_level later
+        // Load level select level
+        load_level(LEVEL_COUNT + 2);
 
-        start_level();
+        open_transition();
     }
 }
 
 void update_level_select(float dt, ButtonStates buttonStates) {
+    player.update(dt, buttonStates);
 
+    update_enemies(dt, buttonStates);
+
+    update_level_triggers(dt, buttonStates);
+
+    //update_coins(dt, buttonStates);
+
+    //update_projectiles(dt, buttonStates);
+
+    //finish.update(dt, buttonStates);
+
+    // Button handling
+
+    if (currentLevelNumber != NO_LEVEL_SELECTED && transition[0].is_open()) {
+        close_transition();
+    }
+
+
+    if (transition[0].is_ready_to_open()) {
+        gameState = STATE_IN_GAME;
+
+        load_level(currentLevelNumber);
+        // TODO: reset currentLevelNumber at some point later
+        //currentLevelNumber = NO_LEVEL_SELECTED;
+
+        start_level();
+    }
+    else if (transition[0].is_open()) {
+        camera.ease_out_to(dt, player.x, player.y);
+    }
 }
 
 void update_game(float dt, ButtonStates buttonStates) {

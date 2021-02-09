@@ -27,4 +27,8 @@ assets.cpp:
     name: asset_level_char_select
     empty_tile: 255
     output_struct: true
-
+    
+  assets/level_select.tmx:
+    name: asset_level_level_select
+    empty_tile: 255
+    output_struct: true
