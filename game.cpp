@@ -65,6 +65,9 @@
 
 #define TEXT_FLASH_TIME 0.8f
 
+#define TEXT_JUMP_VELOCITY 80.0f
+#define TEXT_GRAVITY 250.0f
+
 #define NO_LEVEL_SELECTED 255
 
 using namespace blit;
@@ -663,6 +666,8 @@ public:
 
         visible = true;
         generateParticles = false;
+
+        textY = textVelY = 0;
     }
 
     LevelTrigger(uint16_t xPosition, uint16_t yPosition, uint8_t levelTriggerNumber) {
@@ -673,10 +678,21 @@ public:
 
         visible = true;
         generateParticles = false;
+
+        textY = textVelY = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
+        textVelY += TEXT_GRAVITY * dt;
+        if (textY > SPRITE_SIZE) {
+            textY = SPRITE_SIZE;
+            textVelY = -TEXT_JUMP_VELOCITY;
+        }
+
+        textY += textVelY * dt;
+
         if (!visible) {
+
             if (generateParticles) {
                 if (particles.size() == 0) {
                     generateParticles = false;
@@ -702,7 +718,7 @@ public:
     void render(Camera camera) {
         if (visible) {
             screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b, levelTriggerParticleColours[1].a);
-            screen.text(std::to_string(levelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_HALF, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_SIZE), true, TextAlign::center_center);
+            screen.text(std::to_string(levelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_HALF, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_HALF * 3 + textY), true, TextAlign::center_center);
             screen.sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
         }
 
@@ -717,7 +733,8 @@ public:
     }
 
 protected:
-
+    float textY;
+    float textVelY;
 };
 std::vector<LevelTrigger> levelTriggers;
 
