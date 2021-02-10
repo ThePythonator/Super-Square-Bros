@@ -90,7 +90,7 @@ const std::vector<uint8_t> finishFrames = { TILE_ID_FINISH, TILE_ID_FINISH + 1, 
 
 //const std::vector<uint8_t> transitionFrames = { TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3 };
 const std::vector<uint8_t> transitionFramesClose = { TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 7 };
-const std::vector<uint8_t> transitionFramesOpen = { TILE_ID_TRANSITION + 8, TILE_ID_TRANSITION + 9, TILE_ID_TRANSITION + 10, TILE_ID_TRANSITION + 11, TILE_ID_TRANSITION + 12, TILE_ID_TRANSITION + 13 };
+const std::vector<uint8_t> transitionFramesOpen = { TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 5, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION};
 
 const float parallaxFactorLayersX[2] = {
     0.4,
@@ -595,7 +595,7 @@ public:
             screen.sprite(closingFrames[currentFrame], Point(x, y));
         }
         else if (state == TransitionState::OPENING) {
-            screen.sprite(openingFrames[currentFrame], Point(x, y));
+            screen.sprite(openingFrames[currentFrame], Point(x, y), SpriteTransform::HORIZONTAL);
         }
         else if (state == TransitionState::CLOSED || state == TransitionState::READY_TO_OPEN) {
             screen.sprite(closingFrames[closingFrames.size() - 1], Point(x, y));
