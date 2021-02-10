@@ -53,6 +53,7 @@
 #define PLAYER_ACCELERATION 400.0f
 
 #define ENTITY_IDLE_SPEED 40.0f
+#define ENTITY_PERSUIT_SPEED 65.0f
 #define ENTITY_JUMP_SPEED 160.0f
 
 #define RANGED_MAX_RANGE 64.0f
@@ -138,14 +139,14 @@ struct TMX {
 };
 #pragma pack(pop)
 
-enum GameState {
+enum class GameState {
     STATE_CHARACTER_SELECT,
     STATE_MENU,
     STATE_LEVEL_SELECT,
     STATE_IN_GAME,
     STATE_LOST
 };
-GameState gameState = STATE_CHARACTER_SELECT;
+GameState gameState = GameState::STATE_CHARACTER_SELECT;
 
 struct ButtonStates {
     uint8_t UP;
@@ -402,7 +403,7 @@ protected:
 };
 std::vector<Tile> foreground;
 std::vector<Tile> background;
-
+//std::vector<Tile> platforms;
 
 class ParallaxTile : public Tile {
 public:
@@ -542,7 +543,7 @@ public:
         animationTimer = 0;
         currentFrame = 0;
 
-        state = OPEN;
+        state = TransitionState::OPEN;
         x = y = 0;
         closedTimer = 0;
     }
@@ -553,7 +554,7 @@ public:
 
         openingFrames = open;
         closingFrames = close;
-        state = OPEN;
+        state = TransitionState::OPEN;
         x = xPosition;
         y = yPosition;
 
@@ -561,75 +562,75 @@ public:
     }
 
     void update(float dt, ButtonStates buttonStates) {
-        if (state == CLOSING || state == OPENING) {
+        if (state == TransitionState::CLOSING || state == TransitionState::OPENING) {
             animationTimer += dt;
 
             if (animationTimer >= TRANSITION_FRAME_LENGTH) {
                 animationTimer -= TRANSITION_FRAME_LENGTH;
                 currentFrame++;
 
-                if (state == CLOSING) {
+                if (state == TransitionState::CLOSING) {
                     if (currentFrame == closingFrames.size()) {
-                        state = CLOSED;
+                        state = TransitionState::CLOSED;
                         closedTimer = 0;
                     }
                 }
                 else {
                     if (currentFrame == openingFrames.size()) {
-                        state = OPEN;
+                        state = TransitionState::OPEN;
                     }
                 }
             }
         }
-        else if (state == CLOSED) {
+        else if (state == TransitionState::CLOSED) {
             closedTimer += dt;
             if (closedTimer >= TRANSITION_CLOSE_LENGTH) {
-                state = READY_TO_OPEN;
+                state = TransitionState::READY_TO_OPEN;
             }
         }
     }
 
     void render(Camera camera) {
-        if (state == CLOSING) {
+        if (state == TransitionState::CLOSING) {
             screen.sprite(closingFrames[currentFrame], Point(x, y));
         }
-        else if (state == OPENING) {
+        else if (state == TransitionState::OPENING) {
             screen.sprite(openingFrames[currentFrame], Point(x, y));
         }
-        else if (state == CLOSED || state == READY_TO_OPEN) {
+        else if (state == TransitionState::CLOSED || state == TransitionState::READY_TO_OPEN) {
             screen.sprite(closingFrames[closingFrames.size() - 1], Point(x, y));
         }
-        else if (state == OPEN) {
+        else if (state == TransitionState::OPEN) {
             // Don't do anything
         }
     }
 
     void close() {
-        state = CLOSING;
+        state = TransitionState::CLOSING;
         animationTimer = 0;
         currentFrame = 0;
     }
 
     void open() {
-        state = OPENING;
+        state = TransitionState::OPENING;
         animationTimer = 0;
         currentFrame = 0;
     }
 
     bool is_closed() {
-        return state == CLOSED;
+        return state == TransitionState::CLOSED;
     }
 
     bool is_ready_to_open() {
-        return state == READY_TO_OPEN;
+        return state == TransitionState::READY_TO_OPEN;
     }
 
     bool is_open() {
-        return state == OPEN;
+        return state == TransitionState::OPEN;
     }
 
 protected:
-    enum TransitionState {
+    enum class TransitionState {
         OPENING,
         OPEN,
         CLOSING,
@@ -700,6 +701,8 @@ public:
 
     void render(Camera camera) {
         if (visible) {
+            screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b, levelTriggerParticleColours[1].a);
+            screen.text(std::to_string(levelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_HALF, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_SIZE), true, TextAlign::center_center);
             screen.sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
         }
 
@@ -889,13 +892,19 @@ public:
     float* playerY;
 
     Enemy() : Entity() {
-        enemyType = basic;
+        enemyType = EnemyType::BASIC;
         reloadTimer = 0;
+
+        playerX = nullptr;
+        playerY = nullptr;
     }
 
     Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
         enemyType = (EnemyType)type;
         reloadTimer = 0;
+
+        playerX = nullptr;
+        playerY = nullptr;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -908,7 +917,7 @@ public:
                 }
             }
 
-            if (enemyType == basic) {
+            if (enemyType == EnemyType::BASIC) {
                 // Consider adding acceleration?
                 if (lastDirection) {
                     xVel = ENTITY_IDLE_SPEED;
@@ -940,7 +949,7 @@ public:
                     lastDirection = 1 - lastDirection;
                 }
             }
-            else if (enemyType == ranged) {
+            else if (enemyType == EnemyType::RANGED) {
                 Entity::update_collisions();
 
                 lastDirection = *playerX < x ? 0 : 1;
@@ -952,7 +961,7 @@ public:
                     reloadTimer = RANGED_RELOAD_TIME;
                 }
             }
-            else if (enemyType == persuit) {
+            else if (enemyType == EnemyType::PERSUIT) {
                 // Consider adding acceleration?
                 if (lastDirection) {
                     xVel = ENTITY_IDLE_SPEED;
@@ -960,7 +969,7 @@ public:
                 else {
                     xVel = -ENTITY_IDLE_SPEED;
                 }
-
+                // TODO use faster speed if persuing
                 Entity::update_collisions();
 
 
@@ -1020,7 +1029,7 @@ public:
                     }
                 }
             }
-            else if (enemyType == flying) {
+            else if (enemyType == EnemyType::FLYING) {
                 Entity::update_collisions();
             }
 
@@ -1075,11 +1084,11 @@ public:
     }
 
 protected:
-    enum EnemyType {
-        basic, // type 1
-        ranged, // type 2
-        persuit, // type 3
-        flying // type 4
+    enum class EnemyType {
+        BASIC, // type 1
+        RANGED, // type 2
+        PERSUIT, // type 3
+        FLYING // type 4
     } enemyType;
 
     float reloadTimer;
@@ -1736,7 +1745,7 @@ void update_character_select(float dt, ButtonStates buttonStates) {
     }
 
     if (transition[0].is_ready_to_open()) {
-        gameState = STATE_MENU;
+        gameState = GameState::STATE_MENU;
 
         load_level(LEVEL_COUNT);
 
@@ -1758,7 +1767,7 @@ void update_menu(float dt, ButtonStates buttonStates) {
     }
 
     if (transition[0].is_ready_to_open()) {
-        gameState = STATE_LEVEL_SELECT;
+        gameState = GameState::STATE_LEVEL_SELECT;
 
         // Load level select level
         load_level(LEVEL_COUNT + 2);
@@ -1788,7 +1797,7 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 
 
     if (transition[0].is_ready_to_open()) {
-        gameState = STATE_IN_GAME;
+        gameState = GameState::STATE_IN_GAME;
 
         load_level(currentLevelNumber);
         // TODO: reset currentLevelNumber at some point later
@@ -1885,19 +1894,19 @@ void render(uint32_t time) {
     screen.mask = nullptr;
     screen.pen = Pen(255, 255, 255);
 
-    if (gameState == STATE_CHARACTER_SELECT) {
+    if (gameState == GameState::STATE_CHARACTER_SELECT) {
         render_character_select();
     }
-    else if (gameState == STATE_MENU) {
+    else if (gameState == GameState::STATE_MENU) {
         render_menu();
     }
-    else if (gameState == STATE_LEVEL_SELECT) {
+    else if (gameState == GameState::STATE_LEVEL_SELECT) {
         render_level_select();
     }
-    else if (gameState == STATE_IN_GAME) {
+    else if (gameState == GameState::STATE_IN_GAME) {
         render_game();
     }
-    else if (gameState == STATE_LOST) {
+    else if (gameState == GameState::STATE_LOST) {
 
     }
 
@@ -2024,19 +2033,19 @@ void update(uint32_t time) {
 
 
     // Update game
-    if (gameState == STATE_CHARACTER_SELECT) {
+    if (gameState == GameState::STATE_CHARACTER_SELECT) {
         update_character_select(dt, buttonStates);
     }
-    else if (gameState == STATE_MENU) {
+    else if (gameState == GameState::STATE_MENU) {
         update_menu(dt, buttonStates);
     }
-    else if (gameState == STATE_LEVEL_SELECT) {
+    else if (gameState == GameState::STATE_LEVEL_SELECT) {
         update_level_select(dt, buttonStates);
     }
-    else if (gameState == STATE_IN_GAME) {
+    else if (gameState == GameState::STATE_IN_GAME) {
         update_game(dt, buttonStates);
     }
-    else if (gameState == STATE_LOST) {
+    else if (gameState == GameState::STATE_LOST) {
 
     }
 
