@@ -49,11 +49,11 @@
 #define PLAYER_MAX_HEALTH 3
 #define PLAYER_MAX_JUMP 190.0f
 #define PLAYER_MAX_SPEED 85.0f
-#define PLAYER_IMMUNE_TIME 3.0f
+#define PLAYER_IMMUNE_TIME 2.5f
 #define PLAYER_ACCELERATION 400.0f
 
 #define ENTITY_IDLE_SPEED 40.0f
-#define ENTITY_PERSUIT_SPEED 65.0f
+#define ENTITY_PERSUIT_SPEED 55.0f
 #define ENTITY_JUMP_SPEED 160.0f
 
 #define RANGED_MAX_RANGE 64.0f
@@ -914,6 +914,8 @@ public:
 
         playerX = nullptr;
         playerY = nullptr;
+
+        currentSpeed = ENTITY_IDLE_SPEED;
     }
 
     Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
@@ -922,6 +924,8 @@ public:
 
         playerX = nullptr;
         playerY = nullptr;
+
+        currentSpeed = ENTITY_IDLE_SPEED;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -937,10 +941,10 @@ public:
             if (enemyType == EnemyType::BASIC) {
                 // Consider adding acceleration?
                 if (lastDirection) {
-                    xVel = ENTITY_IDLE_SPEED;
+                    xVel = currentSpeed;
                 }
                 else {
-                    xVel = -ENTITY_IDLE_SPEED;
+                    xVel = -currentSpeed;
                 }
 
                 Entity::update_collisions();
@@ -981,10 +985,10 @@ public:
             else if (enemyType == EnemyType::PERSUIT) {
                 // Consider adding acceleration?
                 if (lastDirection) {
-                    xVel = ENTITY_IDLE_SPEED;
+                    xVel = currentSpeed;
                 }
                 else {
-                    xVel = -ENTITY_IDLE_SPEED;
+                    xVel = -currentSpeed;
                 }
                 // TODO use faster speed if persuing
                 Entity::update_collisions();
@@ -992,6 +996,7 @@ public:
 
                 if (std::abs(x - *playerX) < PERSUIT_MAX_RANGE && std::abs(y - *playerY) < PERSUIT_MAX_RANGE) {
                     // Persue!
+                    currentSpeed = ENTITY_PERSUIT_SPEED;
 
                     lastDirection = *playerX < x ? 0 : 1;
 
@@ -1024,6 +1029,7 @@ public:
                 }
                 else {
                     // Just patrol... (Same as basic enemy)
+                    currentSpeed = ENTITY_IDLE_SPEED;
 
                     bool reverseDirection = true;
 
@@ -1109,6 +1115,8 @@ protected:
     } enemyType;
 
     float reloadTimer;
+
+    float currentSpeed;
 
     //enum EntityState {
     //    IDLE,
@@ -1625,6 +1633,13 @@ void start_level() {
     open_transition();
 }
 
+void start_level_select() {
+    // Reset currentLevelNumber so no level is pre-selected
+    currentLevelNumber = NO_LEVEL_SELECTED;
+
+    open_transition();
+}
+
 void render_character_select() {
     render_background();
 
@@ -1789,7 +1804,7 @@ void update_menu(float dt, ButtonStates buttonStates) {
         // Load level select level
         load_level(LEVEL_COUNT + 2);
 
-        open_transition();
+        start_level_select();
     }
 }
 
@@ -1817,8 +1832,6 @@ void update_level_select(float dt, ButtonStates buttonStates) {
         gameState = GameState::STATE_IN_GAME;
 
         load_level(currentLevelNumber);
-        // TODO: reset currentLevelNumber at some point later
-        //currentLevelNumber = NO_LEVEL_SELECTED;
 
         start_level();
     }
@@ -1837,7 +1850,6 @@ void update_game(float dt, ButtonStates buttonStates) {
     update_projectiles(dt, buttonStates);
 
     finish.update(dt, buttonStates);
-
 
     if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
         // lock player to finish
@@ -1867,7 +1879,22 @@ void update_game(float dt, ButtonStates buttonStates) {
         }
         else {
             camera.ease_out_to(dt, player.x, player.y);
+
+
+            // Handle level end
+            if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
+                close_transition();
+            }
         }
+    }
+
+    if (transition[0].is_ready_to_open()) {
+        gameState = GameState::STATE_LEVEL_SELECT;
+
+        // Load level select level
+        load_level(LEVEL_COUNT + 2);
+
+        start_level_select();
     }
 }
 
