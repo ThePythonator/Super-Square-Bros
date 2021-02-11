@@ -109,7 +109,11 @@ jobs:
       with:
         version: ${{env.EM_VERSION}}
         actions-cache-folder: ${{env.EM_CACHE_FOLDER}}
-
+        
+    - name: Pre-build Emscripten ports
+      if: matrix.name == 'Emscripten'
+      run: embuilder.py build sdl2 sdl2-image-jpg sdl2-net
+    
     # Set up the cmake build environment
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/main/build
