@@ -53,7 +53,7 @@
 #define PLAYER_ACCELERATION 400.0f
 
 #define ENTITY_IDLE_SPEED 40.0f
-#define ENTITY_PERSUIT_SPEED 55.0f
+#define ENTITY_PURSUIT_SPEED 55.0f
 #define ENTITY_JUMP_SPEED 160.0f
 
 #define RANGED_MAX_RANGE 64.0f
@@ -61,12 +61,12 @@
 #define RANGED_PROJECTILE_X_VEL_SCALE 0.7f
 #define RANGED_PROJECTILE_Y_VEL_SCALE 0.5f
 
-#define PERSUIT_MAX_RANGE 48.0f
+#define PURSUIT_MAX_RANGE 48.0f
 
 #define TEXT_FLASH_TIME 0.8f
 
 #define TEXT_JUMP_VELOCITY 80.0f
-#define TEXT_GRAVITY 250.0f
+#define TEXT_GRAVITY 280.0f
 
 #define NO_LEVEL_SELECTED 255
 
@@ -982,7 +982,7 @@ public:
                     reloadTimer = RANGED_RELOAD_TIME;
                 }
             }
-            else if (enemyType == EnemyType::PERSUIT) {
+            else if (enemyType == EnemyType::PURSUIT) {
                 // Consider adding acceleration?
                 if (lastDirection) {
                     xVel = currentSpeed;
@@ -990,13 +990,13 @@ public:
                 else {
                     xVel = -currentSpeed;
                 }
-                // TODO use faster speed if persuing
+                // TODO use faster speed if pursuing
                 Entity::update_collisions();
 
 
-                if (std::abs(x - *playerX) < PERSUIT_MAX_RANGE && std::abs(y - *playerY) < PERSUIT_MAX_RANGE) {
-                    // Persue!
-                    currentSpeed = ENTITY_PERSUIT_SPEED;
+                if (std::abs(x - *playerX) < PURSUIT_MAX_RANGE && std::abs(y - *playerY) < PURSUIT_MAX_RANGE) {
+                    // Pursue!
+                    currentSpeed = ENTITY_PURSUIT_SPEED;
 
                     lastDirection = *playerX < x ? 0 : 1;
 
@@ -1110,7 +1110,7 @@ protected:
     enum class EnemyType {
         BASIC, // type 1
         RANGED, // type 2
-        PERSUIT, // type 3
+        PURSUIT, // type 3
         FLYING // type 4
     } enemyType;
 

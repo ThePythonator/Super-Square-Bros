@@ -24,8 +24,8 @@
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "variables": [
         {
-          "name": "32BLIT_PATH",
-          "value": "F:/32Blit/32blit-beta",
+          "name": "32BLIT_DIR",
+          "value": "F:/32Blit/32blit-sdk",
           "type": "PATH"
         }
       ]
