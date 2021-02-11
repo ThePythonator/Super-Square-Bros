@@ -27,7 +27,7 @@ jobs:
           - os: ubuntu-20.04
             name: Linux
             release-suffix: LIN64
-            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
             apt-packages: libsdl2-dev libsdl2-image-dev libsdl2-net-dev python3-setuptools
 
           - os: ubuntu-20.04
@@ -39,20 +39,20 @@ jobs:
           - os: ubuntu-20.04
             name: Emscripten
             release-suffix: WEB
-            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
             cmake-prefix: emcmake
             apt-packages: python3-setuptools
 
           - os: macos-latest
             name: macOS
             release-suffix: MACOS
-            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
             brew-packages: sdl2 sdl2_image sdl2_net
 
           - os: windows-latest
             name: Visual Studio
             release-suffix: WIN64
-            cmake-args: -D32BLIT_PATH=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
 
     runs-on: ${{matrix.os}}
 
