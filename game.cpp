@@ -70,6 +70,10 @@
 
 #define NO_LEVEL_SELECTED 255
 
+
+#define MESSAGE_STRINGS_COUNT 1
+#define INPUT_TYPE_COUNT 2
+
 using namespace blit;
 
 
@@ -112,6 +116,16 @@ const uint8_t* asset_levels[] = {
     asset_level_level_select
 };
 
+
+
+const std::string messageStrings[MESSAGE_STRINGS_COUNT][INPUT_TYPE_COUNT] = {
+    {
+        "Press A to Start",
+        "Press U to Start"
+    }
+};
+
+
 uint16_t levelDeathBoundary;
 
 float dt;
@@ -143,13 +157,20 @@ struct TMX {
 #pragma pack(pop)
 
 enum class GameState {
+    STATE_INPUT_SELECT,
     STATE_CHARACTER_SELECT,
     STATE_MENU,
     STATE_LEVEL_SELECT,
     STATE_IN_GAME,
     STATE_LOST
 };
-GameState gameState = GameState::STATE_CHARACTER_SELECT;
+GameState gameState = GameState::STATE_INPUT_SELECT;
+
+enum InputType {
+    CONTROLLER = 0,
+    KEYBOARD = 1,
+    NO_INPUT_TYPE
+};
 
 struct ButtonStates {
     uint8_t UP;
@@ -165,7 +186,8 @@ struct ButtonStates {
 ButtonStates buttonStates = { 0 };
 
 struct SaveData {
-    uint32_t highscore;
+    //uint32_t highscore;
+    uint8_t inputType;
 } saveData;
 
 struct LevelData {
@@ -215,6 +237,9 @@ const std::vector<Colour> enemyDeathParticleColours[4] = {
     { Colour(255, 255, 242), Colour(184, 197, 216), Colour(62, 106, 178) }
 };
 const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
+
+const Colour inputSelectColour = Colour(255, 199, 89);
+const Colour defaultWhite = Colour(255, 255, 242);
 
 class Camera {
 public:
@@ -1499,7 +1524,7 @@ void render_entities() {
 }
 
 void render_hud() {
-    screen.pen = Pen(255, 255, 255);
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
     // Player health
     for (uint8_t i = 0; i < player.health; i++) {
@@ -1640,6 +1665,30 @@ void start_level_select() {
     open_transition();
 }
 
+void render_input_select() {
+    render_background();
+
+    //render_level();
+
+    //render_entities();
+
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text("Select Input Method", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    screen.pen = saveData.inputType == InputType::CONTROLLER ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text("Controller/32Blit", minimal_font, Point(SCREEN_MID_WIDTH, 50), true, TextAlign::center_center);
+
+    screen.pen = saveData.inputType == InputType::KEYBOARD ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text("Keyboard", minimal_font, Point(SCREEN_MID_WIDTH, 70), true, TextAlign::center_center);
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+
+    if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+    }
+}
+
 void render_character_select() {
     render_background();
 
@@ -1655,11 +1704,11 @@ void render_character_select() {
     }
 
 
-    screen.pen = Pen(255, 255, 255);
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select Player", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text("Press A to Start", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
     }
 }
 
@@ -1671,11 +1720,11 @@ void render_menu() {
     render_entities();
 
 
-    screen.pen = Pen(255, 255, 255);
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text("Press A to Start", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
     }
 }
 
@@ -1689,7 +1738,7 @@ void render_level_select() {
     render_level_triggers();
 
 
-    screen.pen = Pen(255, 255, 255);
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select level", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 }
 
@@ -1755,6 +1804,44 @@ void update_projectiles(float dt, ButtonStates buttonStates) {
 
 }
 
+
+void update_input_select(float dt, ButtonStates buttonStates) {
+    /*if (buttonStates.UP == 2 || buttonStates.DOWN == 2) {
+        saveData.inputType = 1 - saveData.inputType;
+    }*/
+
+    if (transition[0].is_open()) {
+        if (saveData.inputType == InputType::CONTROLLER) {
+            if (buttonStates.DOWN) {
+                saveData.inputType = 1;
+            }
+        }
+        else if (saveData.inputType == InputType::KEYBOARD) {
+            if (buttonStates.UP) {
+                saveData.inputType = 0;
+            }
+        }
+
+
+        if (buttonStates.A == 2) {
+            close_transition();
+
+            // Save inputType
+            write_save(saveData);
+        }
+    }
+
+
+
+    if (transition[0].is_ready_to_open()) {
+        gameState = GameState::STATE_CHARACTER_SELECT;
+
+        // Load character select level
+        load_level(LEVEL_COUNT + 1);
+
+        open_transition();
+    }
+}
 
 void update_character_select(float dt, ButtonStates buttonStates) {
     // Dummy states is used to make selected player continually jump (sending A key pressed).
@@ -1898,6 +1985,14 @@ void update_game(float dt, ButtonStates buttonStates) {
     }
 }
 
+
+
+void save_game() {
+    // Write save data
+    write_save(saveData);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //
 // init()
@@ -1910,15 +2005,34 @@ void init() {
     screen.sprites = Surface::load(asset_sprites);
 
 
-    // Load character select level
-    load_level(LEVEL_COUNT + 1);
-
     // Populate transition array
     for (int y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
         for (int x = 0; x < SCREEN_WIDTH / SPRITE_SIZE; x++) {
             transition[y * (SCREEN_WIDTH / SPRITE_SIZE) + x] = AnimatedTransition(x * SPRITE_SIZE, y * SPRITE_SIZE, transitionFramesOpen, transitionFramesClose);
         }
     }
+
+
+
+    // Load save data
+    // Attempt to load the first save slot.
+    if (read_save(saveData)) {
+        // Loaded sucessfully!
+        gameState = GameState::STATE_CHARACTER_SELECT;
+
+        // Load character select level
+        load_level(LEVEL_COUNT + 1);
+
+    }
+    else {
+        // No save file or it failed to load, set up some defaults.
+        //saveData.highscore = 0;
+        saveData.inputType = InputType::CONTROLLER;
+
+        // gameState is by default set to STATE_INPUT_SELECT
+    }
+
+
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1936,9 +2050,12 @@ void render(uint32_t time) {
     // draw some text at the top of the screen
     screen.alpha = 255;
     screen.mask = nullptr;
-    screen.pen = Pen(255, 255, 255);
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
-    if (gameState == GameState::STATE_CHARACTER_SELECT) {
+    if (gameState == GameState::STATE_INPUT_SELECT) {
+        render_input_select();
+    }
+    else if (gameState == GameState::STATE_CHARACTER_SELECT) {
         render_character_select();
     }
     else if (gameState == GameState::STATE_MENU) {
@@ -1983,7 +2100,7 @@ void update(uint32_t time) {
         if (buttonStates.A == 2) {
             buttonStates.A = 1;
         }
-        else {
+        else if (buttonStates.A == 0) {
             buttonStates.A = 2;
         }
     }
@@ -1995,7 +2112,7 @@ void update(uint32_t time) {
         if (buttonStates.B == 2) {
             buttonStates.B = 1;
         }
-        else {
+        else if (buttonStates.B == 0) {
             buttonStates.B = 2;
         }
     }
@@ -2007,7 +2124,7 @@ void update(uint32_t time) {
         if (buttonStates.X == 2) {
             buttonStates.X = 1;
         }
-        else {
+        else if (buttonStates.X == 0) {
             buttonStates.X = 2;
         }
     }
@@ -2019,7 +2136,7 @@ void update(uint32_t time) {
         if (buttonStates.Y == 2) {
             buttonStates.Y = 1;
         }
-        else {
+        else if (buttonStates.Y == 0) {
             buttonStates.Y = 2;
         }
     }
@@ -2031,7 +2148,7 @@ void update(uint32_t time) {
         if (buttonStates.UP == 2) {
             buttonStates.UP = 1;
         }
-        else {
+        else if (buttonStates.UP == 0) {
             buttonStates.UP = 2;
         }
     }
@@ -2043,7 +2160,7 @@ void update(uint32_t time) {
         if (buttonStates.DOWN == 2) {
             buttonStates.DOWN = 1;
         }
-        else {
+        else if (buttonStates.DOWN == 0) {
             buttonStates.DOWN = 2;
         }
     }
@@ -2055,7 +2172,7 @@ void update(uint32_t time) {
         if (buttonStates.LEFT == 2) {
             buttonStates.LEFT = 1;
         }
-        else {
+        else if (buttonStates.LEFT == 0) {
             buttonStates.LEFT = 2;
         }
     }
@@ -2067,7 +2184,7 @@ void update(uint32_t time) {
         if (buttonStates.RIGHT == 2) {
             buttonStates.RIGHT = 1;
         }
-        else {
+        else if (buttonStates.RIGHT == 0) {
             buttonStates.RIGHT = 2;
         }
     }
@@ -2077,7 +2194,10 @@ void update(uint32_t time) {
 
 
     // Update game
-    if (gameState == GameState::STATE_CHARACTER_SELECT) {
+    if (gameState == GameState::STATE_INPUT_SELECT) {
+        update_input_select(dt, buttonStates);
+    }
+    else if (gameState == GameState::STATE_CHARACTER_SELECT) {
         update_character_select(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_MENU) {
