@@ -4,7 +4,7 @@
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
 
-const uint8_t LEVEL_COUNT = 1;
+const uint8_t LEVEL_COUNT = 2;
 
 const float FRAME_LENGTH = 0.15f;
 const float TRANSITION_FRAME_LENGTH = 0.1f;
@@ -60,7 +60,7 @@ const float PLAYER_ACCELERATION = 400.0f;
 
 const float ENTITY_IDLE_SPEED = 40.0f;
 const float ENTITY_PURSUIT_SPEED = 55.0f;
-const float ENTITY_JUMP_SPEED = 150.0f;
+const float ENTITY_JUMP_SPEED = 160.0f;
 
 const float RANGED_MAX_RANGE = 64.0f;
 const float RANGED_RELOAD_TIME = 2.0f;
@@ -117,6 +117,7 @@ const float parallaxFactorLayersY[2] = {
 
 const uint8_t* asset_levels[] = {
     asset_level0,
+    asset_level1,
     asset_level_title,
     asset_level_char_select,
     asset_level_level_select
@@ -1085,7 +1086,35 @@ public:
                 }
             }
             else if (enemyType == EnemyType::FLYING) {
+                // Consider adding acceleration?
+                if (lastDirection) {
+                    xVel = currentSpeed;
+                }
+                else {
+                    xVel = -currentSpeed;
+                }
+
                 Entity::update_collisions();
+
+
+                bool reverseDirection = false;
+
+                float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        // Walked into side of block
+                        reverseDirection = true;
+                        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                        break;
+                    }
+                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
+                        yVel = -ENTITY_JUMP_SPEED;
+                    }
+                }
+
+                if (reverseDirection) {
+                    lastDirection = 1 - lastDirection;
+                }
             }
 
 
@@ -1242,17 +1271,15 @@ public:
             // Add points to player score (1 point per coin which has been deleted)
             score += coinCount - coins.size();
 
-            // Remove enemies if player jumps on them
-            //NOTE: HOW DO I IMPLEMENT HEALTH THEN?
+            // Remove enemies if no health left
             enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
 
-            //enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [this](Enemy enemy) { return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y == y + SPRITE_SIZE); }), enemies.end());
-
-            for (uint8_t i = 0; i < enemies.size(); i++) {
-                if (enemies[i].x + SPRITE_SIZE > x && enemies[i].x < x + SPRITE_SIZE && enemies[i].y == y + SPRITE_SIZE && enemies[0].health) {
-                    enemies[i].health = 0; // or --?
-                }
-            }
+            // Now done in update_collisions
+            //for (uint8_t i = 0; i < enemies.size(); i++) {
+            //    if (enemies[i].x + SPRITE_SIZE > x && enemies[i].x < x + SPRITE_SIZE && enemies[i].y == y + SPRITE_SIZE && enemies[0].health) {
+            //        enemies[i].health = 0; // or --?
+            //    }
+            //}
 
             update_collisions();
 
@@ -1351,6 +1378,9 @@ public:
                         y = enemies[i].y - SPRITE_SIZE;
                         //yVel = -PLAYER_ATTACK_JUMP;
                         yVel = -yVel * PLAYER_ATTACK_JUMP_SCALE;
+
+                        // Take health off enemy
+                        enemies[i].health--;
                     }
                     //else {
                     //    // Collided from bottom
@@ -1868,10 +1898,6 @@ void update_projectiles(float dt, ButtonStates buttonStates) {
 
 
 void update_input_select(float dt, ButtonStates buttonStates) {
-    /*if (buttonStates.UP == 2 || buttonStates.DOWN == 2) {
-        saveData.inputType = 1 - saveData.inputType;
-    }*/
-
     if (transition[0].is_open()) {
         if (saveData.inputType == InputType::CONTROLLER) {
             if (buttonStates.DOWN) {
