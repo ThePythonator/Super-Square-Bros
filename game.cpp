@@ -24,6 +24,8 @@
 #define TILE_ID_ENEMY_3 88
 #define TILE_ID_ENEMY_4 92
 #define TILE_ID_ENEMY_PROJECTILE 114
+#define TILE_ID_HUD_LIVES 118
+#define TILE_ID_HUD_COINS 120
 
 #define CAMERA_SCALE_X 10
 #define CAMERA_SCALE_Y 5
@@ -42,10 +44,11 @@
 
 #define GRAVITY 600.0f
 #define GRAVITY_MAX 200.0f
-#define PROJECTILE_GRAVITY 45.0f
-#define PROJECTILE_GRAVITY_MAX 50.0f
+#define PROJECTILE_GRAVITY 50.0f
+#define PROJECTILE_GRAVITY_MAX 100.0f
 
 
+#define PLAYER_START_LIVES 3
 #define PLAYER_MAX_HEALTH 3
 #define PLAYER_MAX_JUMP 190.0f
 #define PLAYER_MAX_SPEED 85.0f
@@ -54,11 +57,11 @@
 
 #define ENTITY_IDLE_SPEED 40.0f
 #define ENTITY_PURSUIT_SPEED 55.0f
-#define ENTITY_JUMP_SPEED 160.0f
+#define ENTITY_JUMP_SPEED 150.0f
 
 #define RANGED_MAX_RANGE 64.0f
 #define RANGED_RELOAD_TIME 2.0f
-#define RANGED_PROJECTILE_X_VEL_SCALE 0.7f
+#define RANGED_PROJECTILE_X_VEL_SCALE 0.77f
 #define RANGED_PROJECTILE_Y_VEL_SCALE 0.5f
 
 #define PURSUIT_MAX_RANGE 48.0f
@@ -168,8 +171,8 @@ GameState gameState = GameState::STATE_INPUT_SELECT;
 
 enum InputType {
     CONTROLLER = 0,
-    KEYBOARD = 1,
-    NO_INPUT_TYPE
+    KEYBOARD = 1
+    //NO_INPUT_TYPE
 };
 
 struct ButtonStates {
@@ -239,6 +242,7 @@ const std::vector<Colour> enemyDeathParticleColours[4] = {
 const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
 
 const Colour inputSelectColour = Colour(255, 199, 89);
+const Colour hudBackground = Colour(7, 0, 14, 64);
 const Colour defaultWhite = Colour(255, 255, 242);
 
 class Camera {
@@ -1160,15 +1164,20 @@ class Player : public Entity {
 public:
     uint8_t score;
     uint8_t id;
+    uint8_t lives;
 
     Player() : Entity() {
         score = 0;
         id = 0;
+
+        lives = PLAYER_START_LIVES;
     }
 
     Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) : Entity(xPosition, yPosition, TILE_ID_PLAYER_1 + colour * 4, PLAYER_MAX_HEALTH) {
         score = 0;
         id = colour;
+
+        lives = PLAYER_START_LIVES;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -1263,13 +1272,16 @@ public:
 
                     // Reset player position and health, maybe remove all this?
                     health = 3;
-                    yVel = -PLAYER_MAX_JUMP;
+                    yVel = 0;// -PLAYER_MAX_JUMP;
                     lastDirection = 1;
                     x = playerStartX;
                     y = playerStartY;
 
                     // Make player immune when respawning?
                     //set_immune();
+
+                    // Remove immunity when respawning
+                    immuneTimer = 0;
                 }
                 else {
                     for (uint8_t i = 0; i < particles.size(); i++) {
@@ -1284,6 +1296,9 @@ public:
                 // Generate particles
                 particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, playerDeathParticleColours[id], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
+
+                // Reduce player lives by one
+                lives--;
             }
         }
     }
@@ -1524,15 +1539,32 @@ void render_entities() {
 }
 
 void render_hud() {
+    screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SPRITE_HALF * 2 + 2));
+
+
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
     // Player health
-    for (uint8_t i = 0; i < player.health; i++) {
-        screen.sprite(TILE_ID_HEART, Point(2 + i * SPRITE_SIZE, 2));
+    for (uint8_t i = 0; i < PLAYER_MAX_HEALTH; i++) {
+        if (i < player.health) {
+            screen.sprite(TILE_ID_HEART, Point(2 + i * SPRITE_SIZE, 2));
+        }
+        else {
+            screen.sprite(TILE_ID_HEART + 1, Point(2 + i * SPRITE_SIZE, 2));
+        }
     }
 
     // Player score
-    blit::screen.text(std::to_string(player.score), minimal_font, Point(SCREEN_WIDTH - 2, 2), true, blit::TextAlign::top_right);
+    blit::screen.text(std::to_string(player.score), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE - 2, 2), true, blit::TextAlign::top_right);
+
+    screen.sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_SIZE, 2));
+
+
+    // Player lives
+    blit::screen.text(std::to_string(player.lives), minimal_font, Point(2 + 6 * SPRITE_SIZE - 2, 2), true, blit::TextAlign::top_right);
+
+    screen.sprite(TILE_ID_HUD_LIVES + playerSelected, Point(2 + 6 * SPRITE_SIZE, 2));
 }
 
 void load_level(uint8_t levelNumber) {
@@ -1565,7 +1597,8 @@ void load_level(uint8_t levelNumber) {
     enemies.clear();
     levelTriggers.clear();
 
-    for (int i = 0; i < levelSize; i++) {
+    // Foreground Layer
+    for (uint32_t i = 0; i < levelSize; i++) {
         if (tmx->data[i] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
         }
@@ -1577,62 +1610,85 @@ void load_level(uint8_t levelNumber) {
         }
     }
 
-    for (int i = 0; i < levelSize; i++) {
-        if (tmx->data[i + levelSize] == TILE_ID_EMPTY) {
+    // Entity Spawns Layer
+    for (uint32_t i = 0; i < levelSize; i++) {
+        uint32_t index = i + levelSize;
+
+        if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_PLAYER_1) {
+        else if (tmx->data[index] == TILE_ID_PLAYER_1) {
             playerStartX = (i % levelWidth) * SPRITE_SIZE;
             playerStartY = (i / levelWidth) * SPRITE_SIZE;
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_CAMERA) {
+        else if (tmx->data[index] == TILE_ID_CAMERA) {
             cameraStartX = (i % levelWidth) * SPRITE_SIZE;
             cameraStartY = (i / levelWidth) * SPRITE_SIZE;
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_FINISH) {
+        else if (tmx->data[index] == TILE_ID_FINISH) {
             finishX = (i % levelWidth) * SPRITE_SIZE;
             finishY = (i / levelWidth) * SPRITE_SIZE;
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_LEVEL_TRIGGER) {
+        else if (tmx->data[index] == TILE_ID_LEVEL_TRIGGER) {
             levelTriggers.push_back(LevelTrigger((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, levelTriggerCount++));
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_1) {
+        else if (tmx->data[index] == TILE_ID_ENEMY_1) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[0], 0));
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_2) {
+        else if (tmx->data[index] == TILE_ID_ENEMY_2) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[1], 1));
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_3) {
+        else if (tmx->data[index] == TILE_ID_ENEMY_3) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[2], 2));
         }
-        else if (tmx->data[i + levelSize] == TILE_ID_ENEMY_4) {
+        else if (tmx->data[index] == TILE_ID_ENEMY_4) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[3], 3));
         }
         else {
-            background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize]));
+            // Background tiles are non-solid
+            background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
         }
     }
 
+
+    // Background Layer
+    for (uint32_t i = 0; i < levelSize; i++) {
+        uint32_t index = i + levelSize * 2;
+
+        if (tmx->data[index] == TILE_ID_EMPTY) {
+            // Is a blank tile, don't do anything
+        }
+        else {
+            // Background tiles are non-solid. If semi-solidity (can jump up but not fall through) is required, use platforms (will be a separate layer).
+            background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
+        }
+    }
 
     // maybe adjust position of tile so that don't need to bunch all up in corner while designing level
 
     // go backwards through parallax layers so that rendering is correct
 
-    for (int i = 0; i < levelSize; i++) {
-        if (tmx->data[i + levelSize * 3] == TILE_ID_EMPTY) {
+    // Parallax Background Layer
+    for (uint32_t i = 0; i < levelSize; i++) {
+        uint32_t index = i + levelSize * 4;
+
+        if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
         }
         else {
-            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 3], 1));
+            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index], 1));
         }
     }
 
-    for (int i = 0; i < levelSize; i++) {
-        if (tmx->data[i + levelSize * 2] == TILE_ID_EMPTY) {
+    // Parallax Foreground Layer
+    for (uint32_t i = 0; i < levelSize; i++) {
+        uint32_t index = i + levelSize * 3;
+
+        if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
         }
         else {
-            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i + levelSize * 2], 0));
+            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index], 0));
         }
     }
 
@@ -1944,6 +2000,7 @@ void update_game(float dt, ButtonStates buttonStates) {
         player.y = finish.y - 1;
     }
 
+
     //if (player.x + SPRITE_SIZE > finish.x - SPRITE_SIZE && player.x < finish.x + SPRITE_SIZE * 2 && player.y + SPRITE_SIZE > finish.y - SPRITE_SIZE && player.y < finish.y + SPRITE_SIZE * 2) {
     //    // 'pull' player to finish
 
@@ -1970,6 +2027,12 @@ void update_game(float dt, ButtonStates buttonStates) {
 
             // Handle level end
             if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
+                close_transition();
+            }
+
+            // Handle player life
+            if (player.lives == 0 && player.particles.size() == 0) {
+                // Take player back to start? or just level select
                 close_transition();
             }
         }
@@ -2030,6 +2093,14 @@ void init() {
         saveData.inputType = InputType::CONTROLLER;
 
         // gameState is by default set to STATE_INPUT_SELECT
+
+#ifdef TARGET_32BLIT_HW
+        // If it's a 32blit, don't bother asking
+        gameState = GameState::STATE_CHARACTER_SELECT;
+
+        // Save inputType
+        write_save(saveData);
+#endif
     }
 
 
