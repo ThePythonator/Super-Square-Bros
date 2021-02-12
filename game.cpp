@@ -1,81 +1,84 @@
 #include "game.hpp"
 #include "assets.hpp"
 
-#define SCREEN_WIDTH 160
-#define SCREEN_HEIGHT 120
+const uint16_t SCREEN_WIDTH = 160;
+const uint16_t SCREEN_HEIGHT = 120;
 
-#define LEVEL_COUNT 1
+const uint8_t LEVEL_COUNT = 1;
 
-#define FRAME_LENGTH 0.15
-#define TRANSITION_FRAME_LENGTH 0.1
-#define TRANSITION_CLOSE_LENGTH 0.5
+const float FRAME_LENGTH = 0.15f;
+const float TRANSITION_FRAME_LENGTH = 0.1f;
+const float TRANSITION_CLOSE_LENGTH = 0.5f;
 
-#define TILE_ID_EMPTY 255
-#define TILE_ID_COIN 96
-#define TILE_ID_PLAYER_1 64
-#define TILE_ID_PLAYER_2 68
-#define TILE_ID_HEART 112
-#define TILE_ID_CAMERA 253
-#define TILE_ID_TRANSITION 224
-#define TILE_ID_FINISH 128
-#define TILE_ID_LEVEL_TRIGGER 116
-#define TILE_ID_ENEMY_1 80
-#define TILE_ID_ENEMY_2 84
-#define TILE_ID_ENEMY_3 88
-#define TILE_ID_ENEMY_4 92
-#define TILE_ID_ENEMY_PROJECTILE 114
-#define TILE_ID_HUD_LIVES 118
-#define TILE_ID_HUD_COINS 120
+const uint8_t TILE_ID_EMPTY = 255;
+const uint8_t TILE_ID_COIN = 96;
+const uint8_t TILE_ID_PLAYER_1 = 64;
+const uint8_t TILE_ID_PLAYER_2 = 68;
+const uint8_t TILE_ID_HEART = 112;
+const uint8_t TILE_ID_CAMERA = 253;
+const uint8_t TILE_ID_TRANSITION = 224;
+const uint8_t TILE_ID_FINISH = 128;
+const uint8_t TILE_ID_LEVEL_TRIGGER = 116;
+const uint8_t TILE_ID_ENEMY_1 = 80;
+const uint8_t TILE_ID_ENEMY_2 = 84;
+const uint8_t TILE_ID_ENEMY_3 = 88;
+const uint8_t TILE_ID_ENEMY_4 = 92;
+const uint8_t TILE_ID_ENEMY_PROJECTILE = 114;
+const uint8_t TILE_ID_HUD_LIVES = 118;
+const uint8_t TILE_ID_HUD_COINS = 120;
 
-#define CAMERA_SCALE_X 10
-#define CAMERA_SCALE_Y 5
-#define CAMERA_PAN_TIME 4
+const float CAMERA_SCALE_X = 10.0f;
+const float CAMERA_SCALE_Y = 5.0f;
+const float CAMERA_PAN_TIME = 4.0f;
 
-#define LEVEL_DEATH_BOUNDARY_SCALE 1.5
+const float LEVEL_DEATH_BOUNDARY_SCALE = 1.5f;
 
-#define SPRITE_SIZE 8
-
-
-#define ENTITY_DEATH_PARTICLE_COUNT 100
-#define ENTITY_DEATH_PARTICLE_GRAVITY 40.0f
-#define ENTITY_DEATH_PARTICLE_AGE 0.8f
-#define ENTITY_DEATH_PARTICLE_SPEED 60.0f
+const uint8_t SPRITE_SIZE = 8;
 
 
-#define GRAVITY 600.0f
-#define GRAVITY_MAX 200.0f
-#define PROJECTILE_GRAVITY 50.0f
-#define PROJECTILE_GRAVITY_MAX 100.0f
+const float ENTITY_DEATH_PARTICLE_COUNT = 100;
+const float ENTITY_DEATH_PARTICLE_GRAVITY = 40.0f;
+const float ENTITY_DEATH_PARTICLE_AGE = 0.8f;
+const float ENTITY_DEATH_PARTICLE_SPEED = 60.0f;
 
 
-#define PLAYER_START_LIVES 3
-#define PLAYER_MAX_HEALTH 3
-#define PLAYER_MAX_JUMP 190.0f
-#define PLAYER_MAX_SPEED 85.0f
-#define PLAYER_IMMUNE_TIME 2.5f
-#define PLAYER_ACCELERATION 400.0f
-
-#define ENTITY_IDLE_SPEED 40.0f
-#define ENTITY_PURSUIT_SPEED 55.0f
-#define ENTITY_JUMP_SPEED 150.0f
-
-#define RANGED_MAX_RANGE 64.0f
-#define RANGED_RELOAD_TIME 2.0f
-#define RANGED_PROJECTILE_X_VEL_SCALE 0.77f
-#define RANGED_PROJECTILE_Y_VEL_SCALE 0.5f
-
-#define PURSUIT_MAX_RANGE 48.0f
-
-#define TEXT_FLASH_TIME 0.8f
-
-#define TEXT_JUMP_VELOCITY 80.0f
-#define TEXT_GRAVITY 280.0f
-
-#define NO_LEVEL_SELECTED 255
+const float GRAVITY = 600.0f;
+const float GRAVITY_MAX = 200.0f;
+const float PROJECTILE_GRAVITY = 55.0f;
+const float PROJECTILE_GRAVITY_MAX = 100.0f;
 
 
-#define MESSAGE_STRINGS_COUNT 1
-#define INPUT_TYPE_COUNT 2
+const uint8_t PLAYER_START_LIVES = 3;
+const uint8_t PLAYER_MAX_HEALTH = 3;
+
+const float PLAYER_MAX_JUMP = 190.0f;
+//const float  PLAYER_ATTACK_JUMP = 100.0f;
+const float PLAYER_ATTACK_JUMP_SCALE = 0.5f;
+const float PLAYER_MAX_SPEED = 85.0f;
+const float PLAYER_IMMUNE_TIME = 2.5f;
+const float PLAYER_ACCELERATION = 400.0f;
+
+const float ENTITY_IDLE_SPEED = 40.0f;
+const float ENTITY_PURSUIT_SPEED = 55.0f;
+const float ENTITY_JUMP_SPEED = 150.0f;
+
+const float RANGED_MAX_RANGE = 64.0f;
+const float RANGED_RELOAD_TIME = 2.0f;
+const float RANGED_PROJECTILE_X_VEL_SCALE = 0.8f;
+const float RANGED_PROJECTILE_Y_VEL_SCALE = 0.5f;
+
+const float PURSUIT_MAX_RANGE = 48.0f;
+
+const float TEXT_FLASH_TIME = 0.8f;
+
+const float TEXT_JUMP_VELOCITY = 80.0f;
+const float TEXT_GRAVITY = 280.0f;
+
+const uint8_t NO_LEVEL_SELECTED = 255;
+
+
+const uint8_t MESSAGE_STRINGS_COUNT = 1;
+const uint8_t INPUT_TYPE_COUNT = 2;
 
 using namespace blit;
 
@@ -1330,10 +1333,12 @@ public:
 
             for (uint16_t i = 0; i < levelTriggers.size(); i++) {
                 if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
-                    if (yVel > 0) {
+                    if (yVel > 0 && y < levelTriggers[i].y + SPRITE_HALF) {
                         // Collided from top
                         y = levelTriggers[i].y - SPRITE_SIZE;
-                        yVel = 0;
+                        //yVel = -PLAYER_ATTACK_JUMP;
+                        yVel = -yVel * PLAYER_ATTACK_JUMP_SCALE;
+
                         levelTriggers[i].set_active();
                     }
                 }
@@ -1341,10 +1346,11 @@ public:
 
             for (uint16_t i = 0; i < enemies.size(); i++) {
                 if (enemies[i].health && colliding(enemies[i])) {
-                    if (yVel > 0) {
+                    if (yVel > 0 && y < enemies[i].y + SPRITE_HALF) {
                         // Collided from top
                         y = enemies[i].y - SPRITE_SIZE;
-                        yVel = 0;
+                        //yVel = -PLAYER_ATTACK_JUMP;
+                        yVel = -yVel * PLAYER_ATTACK_JUMP_SCALE;
                     }
                     //else {
                     //    // Collided from bottom
