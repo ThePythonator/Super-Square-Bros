@@ -55,7 +55,7 @@ const uint8_t PLAYER_MAX_HEALTH = 3;
 const float PLAYER_MAX_JUMP = 190.0f;
 //const float  PLAYER_ATTACK_JUMP = 90.0f;
 const float PLAYER_ATTACK_JUMP_SCALE = 0.5f;
-const float PLAYER_ATTACK_JUMP_MIN = 50.0f;
+const float PLAYER_ATTACK_JUMP_MIN = 70.0f;
 const float PLAYER_MAX_SPEED = 85.0f;
 const float PLAYER_IMMUNE_TIME = 2.5f;
 const float PLAYER_ACCELERATION = 400.0f;
@@ -86,6 +86,9 @@ using namespace blit;
 
 
 // NOTE: all positions (x,y) mark TOP LEFT corner of sprites
+
+// NOTE: issue with rendering (tiles on left are a pixel out sometimes) is due to integers being added to floats. Something along lines of (int)floorf(camera.x) etc is recommended, but when I tried it I got strange results.
+// If I implement that again, remember that all float calcs should be done, *then* casted, rather than casting each to int then adding etc
 
 
 const uint8_t SCREEN_MID_WIDTH = SCREEN_WIDTH / 2;

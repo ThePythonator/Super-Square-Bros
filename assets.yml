@@ -10,9 +10,6 @@ assets.cpp:
   assets/background.png:
     name: asset_background
 
-  #assets/level.tmx:
-    #name: asset_level
-
   assets/level0.tmx:
     name: asset_level0
     empty_tile: 255
