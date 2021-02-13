@@ -30,6 +30,7 @@ const uint8_t TILE_ID_HUD_COINS = 120;
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
 const float CAMERA_PAN_TIME = 4.0f;
+const float CAMERA_RESPAWN_LOCK_MIN = 1.0f;
 
 const float LEVEL_DEATH_BOUNDARY_SCALE = 1.5f;
 
@@ -52,8 +53,9 @@ const uint8_t PLAYER_START_LIVES = 3;
 const uint8_t PLAYER_MAX_HEALTH = 3;
 
 const float PLAYER_MAX_JUMP = 190.0f;
-//const float  PLAYER_ATTACK_JUMP = 100.0f;
+//const float  PLAYER_ATTACK_JUMP = 90.0f;
 const float PLAYER_ATTACK_JUMP_SCALE = 0.5f;
+const float PLAYER_ATTACK_JUMP_MIN = 50.0f;
 const float PLAYER_MAX_SPEED = 85.0f;
 const float PLAYER_IMMUNE_TIME = 2.5f;
 const float PLAYER_ACCELERATION = 400.0f;
@@ -141,6 +143,7 @@ uint32_t lastTime = 0;
 Surface* background_image = Surface::load(asset_background);
 
 bool cameraIntro = false;
+bool cameraRespawn = false;
 uint16_t cameraStartX, cameraStartY;
 uint16_t playerStartX, playerStartY;
 
@@ -1222,46 +1225,48 @@ public:
 
         if (health > 0) {
 
-            //xVel = 0; // remove later? - change to fast acceleration?
-
-            if (buttonStates.A) {
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
-                        // On top of block
-                        // Jump
-                        yVel = -PLAYER_MAX_JUMP;
-                        //state = JUMP;
+            if (!locked) {
+                if (buttonStates.A) {
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
+                            // On top of block
+                            // Jump
+                            yVel = -PLAYER_MAX_JUMP;
+                            //state = JUMP;
+                        }
                     }
                 }
-            }
 
 
-            if (buttonStates.LEFT) {
-                xVel -= PLAYER_ACCELERATION * dt;
-                if (xVel < -PLAYER_MAX_SPEED) {
-                    xVel = -PLAYER_MAX_SPEED;
-                }
-            }
-            else if (buttonStates.RIGHT) {
-                xVel += PLAYER_ACCELERATION * dt;
-                if (xVel > PLAYER_MAX_SPEED) {
-                    xVel = PLAYER_MAX_SPEED;
-                }
-            }
-            else {
-                if (xVel > 0) {
+                if (buttonStates.LEFT) {
                     xVel -= PLAYER_ACCELERATION * dt;
-                    if (xVel < 0) {
-                        xVel = 0;
+                    if (xVel < -PLAYER_MAX_SPEED) {
+                        xVel = -PLAYER_MAX_SPEED;
                     }
                 }
-                else if (xVel < 0) {
+                else if (buttonStates.RIGHT) {
                     xVel += PLAYER_ACCELERATION * dt;
+                    if (xVel > PLAYER_MAX_SPEED) {
+                        xVel = PLAYER_MAX_SPEED;
+                    }
+                }
+                else {
                     if (xVel > 0) {
-                        xVel = 0;
+                        xVel -= PLAYER_ACCELERATION * dt;
+                        if (xVel < 0) {
+                            xVel = 0;
+                        }
+                    }
+                    else if (xVel < 0) {
+                        xVel += PLAYER_ACCELERATION * dt;
+                        if (xVel > 0) {
+                            xVel = 0;
+                        }
                     }
                 }
             }
+
+            
 
             uint8_t coinCount = coins.size();
 
@@ -1300,18 +1305,25 @@ public:
 
                     deathParticles = false;
 
-                    // Reset player position and health, maybe remove all this?
-                    health = 3;
-                    yVel = 0;// -PLAYER_MAX_JUMP;
-                    lastDirection = 1;
-                    x = playerStartX;
-                    y = playerStartY;
+                    // If player has lives left, respawn
+                    if (lives) {
+                        // Reset player position and health, maybe remove all this?
+                        health = 3;
+                        yVel = 0;// -PLAYER_MAX_JUMP;
+                        lastDirection = 1;
+                        x = playerStartX;
+                        y = playerStartY;
 
-                    // Make player immune when respawning?
-                    //set_immune();
+                        // Stop player from moving while respawning
+                        cameraRespawn = true;
+                        locked = true;
 
-                    // Remove immunity when respawning
-                    immuneTimer = 0;
+                        // Make player immune when respawning?
+                        //set_immune();
+
+                        // Remove immunity when respawning
+                        immuneTimer = 0;
+                    }
                 }
                 else {
                     for (uint8_t i = 0; i < particles.size(); i++) {
@@ -1322,7 +1334,7 @@ public:
                     particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
                 }
             }
-            else {
+            else if (lives) {
                 // Generate particles
                 particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, playerDeathParticleColours[id], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
@@ -1364,7 +1376,7 @@ public:
                         // Collided from top
                         y = levelTriggers[i].y - SPRITE_SIZE;
                         //yVel = -PLAYER_ATTACK_JUMP;
-                        yVel = -yVel * PLAYER_ATTACK_JUMP_SCALE;
+                        yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
                         levelTriggers[i].set_active();
                     }
@@ -1377,7 +1389,7 @@ public:
                         // Collided from top
                         y = enemies[i].y - SPRITE_SIZE;
                         //yVel = -PLAYER_ATTACK_JUMP;
-                        yVel = -yVel * PLAYER_ATTACK_JUMP_SCALE;
+                        yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
                         // Take health off enemy
                         enemies[i].health--;
@@ -1998,9 +2010,13 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 
     // Button handling
 
+    //printf("%u, %u, %f, %f, %f, %f\n", player.health, player.lives, player.x, camera.x, player.y, camera.y);
+
     if (currentLevelNumber != NO_LEVEL_SELECTED && transition[0].is_open()) {
         close_transition();
     }
+
+
 
 
     if (transition[0].is_ready_to_open()) {
@@ -2011,7 +2027,21 @@ void update_level_select(float dt, ButtonStates buttonStates) {
         start_level();
     }
     else if (transition[0].is_open()) {
-        camera.ease_out_to(dt, player.x, player.y);
+        if (cameraRespawn) {
+            camera.ease_out_to(dt, player.x, player.y);
+
+            if (std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN && std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN) {
+                // for respawns
+                cameraRespawn = false;
+                player.locked = false;
+
+                // to stop player completely dying
+                player.lives = 3;
+            }
+        }
+        else {
+            camera.ease_out_to(dt, player.x, player.y);
+        }
     }
 }
 
@@ -2051,6 +2081,15 @@ void update_game(float dt, ButtonStates buttonStates) {
                 player.locked = false;
                 // Make player immune when spawning?
                 //player.set_immune();
+            }
+        }
+        else if (cameraRespawn) {
+            camera.ease_out_to(dt, player.x, player.y);
+
+            if (std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN && std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN) {
+                // for respawns
+                cameraRespawn = false;
+                player.locked = false;
             }
         }
         else {
@@ -2132,6 +2171,9 @@ void init() {
 
         // Save inputType
         write_save(saveData);
+
+        // Load character select level
+        load_level(LEVEL_COUNT + 1);
 #endif
     }
 
