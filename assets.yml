@@ -22,6 +22,11 @@ assets.cpp:
     name: asset_level1
     empty_tile: 255
     output_struct: true
+    
+  assets/level2.tmx:
+    name: asset_level2
+    empty_tile: 255
+    output_struct: true
 
   assets/level_title.tmx:
     name: asset_level_title
