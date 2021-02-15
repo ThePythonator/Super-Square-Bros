@@ -1,6 +1,12 @@
 #include "game.hpp"
 #include "assets.hpp"
 
+// Note: if want to go hires, with lores graphics:
+// screen.sprite(uint16_t sprite, const Point &position, const Point &origin, float scale, uint8_t transform)
+// origin can be Point(0,0) and transform can be SpriteTransform::NONE, scale is 2
+
+// e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
+
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
 
@@ -29,7 +35,7 @@ const uint8_t TILE_ID_HUD_COINS = 120;
 
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
-const float CAMERA_PAN_TIME = 4.0f;
+const float CAMERA_PAN_TIME = 7.0f;
 const float CAMERA_RESPAWN_LOCK_MIN = 1.0f;
 
 const float LEVEL_DEATH_BOUNDARY_SCALE = 1.5f;
@@ -79,7 +85,7 @@ const float TEXT_GRAVITY = 280.0f;
 const uint8_t NO_LEVEL_SELECTED = 255;
 
 
-const uint8_t MESSAGE_STRINGS_COUNT = 1;
+const uint8_t MESSAGE_STRINGS_COUNT = 2;
 const uint8_t INPUT_TYPE_COUNT = 2;
 
 using namespace blit;
@@ -135,6 +141,10 @@ const std::string messageStrings[MESSAGE_STRINGS_COUNT][INPUT_TYPE_COUNT] = {
     {
         "Press A to Start",
         "Press U to Start"
+    },
+    {
+        "Press A to Skip",
+        "Press U to Skip"
     }
 };
 
@@ -176,7 +186,8 @@ enum class GameState {
     STATE_MENU,
     STATE_LEVEL_SELECT,
     STATE_IN_GAME,
-    STATE_LOST
+    STATE_LOST,
+    STATE_WON
 };
 GameState gameState = GameState::STATE_INPUT_SELECT;
 
@@ -1617,6 +1628,17 @@ void render_hud() {
     blit::screen.text(std::to_string(player.lives), minimal_font, Point(2 + 6 * SPRITE_SIZE - 2, 2), true, blit::TextAlign::top_right);
 
     screen.sprite(TILE_ID_HUD_LIVES + playerSelected, Point(2 + 6 * SPRITE_SIZE, 2));
+
+
+    if (cameraIntro) {
+        // Press <key> to skip intro message
+
+        screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+        screen.rectangle(Rect(0, SCREEN_HEIGHT - (SPRITE_SIZE + 12), SCREEN_WIDTH, SPRITE_SIZE + 12));
+
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.text(messageStrings[1][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+    }
 }
 
 void load_level(uint8_t levelNumber) {
@@ -1790,10 +1812,11 @@ void render_input_select() {
     screen.pen = saveData.inputType == InputType::KEYBOARD ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Keyboard", minimal_font, Point(SCREEN_MID_WIDTH, 70), true, TextAlign::center_center);
 
+
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -1816,7 +1839,7 @@ void render_character_select() {
     screen.text("Select Player", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -1832,7 +1855,7 @@ void render_menu() {
     screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10), true, TextAlign::center_center);
+        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -1845,6 +1868,9 @@ void render_level_select() {
 
     render_level_triggers();
 
+
+    screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SPRITE_SIZE + 12));
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select level", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
@@ -2086,6 +2112,11 @@ void update_game(float dt, ButtonStates buttonStates) {
                 // Make player immune when spawning?
                 //player.set_immune();
             }
+
+            if (buttonStates.A == 2) {
+                cameraIntro = false;
+                cameraRespawn = true; // temporary testing
+            }
         }
         else if (cameraRespawn) {
             camera.ease_out_to(dt, player.x, player.y);
@@ -2114,6 +2145,13 @@ void update_game(float dt, ButtonStates buttonStates) {
     }
 
     if (transition[0].is_ready_to_open()) {
+        if (!player.lives) {
+            // Player failed level
+        }
+        else {
+            // Player completed level
+        }
+
         gameState = GameState::STATE_LEVEL_SELECT;
 
         // Load level select level
@@ -2217,6 +2255,9 @@ void render(uint32_t time) {
         render_game();
     }
     else if (gameState == GameState::STATE_LOST) {
+
+    }
+    else if (gameState == GameState::STATE_WON) {
 
     }
 
@@ -2359,6 +2400,9 @@ void update(uint32_t time) {
         update_game(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_LOST) {
+
+    }
+    else if (gameState == GameState::STATE_WON) {
 
     }
 
