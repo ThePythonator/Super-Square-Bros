@@ -85,7 +85,7 @@ const float TEXT_GRAVITY = 280.0f;
 const uint8_t NO_LEVEL_SELECTED = 255;
 
 
-const uint8_t MESSAGE_STRINGS_COUNT = 2;
+const uint8_t MESSAGE_STRINGS_COUNT = 3;
 const uint8_t INPUT_TYPE_COUNT = 2;
 
 using namespace blit;
@@ -145,6 +145,10 @@ const std::string messageStrings[MESSAGE_STRINGS_COUNT][INPUT_TYPE_COUNT] = {
     {
         "Press A to Skip",
         "Press U to Skip"
+    },
+    {
+        "Press A",
+        "Press U"
     }
 };
 
@@ -226,6 +230,18 @@ struct LevelData {
 //struct PositionI {
 //    int x, y;
 //};
+
+
+void render_sprite(uint8_t id, Point point) {
+    screen.sprite(id, point, Point(0, 0), 1.0f, SpriteTransform::NONE);
+}
+
+void render_sprite(uint8_t id, Point point, SpriteTransform transform) {
+    screen.sprite(id, point, Point(0, 0), 1.0f, transform);
+}
+
+
+
 
 class Colour {
 public:
@@ -405,7 +421,8 @@ public:
     }
 
     void render(Camera camera) {
-        screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x - SPRITE_QUARTER, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_QUARTER));
+        render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x - SPRITE_QUARTER, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_QUARTER));
+        //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x - SPRITE_QUARTER, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_QUARTER));
         //screen.rectangle(Rect(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y, 4, 4));
     }
 };
@@ -449,7 +466,8 @@ public:
 
     void render(Camera camera)
     {
-        screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
     }
 
 protected:
@@ -479,7 +497,8 @@ public:
     {
         //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - (camera.x * parallaxFactorLayersX[layer]), SCREEN_MID_HEIGHT + y - (camera.y * parallaxFactorLayersY[layer])));
         // Not shifting sprite to center seems to give better coverage of parallax
-        screen.sprite(id, Point(x - (camera.x * parallaxFactorLayersX[layer]), y - (camera.y * parallaxFactorLayersY[layer])));
+        //screen.sprite(id, Point(x - (camera.x * parallaxFactorLayersX[layer]), y - (camera.y * parallaxFactorLayersY[layer])));
+        render_sprite(id, Point(x - (camera.x * parallaxFactorLayersX[layer]), y - (camera.y * parallaxFactorLayersY[layer])));
     }
 
 protected:
@@ -535,7 +554,8 @@ public:
 
     void render(Camera camera) {
         if (!collected) {
-            screen.sprite(frames[currentFrame], Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+            //screen.sprite(frames[currentFrame], Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+            render_sprite(frames[currentFrame], Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
         }
     }
 
@@ -646,13 +666,16 @@ public:
 
     void render(Camera camera) {
         if (state == TransitionState::CLOSING) {
-            screen.sprite(closingFrames[currentFrame], Point(x, y));
+            //screen.sprite(closingFrames[currentFrame], Point(x, y));
+            render_sprite(closingFrames[currentFrame], Point(x, y));
         }
         else if (state == TransitionState::OPENING) {
-            screen.sprite(openingFrames[currentFrame], Point(x, y), SpriteTransform::HORIZONTAL);
+            //screen.sprite(openingFrames[currentFrame], Point(x, y), SpriteTransform::HORIZONTAL);
+            render_sprite(openingFrames[currentFrame], Point(x, y), SpriteTransform::HORIZONTAL);
         }
         else if (state == TransitionState::CLOSED || state == TransitionState::READY_TO_OPEN) {
-            screen.sprite(closingFrames[closingFrames.size() - 1], Point(x, y));
+            //screen.sprite(closingFrames[closingFrames.size() - 1], Point(x, y));
+            render_sprite(closingFrames[closingFrames.size() - 1], Point(x, y));
         }
         else if (state == TransitionState::OPEN) {
             // Don't do anything
@@ -770,7 +793,8 @@ public:
         if (visible) {
             screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b, levelTriggerParticleColours[1].a);
             screen.text(std::to_string(levelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_HALF, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_HALF * 3 + textY), true, TextAlign::center_center);
-            screen.sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+            //screen.sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+            render_sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
         }
 
         // Particles
@@ -918,10 +942,12 @@ public:
                 }*/
 
                 if (lastDirection == 1) {
-                    screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                    //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                    render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
                 }
                 else {
-                    screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                    //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                    render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
                 }
             }
         }
@@ -1213,11 +1239,16 @@ std::vector<Enemy> enemies;
 class Player : public Entity {
 public:
     uint8_t score;
+    uint8_t enemiesKilled;
+    float levelTimer;
     uint8_t id;
     uint8_t lives;
 
     Player() : Entity() {
         score = 0;
+        enemiesKilled = 0;
+        levelTimer = 0;
+
         id = 0;
 
         lives = PLAYER_START_LIVES;
@@ -1225,6 +1256,9 @@ public:
 
     Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) : Entity(xPosition, yPosition, TILE_ID_PLAYER_1 + colour * 4, PLAYER_MAX_HEALTH) {
         score = 0;
+        enemiesKilled = 0;
+        levelTimer = 0;
+
         id = colour;
 
         lives = PLAYER_START_LIVES;
@@ -1241,6 +1275,8 @@ public:
         if (health > 0) {
 
             if (!locked) {
+                levelTimer += dt;
+
                 if (buttonStates.A) {
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
@@ -1291,8 +1327,13 @@ public:
             // Add points to player score (1 point per coin which has been deleted)
             score += coinCount - coins.size();
 
+
+            uint8_t enemyCount = enemies.size();
+
             // Remove enemies if no health left
             enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
+
+            enemiesKilled += enemyCount - enemies.size();
 
             // Now done in update_collisions
             //for (uint8_t i = 0; i < enemies.size(); i++) {
@@ -1513,6 +1554,35 @@ protected:
 Player player;
 
 
+void background_rect(uint8_t position) {
+    if (position) {
+        screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+        screen.rectangle(Rect(0, SCREEN_HEIGHT - (SPRITE_SIZE + 12), SCREEN_WIDTH, SPRITE_SIZE + 12));
+    }
+    else {
+        screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+        screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SPRITE_SIZE + 12));
+    }
+}
+
+void display_stats() {
+    screen.text("Coins collected:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE * 2), true, TextAlign::center_left);
+    screen.text("Enemies defeated:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT), true, TextAlign::center_left);
+    screen.text("Time taken:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_left);
+
+
+    screen.text(std::to_string(player.score), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE * 2), true, TextAlign::center_right);
+    screen.text(std::to_string(player.enemiesKilled), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT), true, TextAlign::center_right);
+    //screen.text(std::to_string((int)player.levelTimer), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
+
+    // Trim player.levelTimer to 2dp
+    std::string levelTimerString = std::to_string(player.levelTimer);
+    levelTimerString = levelTimerString.substr(0, levelTimerString.find('.') + 3);
+    screen.text(levelTimerString, minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
+}
+
+
+
 
 
 void open_transition() {
@@ -1611,30 +1681,33 @@ void render_hud() {
     // Player health
     for (uint8_t i = 0; i < PLAYER_MAX_HEALTH; i++) {
         if (i < player.health) {
-            screen.sprite(TILE_ID_HEART, Point(2 + i * SPRITE_SIZE, 2));
+            render_sprite(TILE_ID_HEART, Point(2 + i * SPRITE_SIZE, 2));
+            //screen.sprite(TILE_ID_HEART, Point(2 + i * SPRITE_SIZE, 2));
         }
         else {
-            screen.sprite(TILE_ID_HEART + 1, Point(2 + i * SPRITE_SIZE, 2));
+            render_sprite(TILE_ID_HEART + 1, Point(2 + i * SPRITE_SIZE, 2));
+            //screen.sprite(TILE_ID_HEART + 1, Point(2 + i * SPRITE_SIZE, 2));
         }
     }
 
     // Player score
     blit::screen.text(std::to_string(player.score), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE - 2, 2), true, blit::TextAlign::top_right);
 
-    screen.sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_SIZE, 2));
+    render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_SIZE, 2));
+    //screen.sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_SIZE, 2));
 
 
     // Player lives
     blit::screen.text(std::to_string(player.lives), minimal_font, Point(2 + 6 * SPRITE_SIZE - 2, 2), true, blit::TextAlign::top_right);
 
-    screen.sprite(TILE_ID_HUD_LIVES + playerSelected, Point(2 + 6 * SPRITE_SIZE, 2));
+    render_sprite(TILE_ID_HUD_LIVES + playerSelected, Point(2 + 6 * SPRITE_SIZE, 2));
+    //screen.sprite(TILE_ID_HUD_LIVES + playerSelected, Point(2 + 6 * SPRITE_SIZE, 2));
 
 
     if (cameraIntro) {
         // Press <key> to skip intro message
 
-        screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
-        screen.rectangle(Rect(0, SCREEN_HEIGHT - (SPRITE_SIZE + 12), SCREEN_WIDTH, SPRITE_SIZE + 12));
+        background_rect(1);
 
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
         screen.text(messageStrings[1][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
@@ -1781,26 +1854,85 @@ void load_level(uint8_t levelNumber) {
     }
 }
 
-void start_level() {
+void start_level(uint8_t levelNumber) {
+    gameState = GameState::STATE_IN_GAME;
+
+    // Load level
+    load_level(currentLevelNumber);
+
+
+    // Make sure player attribute setting is done after load_level call, since player is reassigned in that method
     player.locked = true;
     cameraIntro = true;
 
     open_transition();
 }
 
-void start_level_select() {
-    // Reset currentLevelNumber so no level is pre-selected
-    currentLevelNumber = NO_LEVEL_SELECTED;
+void start_character_select() {
+    gameState = GameState::STATE_CHARACTER_SELECT;
+
+    // Load character select level
+    load_level(LEVEL_COUNT + 1);
 
     open_transition();
 }
 
+void start_menu() {
+    gameState = GameState::STATE_MENU;
+
+    // Load menu level
+    load_level(LEVEL_COUNT);
+
+    open_transition();
+}
+
+void start_level_select() {
+    gameState = GameState::STATE_LEVEL_SELECT;
+
+    // Load level select level
+    load_level(LEVEL_COUNT + 2);
+
+    if (currentLevelNumber != NO_LEVEL_SELECTED) {
+        // Must have just completed a level
+        // Place player next to finished level
+        for (uint8_t i = 0; i < levelTriggers.size(); i++) {
+            if (levelTriggers[i].levelNumber == currentLevelNumber) {
+                player.x = levelTriggers[i].x + SPRITE_HALF * 3;
+                player.y = levelTriggers[i].y;
+                camera.x = player.x;
+                camera.y = player.y;
+            }
+        }
+    }
+
+    // Make sure player attribute setting is done after load_level call, since player is reassigned in that method
+    player.locked = true;
+
+    open_transition();
+
+    // Reset currentLevelNumber so no level is pre-selected
+    currentLevelNumber = NO_LEVEL_SELECTED;
+}
+
+void start_game_lost() {
+    gameState = GameState::STATE_LOST;
+
+    open_transition();
+}
+
+void start_game_won() {
+    gameState = GameState::STATE_WON;
+
+    open_transition();
+}
+
+
+
 void render_input_select() {
     render_background();
 
-    //render_level();
-
-    //render_entities();
+    background_rect(0);
+    background_rect(1);
 
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
@@ -1828,11 +1960,17 @@ void render_character_select() {
     render_entities();
 
     if (playerSelected) {
-        screen.sprite(TILE_ID_PLAYER_1, Point(SCREEN_MID_WIDTH + playerStartX - camera.x, SCREEN_MID_HEIGHT + playerStartY - camera.y), SpriteTransform::HORIZONTAL);
+        render_sprite(TILE_ID_PLAYER_1, Point(SCREEN_MID_WIDTH + playerStartX - camera.x, SCREEN_MID_HEIGHT + playerStartY - camera.y), SpriteTransform::HORIZONTAL);
+        //screen.sprite(TILE_ID_PLAYER_1, Point(SCREEN_MID_WIDTH + playerStartX - camera.x, SCREEN_MID_HEIGHT + playerStartY - camera.y), SpriteTransform::HORIZONTAL);
     }
     else {
-        screen.sprite(TILE_ID_PLAYER_2, Point(SCREEN_MID_WIDTH + playerStartX - camera.x + SPRITE_SIZE * 7, SCREEN_MID_HEIGHT + playerStartY - camera.y));
+        render_sprite(TILE_ID_PLAYER_2, Point(SCREEN_MID_WIDTH + playerStartX - camera.x + SPRITE_SIZE * 7, SCREEN_MID_HEIGHT + playerStartY - camera.y));
+        //screen.sprite(TILE_ID_PLAYER_2, Point(SCREEN_MID_WIDTH + playerStartX - camera.x + SPRITE_SIZE * 7, SCREEN_MID_HEIGHT + playerStartY - camera.y));
     }
+
+
+    background_rect(0);
+    background_rect(1);
 
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
@@ -1850,6 +1988,9 @@ void render_menu() {
 
     render_entities();
 
+
+    background_rect(0);
+    background_rect(1);
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
@@ -1869,8 +2010,8 @@ void render_level_select() {
     render_level_triggers();
 
 
-    screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
-    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SPRITE_SIZE + 12));
+    background_rect(0);
+    //background_rect(1);
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select level", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
@@ -1886,6 +2027,43 @@ void render_game() {
     render_entities();
 
     render_hud();
+}
+
+
+
+void render_game_lost() {
+    render_background();
+
+    background_rect(0);
+    background_rect(1);
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+
+    screen.text("You lost.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    display_stats();
+
+    if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+        screen.text(messageStrings[2][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+    }
+}
+
+
+void render_game_won() {
+    render_background();
+
+    background_rect(0);
+    background_rect(1);
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+
+    screen.text("You won.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    display_stats();
+
+    if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+        screen.text(messageStrings[2][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+    }
 }
 
 
@@ -1940,7 +2118,10 @@ void update_projectiles(float dt, ButtonStates buttonStates) {
 
 
 void update_input_select(float dt, ButtonStates buttonStates) {
-    if (transition[0].is_open()) {
+    if (transition[0].is_ready_to_open()) {
+        start_character_select();
+    }
+    else if (transition[0].is_open()) {
         if (saveData.inputType == InputType::CONTROLLER) {
             if (buttonStates.DOWN) {
                 saveData.inputType = 1;
@@ -1960,17 +2141,6 @@ void update_input_select(float dt, ButtonStates buttonStates) {
             write_save(saveData);
         }
     }
-
-
-
-    if (transition[0].is_ready_to_open()) {
-        gameState = GameState::STATE_CHARACTER_SELECT;
-
-        // Load character select level
-        load_level(LEVEL_COUNT + 1);
-
-        open_transition();
-    }
 }
 
 void update_character_select(float dt, ButtonStates buttonStates) {
@@ -1979,49 +2149,39 @@ void update_character_select(float dt, ButtonStates buttonStates) {
     dummyStates.A = 1;
     player.update(dt, dummyStates);
 
-    if (buttonStates.A == 2 && transition[0].is_open()) {
-        close_transition();
-    }
 
     if (buttonStates.RIGHT && !playerSelected) {
         playerSelected = 1;
-        player = Player(player.x + SPRITE_SIZE * 7, playerStartY, 1);
+        player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
         player.lastDirection = 0;
     }
     else if (buttonStates.LEFT && playerSelected) {
         playerSelected = 0;
         player = Player(playerStartX, playerStartY, 0);
+        player.lastDirection = 1;
     }
 
     if (transition[0].is_ready_to_open()) {
-        gameState = GameState::STATE_MENU;
-
-        load_level(LEVEL_COUNT);
-
-        open_transition();
+        start_menu();
+    }
+    else if (transition[0].is_open()) {
+        if (buttonStates.A == 2) {
+            close_transition();
+        }
     }
 }
 
 void update_menu(float dt, ButtonStates buttonStates) {
-    //player.update(dt, buttonStates);
-
     update_coins(dt, buttonStates);
 
-    //finish.update(dt, buttonStates);
-
-    // Button handling
-
-    if (buttonStates.A == 2 && transition[0].is_open()) {
-        close_transition();
-    }
 
     if (transition[0].is_ready_to_open()) {
-        gameState = GameState::STATE_LEVEL_SELECT;
-
-        // Load level select level
-        load_level(LEVEL_COUNT + 2);
-
         start_level_select();
+    }
+    else if (transition[0].is_open()) {
+        if (buttonStates.A == 2) {
+            close_transition();
+        }
     }
 }
 
@@ -2042,19 +2202,12 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 
     //printf("%u, %u, %f, %f, %f, %f\n", player.health, player.lives, player.x, camera.x, player.y, camera.y);
 
-    if (currentLevelNumber != NO_LEVEL_SELECTED && transition[0].is_open()) {
-        close_transition();
-    }
 
 
 
 
     if (transition[0].is_ready_to_open()) {
-        gameState = GameState::STATE_IN_GAME;
-
-        load_level(currentLevelNumber);
-
-        start_level();
+        start_level(currentLevelNumber);
     }
     else if (transition[0].is_open()) {
         if (cameraRespawn) {
@@ -2071,6 +2224,12 @@ void update_level_select(float dt, ButtonStates buttonStates) {
         }
         else {
             camera.ease_out_to(dt, player.x, player.y);
+            player.locked = false;
+        }
+
+
+        if (currentLevelNumber != NO_LEVEL_SELECTED) {
+            close_transition();
         }
     }
 }
@@ -2099,7 +2258,20 @@ void update_game(float dt, ButtonStates buttonStates) {
     //    player.x += (finish.x - player.x) * 4 * dt;
     //    player.y += (finish.y - player.y) * 4 * dt;
     //}
-    if (transition[0].is_open()) {
+
+    if (transition[0].is_ready_to_open()) {
+        if (player.lives) {
+            // Player completed level
+            start_game_won();
+        }
+        else {
+            // Player failed level
+            start_game_lost();
+        }
+
+        //start_level_select();
+    }
+    else if (transition[0].is_open()) {
         if (cameraIntro) {
             //camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
             camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
@@ -2115,7 +2287,7 @@ void update_game(float dt, ButtonStates buttonStates) {
 
             if (buttonStates.A == 2) {
                 cameraIntro = false;
-                cameraRespawn = true; // temporary testing
+                cameraRespawn = true; // goes to player faster
             }
         }
         else if (cameraRespawn) {
@@ -2143,23 +2315,31 @@ void update_game(float dt, ButtonStates buttonStates) {
             }
         }
     }
+}
 
+void update_game_lost(float dt, ButtonStates buttonStates) {
     if (transition[0].is_ready_to_open()) {
-        if (!player.lives) {
-            // Player failed level
-        }
-        else {
-            // Player completed level
-        }
-
-        gameState = GameState::STATE_LEVEL_SELECT;
-
-        // Load level select level
-        load_level(LEVEL_COUNT + 2);
-
         start_level_select();
     }
+    else if (transition[0].is_open()) {
+        if (buttonStates.A == 2) {
+            close_transition();
+        }
+    }
 }
+
+
+void update_game_won(float dt, ButtonStates buttonStates) {
+    if (transition[0].is_ready_to_open()) {
+        start_level_select();
+    }
+    else if (transition[0].is_open()) {
+        if (buttonStates.A == 2) {
+            close_transition();
+        }
+    }
+}
+
 
 
 
@@ -2182,8 +2362,8 @@ void init() {
 
 
     // Populate transition array
-    for (int y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
-        for (int x = 0; x < SCREEN_WIDTH / SPRITE_SIZE; x++) {
+    for (uint8_t y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
+        for (uint8_t x = 0; x < SCREEN_WIDTH / SPRITE_SIZE; x++) {
             transition[y * (SCREEN_WIDTH / SPRITE_SIZE) + x] = AnimatedTransition(x * SPRITE_SIZE, y * SPRITE_SIZE, transitionFramesOpen, transitionFramesClose);
         }
     }
@@ -2255,10 +2435,10 @@ void render(uint32_t time) {
         render_game();
     }
     else if (gameState == GameState::STATE_LOST) {
-
+        render_game_lost();
     }
     else if (gameState == GameState::STATE_WON) {
-
+        render_game_won();
     }
 
     render_transition();
@@ -2400,10 +2580,10 @@ void update(uint32_t time) {
         update_game(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_LOST) {
-
+        update_game_lost(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_WON) {
-
+        update_game_won(dt, buttonStates);
     }
 
     update_transition(dt, buttonStates);
