@@ -219,7 +219,15 @@ ButtonStates buttonStates = { 0 };
 struct SaveData {
     //uint32_t highscore;
     uint8_t inputType;
+    uint8_t levelReached;
 } saveData;
+
+void save_game() {
+    // Write save data
+    write_save(saveData);
+}
+
+
 
 struct LevelData {
     uint16_t levelWidth, levelHeight;
@@ -1432,12 +1440,23 @@ public:
             for (uint16_t i = 0; i < levelTriggers.size(); i++) {
                 if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
                     if (yVel > 0 && y < levelTriggers[i].y + SPRITE_HALF) {
-                        // Collided from top
-                        y = levelTriggers[i].y - SPRITE_SIZE;
-                        //yVel = -PLAYER_ATTACK_JUMP;
-                        yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+                        if (saveData.levelReached >= levelTriggers[i].levelNumber) {
+                            // Level is unlocked
 
-                        levelTriggers[i].set_active();
+                            // Collided from top
+                            y = levelTriggers[i].y - SPRITE_SIZE;
+                            //yVel = -PLAYER_ATTACK_JUMP;
+                            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+
+                            levelTriggers[i].set_active();
+                        }
+                        else {
+                            // Level is locked, act as a solid object
+
+                            // Collided from top
+                            y = levelTriggers[i].y - SPRITE_SIZE;
+                            yVel = 0;
+                        }
                     }
                 }
             }
@@ -1710,7 +1729,32 @@ void render_hud() {
 void render_nearby_level_info() {
     for (uint8_t i = 0; i < levelTriggers.size(); i++) {
         if (std::abs(player.x - levelTriggers[i].x) < LEVEL_INFO_MAX_RANGE && std::abs(player.y - levelTriggers[i].y) < LEVEL_INFO_MAX_RANGE) {
-            //background_rect(1);
+            background_rect(1);
+
+
+            screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b);
+
+            // Level number
+            screen.text("Level " + std::to_string(levelTriggers[i].levelNumber + 1), minimal_font, Point(SPRITE_HALF, SCREEN_HEIGHT - 9 - SPRITE_HALF), true, TextAlign::center_left);
+
+
+            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+
+            if (saveData.levelReached < levelTriggers[i].levelNumber) {
+                // Level is locked
+                screen.text("Level locked", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+            }
+            else if (saveData.levelReached == levelTriggers[i].levelNumber) {
+                // Level is unlocked and has not been completed
+                screen.text("No highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+            }
+            else {
+                // Level is unlocked and has been completed
+
+                // TODO: display stats
+
+                screen.text("Cannot load highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+            }
 
             //screen.text(std::to_string(saveData.scores[levelTriggers[i].levelNumber]), minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
         }
@@ -1927,6 +1971,14 @@ void start_game_lost() {
 
 void start_game_won() {
     gameState = GameState::STATE_WON;
+
+    if (currentLevelNumber == saveData.levelReached) {
+        saveData.levelReached = currentLevelNumber + 1;
+    }
+
+    // save level stats?
+
+    save_game();
 
     open_transition();
 }
@@ -2365,12 +2417,6 @@ void update_game_won(float dt, ButtonStates buttonStates) {
 
 
 
-void save_game() {
-    // Write save data
-    write_save(saveData);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //
 // init()
@@ -2404,7 +2450,8 @@ void init() {
     }
     else {
         // No save file or it failed to load, set up some defaults.
-        //saveData.highscore = 0;
+        saveData.levelReached = 0;
+
         saveData.inputType = InputType::CONTROLLER;
 
         // gameState is by default set to STATE_INPUT_SELECT
