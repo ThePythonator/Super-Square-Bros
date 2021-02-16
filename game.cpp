@@ -77,6 +77,8 @@ const float RANGED_PROJECTILE_Y_VEL_SCALE = 0.5f;
 
 const float PURSUIT_MAX_RANGE = 48.0f;
 
+const float LEVEL_INFO_MAX_RANGE = SPRITE_SIZE * 4;
+
 const float TEXT_FLASH_TIME = 0.8f;
 
 const float TEXT_JUMP_VELOCITY = 80.0f;
@@ -1130,6 +1132,7 @@ public:
                 }
             }
             else if (enemyType == EnemyType::FLYING) {
+            // Should it be EnemyType::BOUNCING instead?
                 // Consider adding acceleration?
                 if (lastDirection) {
                     xVel = currentSpeed;
@@ -1702,15 +1705,15 @@ void render_hud() {
 
     render_sprite(TILE_ID_HUD_LIVES + playerSelected, Point(2 + 6 * SPRITE_SIZE, 2));
     //screen.sprite(TILE_ID_HUD_LIVES + playerSelected, Point(2 + 6 * SPRITE_SIZE, 2));
+}
 
+void render_nearby_level_info() {
+    for (uint8_t i = 0; i < levelTriggers.size(); i++) {
+        if (std::abs(player.x - levelTriggers[i].x) < LEVEL_INFO_MAX_RANGE && std::abs(player.y - levelTriggers[i].y) < LEVEL_INFO_MAX_RANGE) {
+            //background_rect(1);
 
-    if (cameraIntro) {
-        // Press <key> to skip intro message
-
-        background_rect(1);
-
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-        screen.text(messageStrings[1][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+            //screen.text(std::to_string(saveData.scores[levelTriggers[i].levelNumber]), minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        }
     }
 }
 
@@ -1757,6 +1760,20 @@ void load_level(uint8_t levelNumber) {
         }
     }
 
+
+    // Background Layer
+    for (uint32_t i = 0; i < levelSize; i++) {
+        uint32_t index = i + levelSize * 2;
+
+        if (tmx->data[index] == TILE_ID_EMPTY) {
+            // Is a blank tile, don't do anything
+        }
+        else {
+            // Background tiles are non-solid. If semi-solidity (can jump up but not fall through) is required, use platforms (will be a separate layer).
+            background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
+        }
+    }
+
     // Entity Spawns Layer
     for (uint32_t i = 0; i < levelSize; i++) {
         uint32_t index = i + levelSize;
@@ -1793,20 +1810,6 @@ void load_level(uint8_t levelNumber) {
         }
         else {
             // Background tiles are non-solid
-            background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
-        }
-    }
-
-
-    // Background Layer
-    for (uint32_t i = 0; i < levelSize; i++) {
-        uint32_t index = i + levelSize * 2;
-
-        if (tmx->data[index] == TILE_ID_EMPTY) {
-            // Is a blank tile, don't do anything
-        }
-        else {
-            // Background tiles are non-solid. If semi-solidity (can jump up but not fall through) is required, use platforms (will be a separate layer).
             background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
         }
     }
@@ -1897,8 +1900,10 @@ void start_level_select() {
         // Place player next to finished level
         for (uint8_t i = 0; i < levelTriggers.size(); i++) {
             if (levelTriggers[i].levelNumber == currentLevelNumber) {
-                player.x = levelTriggers[i].x + SPRITE_HALF * 3;
-                player.y = levelTriggers[i].y;
+                playerStartX = levelTriggers[i].x + SPRITE_HALF * 3;
+                playerStartY = levelTriggers[i].y;
+                player.x = playerStartX;
+                player.y = playerStartY;
                 camera.x = player.x;
                 camera.y = player.y;
             }
@@ -2011,10 +2016,11 @@ void render_level_select() {
 
 
     background_rect(0);
-    //background_rect(1);
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select level", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    render_nearby_level_info();
 }
 
 void render_game() {
@@ -2026,7 +2032,23 @@ void render_game() {
 
     render_entities();
 
-    render_hud();
+
+    if (cameraIntro) {
+        // Level <num> message
+        background_rect(0);
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.text("Level " + std::to_string(currentLevelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+        // Press <key> to skip intro message
+        background_rect(1);
+        if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+            screen.text(messageStrings[1][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        }
+    }
+    else {
+        render_hud();
+    }
 }
 
 
