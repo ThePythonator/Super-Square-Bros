@@ -32,6 +32,8 @@ const uint8_t TILE_ID_ENEMY_4 = 92;
 const uint8_t TILE_ID_ENEMY_PROJECTILE = 114;
 const uint8_t TILE_ID_HUD_LIVES = 118;
 const uint8_t TILE_ID_HUD_COINS = 120;
+const uint8_t TILE_ID_HUD_ENEMIES_KILLED = 121;
+const uint8_t TILE_ID_HUD_TIME_TAKEN = 122;
 
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
@@ -217,16 +219,40 @@ struct ButtonStates {
 ButtonStates buttonStates = { 0 };
 
 struct SaveData {
-    //uint32_t highscore;
     uint8_t inputType;
     uint8_t levelReached;
 } saveData;
 
-void save_game() {
+struct LevelSaveData {
+    uint8_t score;
+    uint8_t enemiesKilled;
+    float time;
+};
+std::vector<LevelSaveData> allLevelSaveData;
+
+void save_game_data() {
     // Write save data
     write_save(saveData);
 }
 
+void save_level_data(uint8_t levelNumber) {
+    // Write level data
+    write_save(allLevelSaveData[levelNumber], levelNumber + 1);
+}
+
+LevelSaveData load_level_data(uint8_t levelNumber) {
+    LevelSaveData levelSaveData;
+    if (read_save(levelSaveData, levelNumber + 1)) {
+        // Success
+    }
+    else {
+        // Set some defaults
+        levelSaveData.score = 0;
+        levelSaveData.enemiesKilled = 0;
+        levelSaveData.time = 0.0f; // If time == 0, should game realise it's a N/A time?
+    }
+    return levelSaveData;
+}
 
 
 struct LevelData {
@@ -1297,6 +1323,19 @@ public:
                             //state = JUMP;
                         }
                     }
+
+                    // Allow player to jump on locked levelTriggers
+                    for (uint16_t i = 0; i < levelTriggers.size(); i++) {
+                        if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE > x && levelTriggers[i].x < x + SPRITE_SIZE) {
+                            // On top of block
+                            if (saveData.levelReached < levelTriggers[i].levelNumber) {
+                                // LevelTrigger is locked
+                                // Jump
+                                yVel = -PLAYER_MAX_JUMP;
+                                //state = JUMP;
+                            }
+                        }
+                    }
                 }
 
 
@@ -1601,6 +1640,11 @@ void display_stats() {
     std::string levelTimerString = std::to_string(player.levelTimer);
     levelTimerString = levelTimerString.substr(0, levelTimerString.find('.') + 3);
     screen.text(levelTimerString, minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
+
+
+    render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF * 5));
+    render_sprite(TILE_ID_HUD_ENEMIES_KILLED, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF));
+    render_sprite(TILE_ID_HUD_TIME_TAKEN, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT + SPRITE_HALF * 3));
 }
 
 
@@ -1751,9 +1795,25 @@ void render_nearby_level_info() {
             else {
                 // Level is unlocked and has been completed
 
-                // TODO: display stats
+                if (allLevelSaveData[levelTriggers[i].levelNumber].time == 0.0f) {
+                    // If time == 0.0f, something's probably wrong (like no save slot for that level, but still save slot for saveData worked)
 
-                screen.text("Cannot load highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+                    screen.text("Error loading highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+                }
+                else {
+                    screen.text(std::to_string(allLevelSaveData[levelTriggers[i].levelNumber].score), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 25, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+                    screen.text(std::to_string(allLevelSaveData[levelTriggers[i].levelNumber].enemiesKilled), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 16, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+
+                    // Trim time to 2dp
+                    std::string timeString = std::to_string(allLevelSaveData[levelTriggers[i].levelNumber].time);
+                    timeString = timeString.substr(0, timeString.find('.') + 3);
+                    screen.text(timeString, minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 4, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+
+
+                    render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_HALF * 24, SCREEN_HEIGHT - 9));
+                    render_sprite(TILE_ID_HUD_ENEMIES_KILLED, Point(SCREEN_WIDTH - SPRITE_HALF * 15, SCREEN_HEIGHT - 9));
+                    render_sprite(TILE_ID_HUD_TIME_TAKEN, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_HEIGHT - 9));
+                }
             }
 
             //screen.text(std::to_string(saveData.scores[levelTriggers[i].levelNumber]), minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
@@ -1976,9 +2036,20 @@ void start_game_won() {
         saveData.levelReached = currentLevelNumber + 1;
     }
 
+    if (allLevelSaveData[currentLevelNumber].score < player.score) {
+        allLevelSaveData[currentLevelNumber].score = player.score;
+    }
+    if (allLevelSaveData[currentLevelNumber].enemiesKilled < player.enemiesKilled) {
+        allLevelSaveData[currentLevelNumber].enemiesKilled = player.enemiesKilled;
+    }
+    if (allLevelSaveData[currentLevelNumber].time > player.levelTimer || allLevelSaveData[currentLevelNumber].time == 0.0f) {
+        allLevelSaveData[currentLevelNumber].time = player.levelTimer;
+    }
+
     // save level stats?
 
-    save_game();
+    save_game_data();
+    save_level_data(currentLevelNumber);
 
     open_transition();
 }
@@ -2029,6 +2100,11 @@ void render_character_select() {
     background_rect(0);
     background_rect(1);
 
+    /*screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+    screen.rectangle(Rect(0, SCREEN_HEIGHT - (SPRITE_SIZE + 12 + 12), SCREEN_WIDTH, 12));
+
+    screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b);
+    screen.text("Player " + std::to_string(playerSelected + 1) + " (Save " + std::to_string(playerSelected + 1)  + ")", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10 - 12), true, TextAlign::center_center);*/
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select Player", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
@@ -2212,7 +2288,7 @@ void update_input_select(float dt, ButtonStates buttonStates) {
             close_transition();
 
             // Save inputType
-            write_save(saveData);
+            save_game_data();
         }
     }
 }
@@ -2461,14 +2537,17 @@ void init() {
         gameState = GameState::STATE_CHARACTER_SELECT;
 
         // Save inputType
-        write_save(saveData);
+        save_game_data();
 
         // Load character select level
         load_level(LEVEL_COUNT + 1);
 #endif
     }
 
-
+    // Load level data
+    for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
+        allLevelSaveData.push_back(load_level_data(i));
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
