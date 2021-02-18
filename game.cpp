@@ -9,9 +9,12 @@ using namespace blit;
 
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
+#define RESET_SAVE_DATA
+
+
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
-#define VERSION_BUILD 4
+#define VERSION_BUILD 5
 
 
 
@@ -2585,6 +2588,7 @@ void init() {
     // Load save data
     // Attempt to load the first save slot.
     if (success) {
+#ifdef RESET_SAVE_DATA
         if (gameSaveData.version < get_version()) {
             printf("Warning: Saved game data is out of date, save version is %d, but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, get_version(), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
             printf("Resetting save data...\n");
@@ -2592,6 +2596,7 @@ void init() {
             success = false;
             reset_save();
         }
+#endif
     }
 
     if (success) {
