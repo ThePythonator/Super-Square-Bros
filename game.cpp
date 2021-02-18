@@ -7,6 +7,12 @@
 
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 6
+#define VERSION_BUILD 1
+
+
+
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
 
@@ -219,6 +225,7 @@ struct ButtonStates {
 ButtonStates buttonStates = { 0 };
 
 struct SaveData {
+    uint16_t version;
     uint8_t inputType;
     uint8_t levelReached;
 } saveData;
@@ -228,7 +235,16 @@ struct LevelSaveData {
     uint8_t enemiesKilled;
     float time;
 };
-std::vector<LevelSaveData> allLevelSaveData;
+LevelSaveData allLevelSaveData[LEVEL_COUNT];
+
+
+
+
+
+uint16_t get_version() {
+    return VERSION_MAJOR * 256 + VERSION_MINOR * 16 + VERSION_BUILD;
+}
+
 
 void save_game_data() {
     // Write save data
@@ -240,7 +256,7 @@ void save_level_data(uint8_t levelNumber) {
     write_save(allLevelSaveData[levelNumber], levelNumber + 1);
 }
 
-LevelSaveData load_level_data(uint8_t levelNumber) {
+LevelSaveData load_level_data(uint8_t levelNumber) {//uint8_t playerID, 
     LevelSaveData levelSaveData;
     if (read_save(levelSaveData, levelNumber + 1)) {
         // Success
@@ -2513,10 +2529,13 @@ void init() {
     }
 
 
-
     // Load save data
     // Attempt to load the first save slot.
     if (read_save(saveData)) {
+        if (saveData.version < get_version()) {
+            printf("Warning: Saved game data is out of date, save version is %d, but firmware version is %d (v%d.%d.%d)", saveData.version, get_version(), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
+        }
+
         // Loaded sucessfully!
         gameState = GameState::STATE_CHARACTER_SELECT;
 
@@ -2526,6 +2545,7 @@ void init() {
     }
     else {
         // No save file or it failed to load, set up some defaults.
+        saveData.version = get_version();
         saveData.levelReached = 0;
 
         saveData.inputType = InputType::CONTROLLER;
@@ -2546,8 +2566,11 @@ void init() {
 
     // Load level data
     for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
-        allLevelSaveData.push_back(load_level_data(i));
+        allLevelSaveData[i] = load_level_data(i);
     }
+    /*for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
+        allLevelSaveData[1].push_back(load_level_data(1, i));
+    }*/
 }
 
 ///////////////////////////////////////////////////////////////////////////
