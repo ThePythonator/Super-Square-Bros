@@ -1,6 +1,8 @@
 #include "game.hpp"
 #include "assets.hpp"
 
+using namespace blit;
+
 // Note: if want to go hires, with lores graphics:
 // screen.sprite(uint16_t sprite, const Point &position, const Point &origin, float scale, uint8_t transform)
 // origin can be Point(0,0) and transform can be SpriteTransform::NONE, scale is 2
@@ -9,7 +11,7 @@
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
-#define VERSION_BUILD 1
+#define VERSION_BUILD 4
 
 
 
@@ -98,7 +100,7 @@ const uint8_t NO_LEVEL_SELECTED = 255;
 const uint8_t MESSAGE_STRINGS_COUNT = 3;
 const uint8_t INPUT_TYPE_COUNT = 2;
 
-using namespace blit;
+const uint16_t BYTE_SIZE = 256;
 
 
 // NOTE: all positions (x,y) mark TOP LEFT corner of sprites
@@ -224,21 +226,29 @@ struct ButtonStates {
 };
 ButtonStates buttonStates = { 0 };
 
-struct SaveData {
+struct GameSaveData {
     uint16_t version;
     uint8_t inputType;
+} gameSaveData;
+
+struct PlayerSaveData {
     uint8_t levelReached;
-} saveData;
+};
+PlayerSaveData allPlayerSaveData[2];
 
 struct LevelSaveData {
     uint8_t score;
     uint8_t enemiesKilled;
     float time;
 };
-LevelSaveData allLevelSaveData[LEVEL_COUNT];
+LevelSaveData allLevelSaveData[2][LEVEL_COUNT];
 
 
-
+// 0 slot is gameSaveData
+// 1 slot is player 1 saveData
+// 2..257 slots are player 1 levelData
+// 258 slot is player 2 saveData
+// 259..514 slots are player 2 levelData
 
 
 uint16_t get_version() {
@@ -248,26 +258,67 @@ uint16_t get_version() {
 
 void save_game_data() {
     // Write save data
-    write_save(saveData);
+    write_save(gameSaveData);
 }
 
-void save_level_data(uint8_t levelNumber) {
+void save_level_data(uint8_t playerID, uint8_t levelNumber) {
     // Write level data
-    write_save(allLevelSaveData[levelNumber], levelNumber + 1);
+    write_save(allLevelSaveData[playerID], (playerID * (BYTE_SIZE + 1)) + 1 + levelNumber + 1);
 }
 
-LevelSaveData load_level_data(uint8_t levelNumber) {//uint8_t playerID, 
+void save_player_data(uint8_t playerID) {
+    // Write level data
+    write_save(allPlayerSaveData[playerID], (playerID * (BYTE_SIZE + 1)) + 1);
+}
+
+LevelSaveData load_level_data(uint8_t playerID, uint8_t levelNumber) {
     LevelSaveData levelSaveData;
-    if (read_save(levelSaveData, levelNumber + 1)) {
+    if (read_save(levelSaveData, (playerID * (BYTE_SIZE + 1)) + 1 + levelNumber + 1)) {
         // Success
     }
     else {
         // Set some defaults
         levelSaveData.score = 0;
         levelSaveData.enemiesKilled = 0;
-        levelSaveData.time = 0.0f; // If time == 0, should game realise it's a N/A time?
+        levelSaveData.time = 0.0f; // If time == 0.0f, game realises that it's a N/A time
     }
     return levelSaveData;
+}
+
+PlayerSaveData load_player_data(uint8_t playerID) {
+    PlayerSaveData playerSaveData;
+    if (read_save(playerSaveData, (playerID * (BYTE_SIZE + 1)) + 1)) {
+        // Success
+    }
+    else {
+        // Set some defaults
+        playerSaveData.levelReached = 0;
+    }
+    return playerSaveData;
+}
+
+void reset_save() {
+    gameSaveData.version = get_version();
+    gameSaveData.inputType = InputType::CONTROLLER;
+    save_game_data();
+
+    allPlayerSaveData[0].levelReached = 0;
+    save_player_data(0);
+
+    allPlayerSaveData[1].levelReached = 0;
+    save_player_data(1);
+
+    for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
+        allLevelSaveData[0][i].score = 0;
+        allLevelSaveData[0][i].enemiesKilled = 0;
+        allLevelSaveData[0][i].time = 0.0f;
+        save_level_data(0, i);
+
+        allLevelSaveData[1][i].score = 0;
+        allLevelSaveData[1][i].enemiesKilled = 0;
+        allLevelSaveData[1][i].time = 0.0f;
+        save_level_data(1, i);
+    }
 }
 
 
@@ -1344,7 +1395,7 @@ public:
                     for (uint16_t i = 0; i < levelTriggers.size(); i++) {
                         if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE > x && levelTriggers[i].x < x + SPRITE_SIZE) {
                             // On top of block
-                            if (saveData.levelReached < levelTriggers[i].levelNumber) {
+                            if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
                                 // LevelTrigger is locked
                                 // Jump
                                 yVel = -PLAYER_MAX_JUMP;
@@ -1495,7 +1546,7 @@ public:
             for (uint16_t i = 0; i < levelTriggers.size(); i++) {
                 if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
                     if (yVel > 0 && y < levelTriggers[i].y + SPRITE_HALF) {
-                        if (saveData.levelReached >= levelTriggers[i].levelNumber) {
+                        if (allPlayerSaveData[playerSelected].levelReached >= levelTriggers[i].levelNumber) {
                             // Level is unlocked
 
                             // Collided from top
@@ -1800,28 +1851,28 @@ void render_nearby_level_info() {
 
             screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
-            if (saveData.levelReached < levelTriggers[i].levelNumber) {
+            if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
                 // Level is locked
                 screen.text("Level locked", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
             }
-            else if (saveData.levelReached == levelTriggers[i].levelNumber) {
+            else if (allPlayerSaveData[playerSelected].levelReached == levelTriggers[i].levelNumber) {
                 // Level is unlocked and has not been completed
                 screen.text("No highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
             }
             else {
                 // Level is unlocked and has been completed
 
-                if (allLevelSaveData[levelTriggers[i].levelNumber].time == 0.0f) {
+                if (allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time == 0.0f) {
                     // If time == 0.0f, something's probably wrong (like no save slot for that level, but still save slot for saveData worked)
 
                     screen.text("Error loading highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
                 }
                 else {
-                    screen.text(std::to_string(allLevelSaveData[levelTriggers[i].levelNumber].score), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 25, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
-                    screen.text(std::to_string(allLevelSaveData[levelTriggers[i].levelNumber].enemiesKilled), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 16, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+                    screen.text(std::to_string(allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].score), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 25, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+                    screen.text(std::to_string(allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].enemiesKilled), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 16, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
 
                     // Trim time to 2dp
-                    std::string timeString = std::to_string(allLevelSaveData[levelTriggers[i].levelNumber].time);
+                    std::string timeString = std::to_string(allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time);
                     timeString = timeString.substr(0, timeString.find('.') + 3);
                     screen.text(timeString, minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 4, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
 
@@ -2048,24 +2099,25 @@ void start_game_lost() {
 void start_game_won() {
     gameState = GameState::STATE_WON;
 
-    if (currentLevelNumber == saveData.levelReached) {
-        saveData.levelReached = currentLevelNumber + 1;
+    if (currentLevelNumber == allPlayerSaveData[playerSelected].levelReached) {
+        allPlayerSaveData[playerSelected].levelReached = currentLevelNumber + 1;
     }
 
-    if (allLevelSaveData[currentLevelNumber].score < player.score) {
-        allLevelSaveData[currentLevelNumber].score = player.score;
+    if (allLevelSaveData[playerSelected][currentLevelNumber].score < player.score) {
+        allLevelSaveData[playerSelected][currentLevelNumber].score = player.score;
     }
-    if (allLevelSaveData[currentLevelNumber].enemiesKilled < player.enemiesKilled) {
-        allLevelSaveData[currentLevelNumber].enemiesKilled = player.enemiesKilled;
+    if (allLevelSaveData[playerSelected][currentLevelNumber].enemiesKilled < player.enemiesKilled) {
+        allLevelSaveData[playerSelected][currentLevelNumber].enemiesKilled = player.enemiesKilled;
     }
-    if (allLevelSaveData[currentLevelNumber].time > player.levelTimer || allLevelSaveData[currentLevelNumber].time == 0.0f) {
-        allLevelSaveData[currentLevelNumber].time = player.levelTimer;
+    if (allLevelSaveData[playerSelected][currentLevelNumber].time > player.levelTimer || allLevelSaveData[playerSelected][currentLevelNumber].time == 0.0f) {
+        allLevelSaveData[playerSelected][currentLevelNumber].time = player.levelTimer;
     }
 
     // save level stats?
 
     save_game_data();
-    save_level_data(currentLevelNumber);
+    save_player_data(playerSelected);
+    save_level_data(playerSelected, currentLevelNumber);
 
     open_transition();
 }
@@ -2082,17 +2134,17 @@ void render_input_select() {
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select Input Method", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
-    screen.pen = saveData.inputType == InputType::CONTROLLER ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = gameSaveData.inputType == InputType::CONTROLLER ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Controller/32Blit", minimal_font, Point(SCREEN_MID_WIDTH, 50), true, TextAlign::center_center);
 
-    screen.pen = saveData.inputType == InputType::KEYBOARD ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = gameSaveData.inputType == InputType::KEYBOARD ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Keyboard", minimal_font, Point(SCREEN_MID_WIDTH, 70), true, TextAlign::center_center);
 
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text(messageStrings[0][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -2116,17 +2168,17 @@ void render_character_select() {
     background_rect(0);
     background_rect(1);
 
-    /*screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+    screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
     screen.rectangle(Rect(0, SCREEN_HEIGHT - (SPRITE_SIZE + 12 + 12), SCREEN_WIDTH, 12));
 
     screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b);
-    screen.text("Player " + std::to_string(playerSelected + 1) + " (Save " + std::to_string(playerSelected + 1)  + ")", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10 - 12), true, TextAlign::center_center);*/
+    screen.text("Player " + std::to_string(playerSelected + 1) + " (Save " + std::to_string(playerSelected + 1)  + ")", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10 - 12), true, TextAlign::center_center);
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Select Player", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text(messageStrings[0][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -2145,7 +2197,7 @@ void render_menu() {
     screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[0][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text(messageStrings[0][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -2187,7 +2239,7 @@ void render_game() {
         background_rect(1);
         if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
             screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-            screen.text(messageStrings[1][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+            screen.text(messageStrings[1][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
         }
     }
     else {
@@ -2210,7 +2262,7 @@ void render_game_lost() {
     display_stats();
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[2][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text(messageStrings[2][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -2228,7 +2280,7 @@ void render_game_won() {
     display_stats();
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[2][saveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text(messageStrings[2][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
@@ -2288,14 +2340,14 @@ void update_input_select(float dt, ButtonStates buttonStates) {
         start_character_select();
     }
     else if (transition[0].is_open()) {
-        if (saveData.inputType == InputType::CONTROLLER) {
+        if (gameSaveData.inputType == InputType::CONTROLLER) {
             if (buttonStates.DOWN) {
-                saveData.inputType = 1;
+                gameSaveData.inputType = InputType::KEYBOARD;
             }
         }
-        else if (saveData.inputType == InputType::KEYBOARD) {
+        else if (gameSaveData.inputType == InputType::KEYBOARD) {
             if (buttonStates.UP) {
-                saveData.inputType = 0;
+                gameSaveData.inputType = InputType::CONTROLLER;
             }
         }
 
@@ -2528,13 +2580,21 @@ void init() {
         }
     }
 
+    bool success = read_save(gameSaveData);
 
     // Load save data
     // Attempt to load the first save slot.
-    if (read_save(saveData)) {
-        if (saveData.version < get_version()) {
-            printf("Warning: Saved game data is out of date, save version is %d, but firmware version is %d (v%d.%d.%d)", saveData.version, get_version(), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
+    if (success) {
+        if (gameSaveData.version < get_version()) {
+            printf("Warning: Saved game data is out of date, save version is %d, but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, get_version(), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
+            printf("Resetting save data...\n");
+
+            success = false;
+            reset_save();
         }
+    }
+
+    if (success) {
 
         // Loaded sucessfully!
         gameState = GameState::STATE_CHARACTER_SELECT;
@@ -2545,10 +2605,9 @@ void init() {
     }
     else {
         // No save file or it failed to load, set up some defaults.
-        saveData.version = get_version();
-        saveData.levelReached = 0;
+        gameSaveData.version = get_version();
 
-        saveData.inputType = InputType::CONTROLLER;
+        gameSaveData.inputType = InputType::CONTROLLER;
 
         // gameState is by default set to STATE_INPUT_SELECT
 
@@ -2564,13 +2623,17 @@ void init() {
 #endif
     }
 
+
+    allPlayerSaveData[0] = load_player_data(0);
+    allPlayerSaveData[1] = load_player_data(1);
+
     // Load level data
     for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
-        allLevelSaveData[i] = load_level_data(i);
+        allLevelSaveData[0][i] = load_level_data(0, i);
     }
-    /*for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
-        allLevelSaveData[1].push_back(load_level_data(1, i));
-    }*/
+    for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
+        allLevelSaveData[1][i] = load_level_data(1, i);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
