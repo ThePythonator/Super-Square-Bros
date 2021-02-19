@@ -28,23 +28,24 @@ const float TRANSITION_FRAME_LENGTH = 0.1f;
 const float TRANSITION_CLOSE_LENGTH = 0.5f;
 
 const uint8_t TILE_ID_EMPTY = 255;
-const uint8_t TILE_ID_COIN = 96;
+const uint8_t TILE_ID_COIN = 112;
 const uint8_t TILE_ID_PLAYER_1 = 64;
 const uint8_t TILE_ID_PLAYER_2 = 68;
-const uint8_t TILE_ID_HEART = 112;
+const uint8_t TILE_ID_HEART = 128;
 const uint8_t TILE_ID_CAMERA = 253;
 const uint8_t TILE_ID_TRANSITION = 224;
-const uint8_t TILE_ID_FINISH = 128;
-const uint8_t TILE_ID_LEVEL_TRIGGER = 116;
+const uint8_t TILE_ID_FINISH = 144;
+const uint8_t TILE_ID_LEVEL_TRIGGER = 132;
 const uint8_t TILE_ID_ENEMY_1 = 80;
 const uint8_t TILE_ID_ENEMY_2 = 84;
 const uint8_t TILE_ID_ENEMY_3 = 88;
 const uint8_t TILE_ID_ENEMY_4 = 92;
-const uint8_t TILE_ID_ENEMY_PROJECTILE = 114;
-const uint8_t TILE_ID_HUD_LIVES = 118;
-const uint8_t TILE_ID_HUD_COINS = 120;
-const uint8_t TILE_ID_HUD_ENEMIES_KILLED = 121;
-const uint8_t TILE_ID_HUD_TIME_TAKEN = 122;
+const uint8_t TILE_ID_ENEMY_5 = 96;
+const uint8_t TILE_ID_ENEMY_PROJECTILE = 130;
+const uint8_t TILE_ID_HUD_LIVES = 134;
+const uint8_t TILE_ID_HUD_COINS = 136;
+const uint8_t TILE_ID_HUD_ENEMIES_KILLED = 137;
+const uint8_t TILE_ID_HUD_TIME_TAKEN = 138;
 
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
@@ -121,7 +122,7 @@ const uint8_t SPRITE_QUARTER = SPRITE_SIZE / 4;
 
 const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
 
-const uint8_t enemyHealths[] = { 1, 1, 1, 1 }; // maybe obsolete, since player currently just deletes enemy if jumping on top
+const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2};
 
 const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
@@ -1121,7 +1122,7 @@ public:
                 }
             }
 
-            if (enemyType == EnemyType::BASIC) {
+            if (enemyType == EnemyType::BASIC || enemyType == EnemyType::ARMOURED) {
                 // Consider adding acceleration?
                 if (lastDirection) {
                     xVel = currentSpeed;
@@ -1151,6 +1152,12 @@ public:
 
                 if (reverseDirection) {
                     lastDirection = 1 - lastDirection;
+                }
+
+                if (health == 1) {
+                    // EnemyType::ARMOURED has helmet on, and 2 hp
+                    enemyType = EnemyType::BASIC;
+                    anchorFrame = TILE_ID_ENEMY_1 + (int)enemyType * 4;
                 }
             }
             else if (enemyType == EnemyType::RANGED) {
@@ -1266,7 +1273,10 @@ public:
                 if (reverseDirection) {
                     lastDirection = 1 - lastDirection;
                 }
-            }
+            }/*
+            else if (enemyType == EnemyType::ARMOURED) {
+
+            }*/
 
 
             if (y > levelDeathBoundary) {
@@ -1323,7 +1333,8 @@ protected:
         BASIC, // type 1
         RANGED, // type 2
         PURSUIT, // type 3
-        FLYING // type 4
+        FLYING, // type 4
+        ARMOURED // type 5
     } enemyType;
 
     float reloadTimer;
@@ -1981,6 +1992,9 @@ void load_level(uint8_t levelNumber) {
         }
         else if (tmx->data[index] == TILE_ID_ENEMY_4) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[3], 3));
+        }
+        else if (tmx->data[index] == TILE_ID_ENEMY_5) {
+            enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[4], 4));
         }
         else {
             // Background tiles are non-solid
