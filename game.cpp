@@ -176,6 +176,8 @@ uint32_t lastTime = 0;
 
 Surface* background_image = Surface::load(asset_background);
 
+bool menuBack = false; // tells menu to go backwards instead of forwards.
+
 bool cameraIntro = false;
 bool cameraRespawn = false;
 uint16_t cameraStartX, cameraStartY;
@@ -2064,11 +2066,24 @@ void start_level(uint8_t levelNumber) {
     open_transition();
 }
 
+void start_input_select() {
+    gameState = GameState::STATE_INPUT_SELECT;
+
+    open_transition();
+}
+
 void start_character_select() {
     gameState = GameState::STATE_CHARACTER_SELECT;
 
     // Load character select level
     load_level(LEVEL_COUNT + 1);
+
+    if (playerSelected) {
+        player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
+    }
+    else {
+        player = Player(playerStartX, playerStartY, 0);
+    }
 
     open_transition();
 }
@@ -2402,10 +2417,20 @@ void update_character_select(float dt, ButtonStates buttonStates) {
     }
 
     if (transition[0].is_ready_to_open()) {
-        start_menu();
+        if (menuBack) {
+            menuBack = false;
+            start_input_select();
+        }
+        else {
+            start_menu();
+        }
     }
     else if (transition[0].is_open()) {
         if (buttonStates.A == 2) {
+            close_transition();
+        }
+        else if (buttonStates.B == 2) {
+            menuBack = true;
             close_transition();
         }
     }
@@ -2416,10 +2441,20 @@ void update_menu(float dt, ButtonStates buttonStates) {
 
 
     if (transition[0].is_ready_to_open()) {
-        start_level_select();
+        if (menuBack) {
+            menuBack = false;
+            start_character_select();
+        }
+        else {
+            start_level_select();
+        }
     }
     else if (transition[0].is_open()) {
         if (buttonStates.A == 2) {
+            close_transition();
+        }
+        else if (buttonStates.B == 2) {
+            menuBack = true;
             close_transition();
         }
     }
@@ -2447,7 +2482,13 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 
 
     if (transition[0].is_ready_to_open()) {
-        start_level(currentLevelNumber);
+        if (menuBack) {
+            menuBack = false;
+            start_menu();
+        }
+        else {
+            start_level(currentLevelNumber);
+        }
     }
     else if (transition[0].is_open()) {
         if (cameraRespawn) {
@@ -2469,6 +2510,10 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 
 
         if (currentLevelNumber != NO_LEVEL_SELECTED) {
+            close_transition();
+        }
+        else if (buttonStates.B == 2) {
+            menuBack = true;
             close_transition();
         }
     }
