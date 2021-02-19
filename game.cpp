@@ -9,7 +9,7 @@ using namespace blit;
 
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
-#define RESET_SAVE_DATA
+//#define RESET_SAVE_DATA
 
 
 #define VERSION_MAJOR 0
@@ -266,7 +266,7 @@ void save_game_data() {
 
 void save_level_data(uint8_t playerID, uint8_t levelNumber) {
     // Write level data
-    write_save(allLevelSaveData[playerID], (playerID * (BYTE_SIZE + 1)) + 1 + levelNumber + 1);
+    write_save(allLevelSaveData[playerID][levelNumber], (playerID * (BYTE_SIZE + 1)) + 1 + levelNumber + 1);
 }
 
 void save_player_data(uint8_t playerID) {
@@ -2029,13 +2029,18 @@ void load_level(uint8_t levelNumber) {
     for (uint8_t i = 0; i < enemies.size(); i++) {
         enemies[i].set_player_position(&player.x, &player.y);
     }
+
+
+    // Check there aren't any levelTriggers which have levelNumber >= LEVEL_COUNT
+    levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger levelTrigger) { return levelTrigger.levelNumber >= LEVEL_COUNT; }), levelTriggers.end());
+
 }
 
 void start_level(uint8_t levelNumber) {
     gameState = GameState::STATE_IN_GAME;
 
     // Load level
-    load_level(currentLevelNumber);
+    load_level(levelNumber);
 
 
     // Make sure player attribute setting is done after load_level call, since player is reassigned in that method
@@ -2118,7 +2123,7 @@ void start_game_won() {
 
     // save level stats?
 
-    save_game_data();
+    //save_game_data();
     save_player_data(playerSelected);
     save_level_data(playerSelected, currentLevelNumber);
 
