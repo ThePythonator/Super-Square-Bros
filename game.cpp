@@ -14,7 +14,7 @@ using namespace blit;
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
-#define VERSION_BUILD 5
+#define VERSION_BUILD 10
 
 
 
@@ -101,7 +101,7 @@ const float TEXT_GRAVITY = 280.0f;
 const uint8_t NO_LEVEL_SELECTED = 255;
 
 
-const uint8_t MESSAGE_STRINGS_COUNT = 3;
+const uint8_t MESSAGE_STRINGS_COUNT = 4;
 const uint8_t INPUT_TYPE_COUNT = 2;
 
 const uint16_t BYTE_SIZE = 256;
@@ -165,6 +165,10 @@ const std::string messageStrings[MESSAGE_STRINGS_COUNT][INPUT_TYPE_COUNT] = {
     {
         "Press A",
         "Press U"
+    },
+    {
+        "Press Y to Resume",
+        "Press P to Resume"
     }
 };
 
@@ -177,6 +181,7 @@ uint32_t lastTime = 0;
 Surface* background_image = Surface::load(asset_background);
 
 bool menuBack = false; // tells menu to go backwards instead of forwards.
+bool gamePaused = false; // used for determining if game is paused or not.
 
 bool cameraIntro = false;
 bool cameraRespawn = false;
@@ -2063,6 +2068,8 @@ void start_level(uint8_t levelNumber) {
     player.locked = true;
     cameraIntro = true;
 
+    gamePaused = false;
+
     open_transition();
 }
 
@@ -2108,6 +2115,19 @@ void start_level_select() {
         // Place player next to finished level
         for (uint8_t i = 0; i < levelTriggers.size(); i++) {
             if (levelTriggers[i].levelNumber == currentLevelNumber) {
+                playerStartX = levelTriggers[i].x + SPRITE_HALF * 3;
+                playerStartY = levelTriggers[i].y;
+                player.x = playerStartX;
+                player.y = playerStartY;
+                camera.x = player.x;
+                camera.y = player.y;
+            }
+        }
+    }
+    else {
+        // Must have just come from title/menu screen
+        for (uint8_t i = 0; i < levelTriggers.size(); i++) {
+            if (levelTriggers[i].levelNumber == allPlayerSaveData[playerSelected].levelReached) {
                 playerStartX = levelTriggers[i].x + SPRITE_HALF * 3;
                 playerStartY = levelTriggers[i].y;
                 player.x = playerStartX;
@@ -2279,6 +2299,17 @@ void render_game() {
             screen.text(messageStrings[1][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
         }
     }
+    else if (gamePaused) {
+        screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+        screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.text("Game Paused", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+        if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+            screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        }
+    }
     else {
         render_hud();
     }
@@ -2429,7 +2460,7 @@ void update_character_select(float dt, ButtonStates buttonStates) {
         if (buttonStates.A == 2) {
             close_transition();
         }
-        else if (buttonStates.B == 2) {
+        else if (buttonStates.Y == 2) {
             menuBack = true;
             close_transition();
         }
@@ -2453,7 +2484,7 @@ void update_menu(float dt, ButtonStates buttonStates) {
         if (buttonStates.A == 2) {
             close_transition();
         }
-        else if (buttonStates.B == 2) {
+        else if (buttonStates.Y == 2) {
             menuBack = true;
             close_transition();
         }
@@ -2512,7 +2543,7 @@ void update_level_select(float dt, ButtonStates buttonStates) {
         if (currentLevelNumber != NO_LEVEL_SELECTED) {
             close_transition();
         }
-        else if (buttonStates.B == 2) {
+        else if (buttonStates.Y == 2) {
             menuBack = true;
             close_transition();
         }
@@ -2520,23 +2551,26 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 }
 
 void update_game(float dt, ButtonStates buttonStates) {
-    player.update(dt, buttonStates);
+    if (!gamePaused) {
+        // Game isn't paused, update it.
+        player.update(dt, buttonStates);
 
-    update_enemies(dt, buttonStates);
+        update_enemies(dt, buttonStates);
 
-    update_coins(dt, buttonStates);
+        update_coins(dt, buttonStates);
 
-    update_projectiles(dt, buttonStates);
+        update_projectiles(dt, buttonStates);
 
-    finish.update(dt, buttonStates);
+        finish.update(dt, buttonStates);
 
-    if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
-        // lock player to finish
-        player.x = finish.x;
-        player.y = finish.y - 1;
+        if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
+            // lock player to finish
+            player.x = finish.x;
+            player.y = finish.y - 1;
+        }
+
+
     }
-
-
     //if (player.x + SPRITE_SIZE > finish.x - SPRITE_SIZE && player.x < finish.x + SPRITE_SIZE * 2 && player.y + SPRITE_SIZE > finish.y - SPRITE_SIZE && player.y < finish.y + SPRITE_SIZE * 2) {
     //    // 'pull' player to finish
 
@@ -2557,47 +2591,56 @@ void update_game(float dt, ButtonStates buttonStates) {
         //start_level_select();
     }
     else if (transition[0].is_open()) {
-        if (cameraIntro) {
-            //camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
-            camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
+        if (!gamePaused) {
+            if (cameraIntro) {
+                //camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
+                camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
 
-            //camera.ease_to(dt/5, player.x, player.y);
+                //camera.ease_to(dt/5, player.x, player.y);
 
-            if (player.x == camera.x && player.y == camera.y) {
-                cameraIntro = false;
-                player.locked = false;
-                // Make player immune when spawning?
-                //player.set_immune();
+                if (player.x == camera.x && player.y == camera.y) {
+                    cameraIntro = false;
+                    player.locked = false;
+                    // Make player immune when spawning?
+                    //player.set_immune();
+                }
+
+                if (buttonStates.A == 2) {
+                    cameraIntro = false;
+                    cameraRespawn = true; // goes to player faster
+                }
             }
+            else if (cameraRespawn) {
+                camera.ease_out_to(dt, player.x, player.y);
 
-            if (buttonStates.A == 2) {
-                cameraIntro = false;
-                cameraRespawn = true; // goes to player faster
+                if (std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN && std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN) {
+                    // for respawns
+                    cameraRespawn = false;
+                    player.locked = false;
+                }
+            }
+            else {
+                camera.ease_out_to(dt, player.x, player.y);
+
+
+                // Handle level end
+                if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
+                    close_transition();
+                }
+
+                // Handle player life
+                if (player.lives == 0 && player.particles.size() == 0) {
+                    // Take player back to start? or just level select
+                    close_transition();
+                }
             }
         }
-        else if (cameraRespawn) {
-            camera.ease_out_to(dt, player.x, player.y);
-
-            if (std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN && std::abs(player.x - camera.x) < CAMERA_RESPAWN_LOCK_MIN) {
-                // for respawns
-                cameraRespawn = false;
-                player.locked = false;
-            }
-        }
-        else {
-            camera.ease_out_to(dt, player.x, player.y);
 
 
-            // Handle level end
-            if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
-                close_transition();
-            }
 
-            // Handle player life
-            if (player.lives == 0 && player.particles.size() == 0) {
-                // Take player back to start? or just level select
-                close_transition();
-            }
+        // Allow player to pause game
+        if (buttonStates.Y == 2) {
+            gamePaused = !gamePaused;
         }
     }
 }
