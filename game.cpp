@@ -9,12 +9,12 @@ using namespace blit;
 
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
-//#define RESET_SAVE_DATA
+#define RESET_SAVE_DATA
 
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
-#define VERSION_BUILD 10
+#define VERSION_BUILD 11
 
 
 
@@ -2127,7 +2127,7 @@ void start_level_select() {
     else {
         // Must have just come from title/menu screen
         for (uint8_t i = 0; i < levelTriggers.size(); i++) {
-            if (levelTriggers[i].levelNumber == allPlayerSaveData[playerSelected].levelReached) {
+            if (levelTriggers[i].levelNumber == allPlayerSaveData[playerSelected].levelReached - 1) {
                 playerStartX = levelTriggers[i].x + SPRITE_HALF * 3;
                 playerStartY = levelTriggers[i].y;
                 player.x = playerStartX;
