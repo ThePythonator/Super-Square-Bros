@@ -14,7 +14,7 @@ using namespace blit;
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
-#define VERSION_BUILD 11
+#define VERSION_BUILD 13
 
 
 
@@ -58,7 +58,8 @@ const uint8_t SPRITE_SIZE = 8;
 
 
 const float ENTITY_DEATH_PARTICLE_COUNT = 100;
-const float ENTITY_DEATH_PARTICLE_GRAVITY = 40.0f;
+const float ENTITY_DEATH_PARTICLE_GRAVITY_X = 0.0f;
+const float ENTITY_DEATH_PARTICLE_GRAVITY_Y = 50.0f;
 const float ENTITY_DEATH_PARTICLE_AGE = 0.8f;
 const float ENTITY_DEATH_PARTICLE_SPEED = 60.0f;
 
@@ -79,10 +80,12 @@ const float PLAYER_ATTACK_JUMP_MIN = 70.0f;
 const float PLAYER_MAX_SPEED = 85.0f;
 const float PLAYER_IMMUNE_TIME = 2.5f;
 const float PLAYER_ACCELERATION = 400.0f;
+const float PLAYER_JUMP_COOLDOWN = 0.4f;
 
 const float ENTITY_IDLE_SPEED = 40.0f;
 const float ENTITY_PURSUIT_SPEED = 55.0f;
 const float ENTITY_JUMP_SPEED = 160.0f;
+const float ENTITY_JUMP_COOLDOWN = 0.5f;
 
 const float RANGED_MAX_RANGE = 64.0f;
 const float RANGED_RELOAD_TIME = 2.0f;
@@ -188,9 +191,11 @@ bool cameraRespawn = false;
 uint16_t cameraStartX, cameraStartY;
 uint16_t playerStartX, playerStartY;
 
+//float windSpeed = 0;
 
 float textFlashTimer = 0.0f;
 uint8_t playerSelected = 0;
+uint8_t pauseMenuItem = 0;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 
@@ -395,6 +400,7 @@ const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242),
 
 const Colour inputSelectColour = Colour(255, 199, 89);
 const Colour hudBackground = Colour(7, 0, 14, 64);
+const Colour gameBackground = Colour(62, 106, 178);
 const Colour defaultWhite = Colour(255, 255, 242);
 
 class Camera {
@@ -440,7 +446,7 @@ class Particle {
 public:
     float x, y;
     float xVel, yVel;
-    float gravity;
+    float gravityX, gravityY;
     Colour colour;
     float age;
 
@@ -448,19 +454,21 @@ public:
         x = y = 0;
         xVel = yVel = 0;
 
-        gravity = 0;
+        gravityX = 0;
+        gravityY = 0;
         colour = Colour(0, 0, 0);
 
         age = 0;
     }
 
-    Particle(float xPosition, float yPosition, float xVelocity, float yVelocity, float particleGravity, Colour particleColour) {
+    Particle(float xPosition, float yPosition, float xVelocity, float yVelocity, float particleGravityX, float particleGravityY, Colour particleColour) {
         x = xPosition;
         y = yPosition;
         xVel = xVelocity;
         yVel = yVelocity;
 
-        gravity = particleGravity;
+        gravityX = particleGravityX;
+        gravityY = particleGravityY;
         colour = particleColour;
 
         age = 0;
@@ -475,7 +483,8 @@ public:
         age += dt;
         colour.a = std::max(0.0f, colour.a - age * 10);
 
-        y += gravity * dt;
+        xVel += gravityX * dt;
+        yVel += gravityY * dt;
 
         x += xVel * dt;
         y += yVel * dt;
@@ -484,7 +493,7 @@ public:
 
 
 
-std::vector<Particle> generate_particles(float x, float y, float gravity, std::vector<Colour> colours, float speed, uint8_t count) {
+std::vector<Particle> generate_particles(float x, float y, float gravityX, float gravityY, std::vector<Colour> colours, float speed, uint8_t count) {
     std::vector<Particle> particles;
 
     for (uint8_t i = 0; i < count; i++) {
@@ -493,7 +502,7 @@ std::vector<Particle> generate_particles(float x, float y, float gravity, std::v
         float xVel = ((rand() % 100) / 100.0f) * std::cos(angle) * speed;
         float yVel = ((rand() % 100) / 100.0f) * std::sin(angle) * speed;
 
-        particles.push_back(Particle(x, y, xVel, yVel, gravity, colours[rand() % colours.size()]));
+        particles.push_back(Particle(x, y, xVel, yVel, gravityX, gravityY, colours[rand() % colours.size()]));
     }
 
     return particles;
@@ -897,7 +906,7 @@ public:
             else {
                 // Generate particles
                 // TODO: change constants?
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, levelTriggerParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, levelTriggerParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 generateParticles = true;
             }
         }
@@ -938,6 +947,7 @@ public:
     bool locked;
     std::vector<Particle> particles;
     uint8_t lastDirection;
+    float jumpCooldown;
 
     Entity() {
         x = y = 0;
@@ -953,6 +963,7 @@ public:
         health = 1;
 
         immuneTimer = 0;
+        jumpCooldown = 0;
     }
 
     Entity(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) {
@@ -970,6 +981,7 @@ public:
         health = startHealth;
 
         immuneTimer = 0;
+        jumpCooldown = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -1120,12 +1132,18 @@ public:
     }
 
     void update(float dt, ButtonStates buttonStates) {
-
         if (health > 0) {
             if (reloadTimer) {
                 reloadTimer -= dt;
                 if (reloadTimer < 0) {
                     reloadTimer = 0;
+                }
+            }
+
+            if (jumpCooldown) {
+                jumpCooldown -= dt;
+                if (jumpCooldown < 0) {
+                    jumpCooldown = 0;
                 }
             }
 
@@ -1204,21 +1222,25 @@ public:
                         if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
                             jump = false;
+                            break;
                         }
-                        //if ((lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                        //    // Walked into side of block
-                        //    jump = true;
-                        //    // Break because we definitely need to jump
-                        //    break;
-                        //}
+                    }
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if ((lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                            // Walked into side of block
+                            jump = true;
+                            // Break because we definitely need to jump
+                            break;
+                        }
                     }
 
-                    if (jump) {
+                    if (jump && jumpCooldown == 0) {
                         for (uint16_t i = 0; i < foreground.size(); i++) {
-                            if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
+                            if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
                                 // On top of block
                                 // Jump
                                 yVel = -ENTITY_JUMP_SPEED;
+                                jumpCooldown = ENTITY_JUMP_COOLDOWN;
                                 //state = JUMP;
                             }
                         }
@@ -1272,8 +1294,9 @@ public:
                         // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
                         break;
                     }
-                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
+                    if (jumpCooldown == 0 && y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
                         yVel = -ENTITY_JUMP_SPEED;
+                        jumpCooldown = ENTITY_JUMP_COOLDOWN;
                     }
                 }
 
@@ -1320,7 +1343,7 @@ public:
             }
             else {
                 // Generate particles
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, enemyDeathParticleColours[(uint8_t)enemyType], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, enemyDeathParticleColours[(uint8_t)enemyType], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
             }
         }
@@ -1397,29 +1420,38 @@ public:
             }
         }
 
+        if (jumpCooldown) {
+            jumpCooldown -= dt;
+            if (jumpCooldown < 0) {
+                jumpCooldown = 0;
+            }
+        }
+
         if (health > 0) {
 
             if (!locked) {
                 levelTimer += dt;
 
-                if (buttonStates.A) {
+                if (buttonStates.A && jumpCooldown == 0) {
                     for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > x && foreground[i].x < x + SPRITE_SIZE) {
+                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
                             // On top of block
                             // Jump
                             yVel = -PLAYER_MAX_JUMP;
+                            jumpCooldown = PLAYER_JUMP_COOLDOWN;
                             //state = JUMP;
                         }
                     }
 
                     // Allow player to jump on locked levelTriggers
                     for (uint16_t i = 0; i < levelTriggers.size(); i++) {
-                        if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE > x && levelTriggers[i].x < x + SPRITE_SIZE) {
+                        if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE - 1 > x && levelTriggers[i].x + 1< x + SPRITE_SIZE) {
                             // On top of block
                             if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
                                 // LevelTrigger is locked
                                 // Jump
                                 yVel = -PLAYER_MAX_JUMP;
+                                jumpCooldown = PLAYER_JUMP_COOLDOWN;
                                 //state = JUMP;
                             }
                         }
@@ -1503,7 +1535,7 @@ public:
                     if (lives) {
                         // Reset player position and health, maybe remove all this?
                         health = 3;
-                        yVel = 0;// -PLAYER_MAX_JUMP;
+                        xVel = yVel = 0;
                         lastDirection = 1;
                         x = playerStartX;
                         y = playerStartY;
@@ -1530,7 +1562,7 @@ public:
             }
             else if (lives) {
                 // Generate particles
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY, playerDeathParticleColours[id], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, playerDeathParticleColours[id], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
 
                 // Reduce player lives by one
@@ -1938,6 +1970,7 @@ void load_level(uint8_t levelNumber) {
     coins.clear();
     enemies.clear();
     levelTriggers.clear();
+    projectiles.clear();
 
     // Foreground Layer
     for (uint32_t i = 0; i < levelSize; i++) {
@@ -2069,6 +2102,7 @@ void start_level(uint8_t levelNumber) {
     cameraIntro = true;
 
     gamePaused = false;
+    pauseMenuItem = 0;
 
     open_transition();
 }
@@ -2300,15 +2334,41 @@ void render_game() {
         }
     }
     else if (gamePaused) {
-        screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+        screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b, hudBackground.a); // use hudBackground.a to make background semi transparent
         screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+        screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+        screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)); // repeat to make darker
+
+        //screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+        //screen.rectangle(Rect(0, SPRITE_SIZE + 12, SCREEN_WIDTH, SCREEN_HEIGHT - (SPRITE_SIZE + 12))); // do it twice to make it darker
+
+        background_rect(0);
+        background_rect(1);
+
+
+        //screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+        //screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
 
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        display_stats();
         screen.text("Game Paused", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
-        if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-            screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        if (pauseMenuItem == 0) {
+            screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
         }
+        screen.text("Resume", minimal_font, Point(SCREEN_MID_WIDTH - SPRITE_SIZE * 4, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+
+        if (pauseMenuItem == 1) {
+            screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+        }
+        else {
+            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        }
+        screen.text("Exit", minimal_font, Point(SCREEN_MID_WIDTH + SPRITE_SIZE * 4, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+
+        /*if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+            screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        }*/
     }
     else {
         render_hud();
@@ -2551,7 +2611,19 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 }
 
 void update_game(float dt, ButtonStates buttonStates) {
-    if (!gamePaused) {
+    if (gamePaused) {
+        if (pauseMenuItem == 0) {
+            if (buttonStates.RIGHT == 2) {
+                pauseMenuItem = 1;
+            }
+        }
+        else if (pauseMenuItem == 1) {
+            if (buttonStates.LEFT == 2) {
+                pauseMenuItem = 0;
+            }
+        }
+    }
+    else {
         // Game isn't paused, update it.
         player.update(dt, buttonStates);
 
@@ -2579,7 +2651,11 @@ void update_game(float dt, ButtonStates buttonStates) {
     //}
 
     if (transition[0].is_ready_to_open()) {
-        if (player.lives) {
+        if (pauseMenuItem == 1) {
+            // Player exited level
+            start_level_select();
+        }
+        else if (player.lives) {
             // Player completed level
             start_game_won();
         }
@@ -2591,7 +2667,20 @@ void update_game(float dt, ButtonStates buttonStates) {
         //start_level_select();
     }
     else if (transition[0].is_open()) {
-        if (!gamePaused) {
+        if (gamePaused) {
+            if (buttonStates.A == 2) {
+                if (pauseMenuItem == 0) {
+                    // Unpause game
+                    gamePaused = false;
+                }
+                else if (pauseMenuItem == 1) {
+                    // Exit level
+                    close_transition();
+                }
+            }
+        }
+        else {
+
             if (cameraIntro) {
                 //camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
                 camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
@@ -2630,17 +2719,16 @@ void update_game(float dt, ButtonStates buttonStates) {
 
                 // Handle player life
                 if (player.lives == 0 && player.particles.size() == 0) {
-                    // Take player back to start? or just level select
                     close_transition();
                 }
             }
         }
 
 
-
-        // Allow player to pause game
+        // Allow player to toggle pause game (if game is paused, selecting 'resume' also does same thing
         if (buttonStates.Y == 2) {
             gamePaused = !gamePaused;
+            pauseMenuItem = 0;
         }
     }
 }
