@@ -9,7 +9,7 @@ using namespace blit;
 
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
-#define RESET_SAVE_DATA
+//#define RESET_SAVE_DATA
 
 
 #define VERSION_MAJOR 0
