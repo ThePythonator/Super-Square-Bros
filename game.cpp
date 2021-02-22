@@ -12,16 +12,18 @@ using namespace blit;
 //#define RESET_SAVE_DATA
 
 
+// TODO: use new metadata API to get version, split at major minor and build and assign to vars (consts?)
+
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
-#define VERSION_BUILD 13
+#define VERSION_BUILD 14
 
 
 
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
 
-const uint8_t LEVEL_COUNT = 3;
+const uint8_t LEVEL_COUNT = 4;
 
 const float FRAME_LENGTH = 0.15f;
 const float TRANSITION_FRAME_LENGTH = 0.1f;
@@ -149,6 +151,7 @@ const uint8_t* asset_levels[] = {
     asset_level0,
     asset_level1,
     asset_level2,
+    asset_level3,
     asset_level_title,
     asset_level_char_select,
     asset_level_level_select
