@@ -27,25 +27,25 @@ const float FRAME_LENGTH = 0.15f;
 const float TRANSITION_FRAME_LENGTH = 0.1f;
 const float TRANSITION_CLOSE_LENGTH = 0.5f;
 
-const uint8_t TILE_ID_EMPTY = 255;
-const uint8_t TILE_ID_COIN = 112;
-const uint8_t TILE_ID_PLAYER_1 = 64;
-const uint8_t TILE_ID_PLAYER_2 = 68;
-const uint8_t TILE_ID_HEART = 128;
-const uint8_t TILE_ID_CAMERA = 253;
-const uint8_t TILE_ID_TRANSITION = 224;
-const uint8_t TILE_ID_FINISH = 144;
-const uint8_t TILE_ID_LEVEL_TRIGGER = 132;
-const uint8_t TILE_ID_ENEMY_1 = 80;
-const uint8_t TILE_ID_ENEMY_2 = 84;
-const uint8_t TILE_ID_ENEMY_3 = 88;
-const uint8_t TILE_ID_ENEMY_4 = 92;
-const uint8_t TILE_ID_ENEMY_5 = 96;
-const uint8_t TILE_ID_ENEMY_PROJECTILE = 130;
-const uint8_t TILE_ID_HUD_LIVES = 134;
-const uint8_t TILE_ID_HUD_COINS = 136;
-const uint8_t TILE_ID_HUD_ENEMIES_KILLED = 137;
-const uint8_t TILE_ID_HUD_TIME_TAKEN = 138;
+const uint16_t TILE_ID_EMPTY = 255;
+const uint16_t TILE_ID_COIN = 384;
+const uint16_t TILE_ID_PLAYER_1 = 192;
+const uint16_t TILE_ID_PLAYER_2 = 196;
+const uint16_t TILE_ID_HEART = 416;
+const uint16_t TILE_ID_CAMERA = 519;
+const uint16_t TILE_ID_TRANSITION = 496;
+const uint16_t TILE_ID_FINISH = 432;
+const uint16_t TILE_ID_LEVEL_TRIGGER = 420;
+const uint16_t TILE_ID_ENEMY_1 = 208;
+const uint16_t TILE_ID_ENEMY_2 = 212;
+const uint16_t TILE_ID_ENEMY_3 = 216;
+const uint16_t TILE_ID_ENEMY_4 = 220;
+const uint16_t TILE_ID_ENEMY_5 = 224;
+const uint16_t TILE_ID_ENEMY_PROJECTILE = 418;
+const uint16_t TILE_ID_HUD_LIVES = 422;
+const uint16_t TILE_ID_HUD_COINS = 424;
+const uint16_t TILE_ID_HUD_ENEMIES_KILLED = 425;
+const uint16_t TILE_ID_HUD_TIME_TAKEN = 426;
 
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
@@ -116,8 +116,8 @@ const uint16_t BYTE_SIZE = 256;
 // If I implement that again, remember that all float calcs should be done, *then* casted, rather than casting each to int then adding etc
 
 
-const uint8_t SCREEN_MID_WIDTH = SCREEN_WIDTH / 2;
-const uint8_t SCREEN_MID_HEIGHT = SCREEN_HEIGHT / 2;
+const uint16_t SCREEN_MID_WIDTH = SCREEN_WIDTH / 2;
+const uint16_t SCREEN_MID_HEIGHT = SCREEN_HEIGHT / 2;
 
 
 const uint8_t SPRITE_HALF = SPRITE_SIZE / 2;
@@ -125,15 +125,15 @@ const uint8_t SPRITE_QUARTER = SPRITE_SIZE / 4;
 
 const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
 
-const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2};
+const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2 };
 
-const std::vector<uint8_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
+const std::vector<uint16_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
-const std::vector<uint8_t> finishFrames = { TILE_ID_FINISH, TILE_ID_FINISH + 1, TILE_ID_FINISH + 2, TILE_ID_FINISH + 3, TILE_ID_FINISH + 4, TILE_ID_FINISH + 5 };
+const std::vector<uint16_t> finishFrames = { TILE_ID_FINISH, TILE_ID_FINISH + 1, TILE_ID_FINISH + 2, TILE_ID_FINISH + 3, TILE_ID_FINISH + 4, TILE_ID_FINISH + 5 };
 
-//const std::vector<uint8_t> transitionFrames = { TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3 };
-const std::vector<uint8_t> transitionFramesClose = { TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 7 };
-const std::vector<uint8_t> transitionFramesOpen = { TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 5, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION};
+//const std::vector<uint16_t> transitionFrames = { TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3 };
+const std::vector<uint16_t> transitionFramesClose = { TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 7 };
+const std::vector<uint16_t> transitionFramesOpen = { TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 5, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION};
 
 const float parallaxFactorLayersX[2] = {
     0.4,
@@ -208,7 +208,7 @@ struct TMX {
     uint16_t width;
     uint16_t height;
     uint16_t layers;
-    uint8_t data[];
+    uint16_t data[];
 };
 #pragma pack(pop)
 
@@ -351,15 +351,15 @@ struct LevelData {
 //};
 
 
-void render_sprite(uint8_t id, Point point) {
-    screen.sprite(id, point, Point(0, 0), 1.0f, SpriteTransform::NONE);
+void render_sprite(uint16_t id, Point point) {
+    //screen.sprite(id, point, Point(0, 0), 1.0f, SpriteTransform::NONE);
+    screen.sprite(id, point);
 }
 
-void render_sprite(uint8_t id, Point point, SpriteTransform transform) {
-    screen.sprite(id, point, Point(0, 0), 1.0f, transform);
+void render_sprite(uint16_t id, Point point, SpriteTransform transform) {
+    //screen.sprite(id, point, Point(0, 0), 1.0f, transform);
+    screen.sprite(id, point, transform);
 }
-
-
 
 
 class Colour {
@@ -514,7 +514,7 @@ class Projectile {
 public:
     float x, y;
     float xVel, yVel;
-    uint8_t id;
+    uint16_t id;
 
     Projectile() {
         x = y = 0;
@@ -523,7 +523,7 @@ public:
         id = 0;
     }
 
-    Projectile(float xPosition, float yPosition, float xVelocity, float yVelocity, uint8_t tileId) {
+    Projectile(float xPosition, float yPosition, float xVelocity, float yVelocity, uint16_t tileId) {
         x = xPosition;
         y = yPosition;
         xVel = xVelocity;
@@ -579,7 +579,7 @@ public:
         id = TILE_ID_EMPTY;
     }
 
-    Tile(uint16_t xPosition, uint16_t yPosition, uint8_t tileID) : LevelObject(xPosition, yPosition) {
+    Tile(uint16_t xPosition, uint16_t yPosition, uint16_t tileID) : LevelObject(xPosition, yPosition) {
         id = tileID;
     }
 
@@ -594,7 +594,7 @@ public:
     }
 
 protected:
-    uint8_t id;
+    uint16_t id;
 };
 std::vector<Tile> foreground;
 std::vector<Tile> background;
@@ -607,7 +607,7 @@ public:
         layer = 0;
     }
 
-    ParallaxTile(uint16_t xPosition, uint16_t yPosition, uint8_t tileID, uint8_t parallaxLayer) : Tile(xPosition, yPosition, tileID) {
+    ParallaxTile(uint16_t xPosition, uint16_t yPosition, uint16_t tileID, uint8_t parallaxLayer) : Tile(xPosition, yPosition, tileID) {
         id = tileID;
         layer = parallaxLayer;
     }
@@ -625,7 +625,7 @@ public:
     }
 
 protected:
-    uint8_t id;
+    uint16_t id;
     uint8_t layer;
 };
 std::vector<ParallaxTile> parallax;
@@ -658,7 +658,7 @@ public:
         currentFrame = 0;
     }
 
-    AnimatedPickup(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> animationFrames) : Pickup(xPosition, yPosition) {
+    AnimatedPickup(uint16_t xPosition, uint16_t yPosition, std::vector<uint16_t> animationFrames) : Pickup(xPosition, yPosition) {
         animationTimer = 0;
         currentFrame = 0;
 
@@ -684,8 +684,8 @@ public:
 
 protected:
     float animationTimer;
-    std::vector<uint8_t> frames;
-    uint8_t currentFrame;
+    std::vector<uint16_t> frames;
+    uint16_t currentFrame;
 };
 
 class Coin : public AnimatedPickup {
@@ -694,7 +694,7 @@ public:
 
     }
 
-    Coin(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> animationFrames) : AnimatedPickup(xPosition, yPosition, animationFrames) {
+    Coin(uint16_t xPosition, uint16_t yPosition, std::vector<uint16_t> animationFrames) : AnimatedPickup(xPosition, yPosition, animationFrames) {
 
     }
 
@@ -717,7 +717,7 @@ public:
 
     }
 
-    Finish(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> animationFrames) : AnimatedPickup(xPosition, yPosition, animationFrames) {
+    Finish(uint16_t xPosition, uint16_t yPosition, std::vector<uint16_t> animationFrames) : AnimatedPickup(xPosition, yPosition, animationFrames) {
 
     }
 
@@ -745,7 +745,7 @@ public:
         closedTimer = 0;
     }
 
-    AnimatedTransition(uint16_t xPosition, uint16_t yPosition, std::vector<uint8_t> open, std::vector<uint8_t> close) {
+    AnimatedTransition(uint16_t xPosition, uint16_t yPosition, std::vector<uint16_t> open, std::vector<uint16_t> close) {
         animationTimer = 0;
         currentFrame = 0;
 
@@ -839,8 +839,8 @@ protected:
     } state;
 
     float animationTimer;
-    std::vector<uint8_t> openingFrames, closingFrames;
-    uint8_t currentFrame;
+    std::vector<uint16_t> openingFrames, closingFrames;
+    uint16_t currentFrame;
 };
 AnimatedTransition transition[SCREEN_TILE_SIZE];
 
@@ -966,7 +966,7 @@ public:
         jumpCooldown = 0;
     }
 
-    Entity(uint16_t xPosition, uint16_t yPosition, uint8_t frame, uint8_t startHealth) {
+    Entity(uint16_t xPosition, uint16_t yPosition, uint16_t frame, uint8_t startHealth) {
         x = xPosition;
         y = yPosition;
         xVel = yVel = 0;
@@ -1004,7 +1004,7 @@ public:
                         // Collided from top
                         y = foreground[i].y - SPRITE_SIZE;
                     }
-                    else {
+                    else if (yVel < 0) {
                         // Collided from bottom
                         y = foreground[i].y + SPRITE_SIZE;
                     }
@@ -1022,7 +1022,7 @@ public:
                         // Collided from left
                         x = foreground[i].x - SPRITE_SIZE + 1;
                     }
-                    else {
+                    else if (xVel < 0) {
                         // Collided from right
                         x = foreground[i].x + SPRITE_SIZE - 1;
                     }
@@ -1054,7 +1054,7 @@ public:
             }
 
             if (visible) {
-                uint8_t frame = anchorFrame;
+                uint16_t frame = anchorFrame;
 
                 if (yVel < -50) {
                     frame = anchorFrame + 1;
@@ -1099,7 +1099,7 @@ public:
 
 protected:
     float xVel, yVel;
-    uint8_t anchorFrame;
+    uint16_t anchorFrame;
     bool deathParticles;
     float immuneTimer;
 };
@@ -1588,7 +1588,7 @@ public:
                         // Collided from top
                         y = foreground[i].y - SPRITE_SIZE;
                     }
-                    else {
+                    else if (yVel < 0) {
                         // Collided from bottom
                         y = foreground[i].y + SPRITE_SIZE;
                     }
@@ -1631,7 +1631,7 @@ public:
                         // Take health off enemy
                         enemies[i].health--;
                     }
-                    //else {
+                    //else if (yVel < 0 ){
                     //    // Collided from bottom
                     //    y = enemies[i].y + SPRITE_SIZE;
                     //}
@@ -1648,7 +1648,7 @@ public:
                         // Collided from left
                         x = foreground[i].x - SPRITE_SIZE + 1;
                     }
-                    else {
+                    else if (xVel < 0) {
                         // Collided from right
                         x = foreground[i].x + SPRITE_SIZE - 1;
                     }
@@ -1662,7 +1662,7 @@ public:
                         // Collided from left
                         x = levelTriggers[i].x - SPRITE_SIZE;
                     }
-                    else {
+                    else if (xVel < 0) {
                         // Collided from right
                         x = levelTriggers[i].x + SPRITE_SIZE;
                     }
