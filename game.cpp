@@ -16,7 +16,7 @@ using namespace blit;
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
-#define VERSION_BUILD 14
+#define VERSION_BUILD 15
 
 
 
@@ -38,11 +38,15 @@ const uint16_t TILE_ID_CAMERA = 509;
 const uint16_t TILE_ID_TRANSITION = 496;
 const uint16_t TILE_ID_FINISH = 432;
 const uint16_t TILE_ID_LEVEL_TRIGGER = 420;
+
 const uint16_t TILE_ID_ENEMY_1 = 208;
 const uint16_t TILE_ID_ENEMY_2 = 212;
 const uint16_t TILE_ID_ENEMY_3 = 216;
 const uint16_t TILE_ID_ENEMY_4 = 220;
 const uint16_t TILE_ID_ENEMY_5 = 224;
+
+const uint16_t TILE_ID_BOSS_1 = 256;
+
 const uint16_t TILE_ID_ENEMY_PROJECTILE = 418;
 const uint16_t TILE_ID_HUD_LIVES = 422;
 const uint16_t TILE_ID_HUD_COINS = 424;
@@ -59,12 +63,17 @@ const float LEVEL_DEATH_BOUNDARY_SCALE = 1.5f;
 const uint8_t SPRITE_SIZE = 8;
 
 
-const float ENTITY_DEATH_PARTICLE_COUNT = 100;
+const uint8_t ENTITY_DEATH_PARTICLE_COUNT = 100;
 const float ENTITY_DEATH_PARTICLE_GRAVITY_X = 0.0f;
-const float ENTITY_DEATH_PARTICLE_GRAVITY_Y = 50.0f;
-const float ENTITY_DEATH_PARTICLE_AGE = 0.8f;
+const float ENTITY_DEATH_PARTICLE_GRAVITY_Y = 60.0f;
+const float ENTITY_DEATH_PARTICLE_AGE = 1.0f;
 const float ENTITY_DEATH_PARTICLE_SPEED = 60.0f;
 
+const uint8_t BOSS_DEATH_PARTICLE_COUNT = 200;
+const float BOSS_DEATH_PARTICLE_GRAVITY_X = 0.0f;
+const float BOSS_DEATH_PARTICLE_GRAVITY_Y = 60.0f;
+const float BOSS_DEATH_PARTICLE_AGE = 1.4f;
+const float BOSS_DEATH_PARTICLE_SPEED = 70.0f;
 
 const float GRAVITY = 600.0f;
 const float GRAVITY_MAX = 200.0f;
@@ -81,13 +90,24 @@ const float PLAYER_ATTACK_JUMP_SCALE = 0.5f;
 const float PLAYER_ATTACK_JUMP_MIN = 70.0f;
 const float PLAYER_MAX_SPEED = 85.0f;
 const float PLAYER_IMMUNE_TIME = 2.5f;
-const float PLAYER_ACCELERATION = 400.0f;
+const float PLAYER_ACCELERATION = 380.0f;
+const float PLAYER_DECELERATION = 340.0f;
 const float PLAYER_JUMP_COOLDOWN = 0.4f;
 
 const float ENTITY_IDLE_SPEED = 40.0f;
 const float ENTITY_PURSUIT_SPEED = 55.0f;
 const float ENTITY_JUMP_SPEED = 160.0f;
 const float ENTITY_JUMP_COOLDOWN = 0.5f;
+
+const float BOSS_IDLE_SPEED = 20.0f;
+const float BOSS_PURSUIT_SPEED = 55.0f;
+const float BOSS_ANGRY_SPEED = 100.0f;
+const float BOSS_JUMP_SPEED = 160.0f;
+const float BOSS_ANGRY_JUMP_SPEED = 230.0f;
+const float BOSS_JUMP_COOLDOWN = 1.0f;
+const float BOSS_INJURED_TIME = 0.3f;
+const float BOSS_IMMUNE_TIME = 2.0f;
+const float BOSS_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 8;
 
 const float RANGED_MAX_RANGE = 64.0f;
 const float RANGED_RELOAD_TIME = 2.0f;
@@ -128,6 +148,7 @@ const uint8_t SPRITE_QUARTER = SPRITE_SIZE / 4;
 const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
 
 const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2 };
+const uint8_t bossHealths[] = { 3 };
 
 const std::vector<uint16_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
@@ -398,6 +419,9 @@ const std::vector<Colour> enemyDeathParticleColours[4] = {
     { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) },
     { Colour(255, 255, 242), Colour(255, 204, 181), Colour(229, 114, 57) },
     { Colour(255, 255, 242), Colour(184, 197, 216), Colour(62, 106, 178) }
+};
+const std::vector<Colour> bossDeathParticleColours[1] = {
+    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) }
 };
 const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
 
@@ -909,7 +933,7 @@ public:
             else {
                 // Generate particles
                 // TODO: change constants?
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, levelTriggerParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x + SPRITE_SIZE, y + SPRITE_SIZE, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, levelTriggerParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 generateParticles = true;
             }
         }
@@ -1122,6 +1146,8 @@ public:
         playerY = nullptr;
 
         currentSpeed = ENTITY_IDLE_SPEED;
+
+        state = 0;
     }
 
     Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
@@ -1132,6 +1158,8 @@ public:
         playerY = nullptr;
 
         currentSpeed = ENTITY_IDLE_SPEED;
+
+        state = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -1164,7 +1192,7 @@ public:
 
                 bool reverseDirection = true;
 
-                float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
+                float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                         // About to be on block
@@ -1193,11 +1221,20 @@ public:
 
                 lastDirection = *playerX < x ? 0 : 1;
 
-                if (std::abs(x - *playerX) < RANGED_MAX_RANGE && std::abs(y - *playerY) < RANGED_MAX_RANGE && !reloadTimer) {
-                    // fire!
-                    // Maybe make these values constants?
-                    projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, TILE_ID_ENEMY_PROJECTILE));
-                    reloadTimer = RANGED_RELOAD_TIME;
+                if (std::abs(x - *playerX) < RANGED_MAX_RANGE && std::abs(y - *playerY) < RANGED_MAX_RANGE) {
+                    state = 1;
+                }
+                else {
+                    state = 0;
+                }
+
+                if (state == 1) {
+                    if (!reloadTimer) {
+                        // Fire!
+                        // Maybe make these values constants?
+                        projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, TILE_ID_ENEMY_PROJECTILE));
+                        reloadTimer = RANGED_RELOAD_TIME;
+                    }
                 }
             }
             else if (enemyType == EnemyType::PURSUIT) {
@@ -1208,11 +1245,42 @@ public:
                 else {
                     xVel = -currentSpeed;
                 }
-                // TODO use faster speed if pursuing
+
                 Entity::update_collisions();
 
 
                 if (std::abs(x - *playerX) < PURSUIT_MAX_RANGE && std::abs(y - *playerY) < PURSUIT_MAX_RANGE) {
+                    state = 1;
+                }
+                else {
+                    state = 0;
+                }
+
+                if (state == 0) {
+                    // Just patrol... (Same as basic enemy)
+                    currentSpeed = ENTITY_IDLE_SPEED;
+
+                    bool reverseDirection = true;
+
+                    float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
+                            // About to be on block
+                            reverseDirection = false;
+                        }
+                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                            // Walked into side of block
+                            reverseDirection = true;
+                            // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                            break;
+                        }
+                    }
+
+                    if (reverseDirection) {
+                        lastDirection = 1 - lastDirection;
+                    }
+                }
+                else if (state == 1) {
                     // Pursue!
                     currentSpeed = ENTITY_PURSUIT_SPEED;
 
@@ -1220,7 +1288,7 @@ public:
 
                     bool jump = true;
 
-                    float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
+                    float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
@@ -1249,30 +1317,6 @@ public:
                         }
                     }
                 }
-                else {
-                    // Just patrol... (Same as basic enemy)
-                    currentSpeed = ENTITY_IDLE_SPEED;
-
-                    bool reverseDirection = true;
-
-                    float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
-                            // About to be on block
-                            reverseDirection = false;
-                        }
-                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                            // Walked into side of block
-                            reverseDirection = true;
-                            // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
-                            break;
-                        }
-                    }
-
-                    if (reverseDirection) {
-                        lastDirection = 1 - lastDirection;
-                    }
-                }
             }
             else if (enemyType == EnemyType::FLYING) {
             // Should it be EnemyType::BOUNCING instead?
@@ -1289,7 +1333,7 @@ public:
 
                 bool reverseDirection = false;
 
-                float tempX = lastDirection ? x + SPRITE_HALF : x - SPRITE_HALF;
+                float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
                         // Walked into side of block
@@ -1306,10 +1350,7 @@ public:
                 if (reverseDirection) {
                     lastDirection = 1 - lastDirection;
                 }
-            }/*
-            else if (enemyType == EnemyType::ARMOURED) {
-
-            }*/
+            }
 
 
             if (y > levelDeathBoundary) {
@@ -1324,15 +1365,6 @@ public:
             if (deathParticles) {
                 if (particles.size() == 0) {
                     // No particles left
-
-                    health = 3; //remove?
-
-                    // Reset player position
-                    yVel = 0;
-                    lastDirection = 1;
-                    x = playerStartX;
-                    y = playerStartY;
-
                     deathParticles = false;
                 }
                 else {
@@ -1374,6 +1406,8 @@ protected:
 
     float currentSpeed;
 
+    uint8_t state;
+
     //enum EntityState {
     //    IDLE,
     //    WALK,
@@ -1386,6 +1420,357 @@ protected:
 };
 std::vector<Enemy> enemies;
 
+
+class Boss : public Enemy {
+public:
+    Boss() : Enemy() {
+        anchorFrame = TILE_ID_BOSS_1;
+
+        currentSpeed = BOSS_IDLE_SPEED;
+
+        injuredTimer = 0;
+    }
+
+    Boss(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Enemy(xPosition, yPosition, startHealth, type) {
+        anchorFrame = TILE_ID_BOSS_1 + type * 4;
+
+        currentSpeed = BOSS_IDLE_SPEED;
+
+        injuredTimer = 0;
+    }
+
+    void update(float dt, ButtonStates buttonStates) {
+        if (health > 0) {
+            /*if (reloadTimer) {
+                reloadTimer -= dt;
+                if (reloadTimer < 0) {
+                    reloadTimer = 0;
+                }
+            }*/
+
+            if (jumpCooldown) {
+                jumpCooldown -= dt;
+                if (jumpCooldown < 0) {
+                    jumpCooldown = 0;
+                }
+            }
+
+            if (injuredTimer) {
+                injuredTimer -= dt;
+                if (injuredTimer < 0) {
+                    injuredTimer = 0;
+                }
+            }
+
+            if (immuneTimer) {
+                immuneTimer -= dt;
+                if (immuneTimer < 0) {
+                    immuneTimer = 0;
+                }
+            }
+
+            if (enemyType == EnemyType::BASIC || enemyType == EnemyType::ARMOURED) {
+                if (lastDirection) {
+                    xVel = currentSpeed;
+                }
+                else {
+                    xVel = -currentSpeed;
+                }
+
+                update_collisions();
+
+
+                if (immuneTimer) {
+                    state = 3;
+                }
+                else if (std::abs(x - *playerX) < BOSS_JUMP_TRIGGER_MAX_RANGE && std::abs(y - *playerY) < BOSS_JUMP_TRIGGER_MAX_RANGE) {
+                    if (jumpCooldown || state == 2) {
+                        state = 2;
+                    }
+                    else {
+                        state = 1;
+                    }
+                }
+                else {
+                    state = 0;
+                }
+
+                if (state == 0) {
+                    // Patrol
+                    currentSpeed = BOSS_IDLE_SPEED;
+
+                    bool reverseDirection = true;
+
+                    float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                            // About to be on block
+                            reverseDirection = false;
+                        }
+                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                            // Walked into side of block
+                            reverseDirection = true;
+                            // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                            break;
+                        }
+                    }
+
+                    if (reverseDirection) {
+                        lastDirection = 1 - lastDirection;
+                    }
+                }
+                else if (state == 1) {
+                    // Jump
+                    lastDirection = *playerX < x ? 0 : 1;
+
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                            yVel = -BOSS_ANGRY_JUMP_SPEED;
+                            state == 2;
+                            jumpCooldown = BOSS_JUMP_COOLDOWN;
+                        }
+                    }
+                }
+                else if (state == 2) {
+                    // Pursue
+
+                    currentSpeed = BOSS_PURSUIT_SPEED;
+
+                    lastDirection = *playerX < x ? 0 : 1;
+
+                    bool jump = true;
+
+                    float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                            // About to be on block
+                            jump = false;
+                            break;
+                        }
+                    }
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                            // Walked into side of block
+                            jump = true;
+                            // Break because we definitely need to jump
+                            break;
+                        }
+                    }
+
+
+                    if (jump && !jumpCooldown) {
+                        for (uint16_t i = 0; i < foreground.size(); i++) {
+                            if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                                // On top of block
+                                // Jump
+                                yVel = -BOSS_JUMP_SPEED;
+                                jumpCooldown = BOSS_JUMP_COOLDOWN;
+                                //state = JUMP;
+                            }
+                        }
+                    }
+                }
+                else if (state == 3) {
+                    // Do some angry stuff
+                    currentSpeed = BOSS_ANGRY_SPEED;
+
+                    bool reverseDirection = true;
+
+                    float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                            // About to be on block
+                            reverseDirection = false;
+                        }
+                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                            // Walked into side of block
+                            reverseDirection = true;
+                            // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                            break;
+                        }
+                    }
+
+                    if (reverseDirection) {
+                        lastDirection = 1 - lastDirection;
+                    }
+                }
+
+                // Consider adding acceleration?
+                //if (lastDirection) {
+                //    xVel = currentSpeed;
+                //}
+                //else {
+                //    xVel = -currentSpeed;
+                //}
+
+                //update_collisions();
+
+                //bool reverseDirection = true;
+
+                //float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                //for (uint16_t i = 0; i < foreground.size(); i++) {
+                //    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                //        // About to be on block
+                //        reverseDirection = false;
+                //    }
+                //    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                //        // Walked into side of block
+                //        reverseDirection = true;
+                //        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                //        break;
+                //    }
+                //}
+
+                //if (reverseDirection) {
+                //    lastDirection = 1 - lastDirection;
+                //}
+
+                //if (health == 1) {
+                //    // EnemyType::ARMOURED has helmet on, and 2 hp
+                //    enemyType = EnemyType::BASIC;
+                //    anchorFrame = TILE_ID_BOSS_1 + (int)enemyType * 4;
+                //}
+            }
+
+
+            if (y > levelDeathBoundary) {
+                health = 0;
+                xVel = yVel = 0;
+            }
+        }
+
+        if (health == 0) {
+            //state = DEAD;
+
+            if (deathParticles) {
+                if (particles.size() == 0) {
+                    // No particles left
+                    deathParticles = false;
+                }
+                else {
+                    for (uint8_t i = 0; i < particles.size(); i++) {
+                        particles[i].update(dt);
+                    }
+
+                    // Remove any particles which are too old
+                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
+                }
+            }
+            else {
+                // Generate particles
+                particles = generate_particles(x, y, BOSS_DEATH_PARTICLE_GRAVITY_X, BOSS_DEATH_PARTICLE_GRAVITY_Y, bossDeathParticleColours[(uint8_t)enemyType], BOSS_DEATH_PARTICLE_SPEED, BOSS_DEATH_PARTICLE_COUNT);
+                deathParticles = true;
+            }
+        }
+    }
+
+    void set_immune() {
+        immuneTimer = BOSS_IMMUNE_TIME;
+        lastDirection = *playerX < x ? 1 : 0;
+    }
+
+    void set_injured() {
+        injuredTimer = BOSS_INJURED_TIME;
+        set_immune();
+    }
+
+    void update_collisions() {
+        if (!locked) {
+            // Update gravity
+            yVel += GRAVITY * dt;
+            yVel = std::min(yVel, (float)GRAVITY_MAX);
+
+            // Move entity y
+            y += yVel * dt;
+
+            // Here check collisions...
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (colliding(foreground[i])) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = foreground[i].y - SPRITE_SIZE * 2;
+                    }
+                    else if (yVel < 0) {
+                        // Collided from bottom
+                        y = foreground[i].y + SPRITE_SIZE;
+                    }
+                    yVel = 0;
+                }
+            }
+
+            // Move entity x
+            x += xVel * dt;
+
+            // Here check collisions...
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (colliding(foreground[i])) {
+                    if (xVel > 0) {
+                        // Collided from left
+                        x = foreground[i].x - SPRITE_SIZE * 2 + 1;
+                    }
+                    else if (xVel < 0) {
+                        // Collided from right
+                        x = foreground[i].x + SPRITE_SIZE - 1;
+                    }
+                    xVel = 0;
+                }
+            }
+
+            if (xVel > 0) {
+                lastDirection = 1;
+            }
+            else if (xVel < 0) {
+                lastDirection = 0;
+            }
+        }
+    }
+
+    void render(Camera camera) {
+        if (health != 0) {
+            uint16_t frame = anchorFrame;
+
+            if (yVel < -50) {
+                frame = anchorFrame + 2;
+            }
+            else if (yVel > 160) {
+                frame = anchorFrame + 4;
+            }
+            
+            if (injuredTimer) {
+                frame = anchorFrame + 6;
+            }
+
+            if (lastDirection == 1) {
+                //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                render_sprite(frame + 1, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                render_sprite(frame + 16, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE), SpriteTransform::HORIZONTAL);
+                render_sprite(frame + 17, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE), SpriteTransform::HORIZONTAL);
+            }
+            else {
+                //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                render_sprite(frame + 1, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y));
+                render_sprite(frame + 16, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE));
+                render_sprite(frame + 17, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE));
+            }
+        }
+
+        // Particles
+        for (uint8_t i = 0; i < particles.size(); i++) {
+            particles[i].render(camera);
+        }
+    }
+
+    bool colliding(Tile tile) {
+        // Replace use of this with actual code?
+        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE * 2 - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE * 2);
+    }
+
+protected:
+    float injuredTimer;
+};
+std::vector<Boss> bosses; // used for levels where there is a boss.
 
 class Player : public Entity {
 public:
@@ -1476,13 +1861,13 @@ public:
                 }
                 else {
                     if (xVel > 0) {
-                        xVel -= PLAYER_ACCELERATION * dt;
+                        xVel -= PLAYER_DECELERATION * dt;
                         if (xVel < 0) {
                             xVel = 0;
                         }
                     }
                     else if (xVel < 0) {
-                        xVel += PLAYER_ACCELERATION * dt;
+                        xVel += PLAYER_DECELERATION * dt;
                         if (xVel > 0) {
                             xVel = 0;
                         }
@@ -1501,12 +1886,13 @@ public:
             score += coinCount - coins.size();
 
 
-            uint8_t enemyCount = enemies.size();
+            uint8_t enemyCount = enemies.size();// + bosses.size();
 
             // Remove enemies if no health left
             enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
+            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss boss) { return (boss.health == 0 && boss.particles.size() == 0); }), bosses.end());
 
-            enemiesKilled += enemyCount - enemies.size();
+            enemiesKilled += enemyCount - enemies.size();// - bosses.size();
 
             // Now done in update_collisions
             //for (uint8_t i = 0; i < enemies.size(); i++) {
@@ -1641,6 +2027,22 @@ public:
                 }
             }
 
+            for (uint16_t i = 0; i < bosses.size(); i++) {
+                if (bosses[i].health && !bosses[i].is_immune() && colliding(bosses[i])) {
+                    if (yVel > 0 && y < bosses[i].y + SPRITE_HALF) {
+                        // Collided from top
+                        y = bosses[i].y - SPRITE_SIZE;
+                        //yVel = -PLAYER_ATTACK_JUMP;
+                        yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+
+                        // Take health off enemy
+                        bosses[i].health--;
+
+                        bosses[i].set_injured();
+                    }
+                }
+            }
+
             // Move entity x
             x += xVel * dt;
 
@@ -1694,6 +2096,13 @@ public:
                         set_immune();
                     }
                 }
+
+                for (uint16_t i = 0; i < bosses.size(); i++) {
+                    if (colliding(bosses[i]) && bosses[i].health) {
+                        health--;
+                        set_immune();
+                    }
+                }
             }
 
             if (xVel > 0) {
@@ -1717,6 +2126,11 @@ public:
     bool colliding(Enemy enemy) {
         // Replace use of this with actual code?
         return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y + SPRITE_SIZE > y && enemy.y < y + SPRITE_SIZE);
+    }
+
+    bool colliding(Boss boss) {
+        // Replace use of this with actual code?
+        return (boss.x + SPRITE_SIZE * 2 > x && boss.x < x + SPRITE_SIZE && boss.y + SPRITE_SIZE * 2 > y && boss.y < y + SPRITE_SIZE);
     }
 
     bool colliding(LevelTrigger levelTrigger) {
@@ -1823,6 +2237,12 @@ void render_enemies() {
     }
 }
 
+void render_bosses() {
+    for (uint8_t i = 0; i < bosses.size(); i++) {
+        bosses[i].render(camera);
+    }
+}
+
 void render_level_triggers() {
     for (uint8_t i = 0; i < levelTriggers.size(); i++) {
         levelTriggers[i].render(camera);
@@ -1854,6 +2274,7 @@ void render_level() {
 
 void render_entities() {
     render_enemies();
+    render_bosses();
 
     player.render(camera);
 
@@ -1972,6 +2393,7 @@ void load_level(uint8_t levelNumber) {
     parallax.clear();
     coins.clear();
     enemies.clear();
+    bosses.clear();
     levelTriggers.clear();
     projectiles.clear();
 
@@ -2039,7 +2461,12 @@ void load_level(uint8_t levelNumber) {
         else if (tmx->data[index] == TILE_ID_ENEMY_5) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[4], 4));
         }
-        else {
+        else if (tmx->data[index] == TILE_ID_BOSS_1) {
+            // Don't display boss currently - that's for a future update :D
+            bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[0], 0));
+        }
+        else if (tmx->data[index] < BYTE_SIZE) {
+            // Don't create tiles for bosses etc (no terrain/non-enemy entity tiles are >=256)
             // Background tiles are non-solid
             background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
         }
@@ -2083,8 +2510,12 @@ void load_level(uint8_t levelNumber) {
     camera.x = cameraStartX;
     camera.y = cameraStartY;
 
+    // Set player position pointers
     for (uint8_t i = 0; i < enemies.size(); i++) {
         enemies[i].set_player_position(&player.x, &player.y);
+    }
+    for (uint8_t i = 0; i < bosses.size(); i++) {
+        bosses[i].set_player_position(&player.x, &player.y);
     }
 
 
@@ -2423,6 +2854,12 @@ void update_enemies(float dt, ButtonStates buttonStates) {
     }
 }
 
+void update_bosses(float dt, ButtonStates buttonStates) {
+    for (int i = 0; i < bosses.size(); i++) {
+        bosses[i].update(dt, buttonStates);
+    }
+}
+
 void update_level_triggers(float dt, ButtonStates buttonStates) {
     for (int i = 0; i < levelTriggers.size(); i++) {
         levelTriggers[i].update(dt, buttonStates);
@@ -2495,7 +2932,7 @@ void update_input_select(float dt, ButtonStates buttonStates) {
 void update_character_select(float dt, ButtonStates buttonStates) {
     // Dummy states is used to make selected player continually jump (sending A key pressed).
     ButtonStates dummyStates = { 0 };
-    dummyStates.A = 1;
+    dummyStates.A = 2;
     player.update(dt, dummyStates);
 
 
@@ -2631,6 +3068,8 @@ void update_game(float dt, ButtonStates buttonStates) {
         player.update(dt, buttonStates);
 
         update_enemies(dt, buttonStates);
+
+        update_bosses(dt, buttonStates);
 
         update_coins(dt, buttonStates);
 
