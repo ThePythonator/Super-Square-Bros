@@ -12,11 +12,10 @@ using namespace blit;
 //#define RESET_SAVE_DATA
 
 
-// TODO: use new metadata API to get version, split at major minor and build and assign to vars (consts?)
-
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 6
-#define VERSION_BUILD 15
+//
+//#define VERSION_MAJOR 0
+//#define VERSION_MINOR 6
+//#define VERSION_BUILD 15
 
 
 
@@ -223,6 +222,16 @@ uint8_t pauseMenuItem = 0;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 
+// For version handling
+struct GameVersion {
+    uint8_t major;
+    uint8_t minor;
+    uint8_t build;
+} gameVersion;
+
+// For metadata
+GameMetadata metadata;
+
 // struct to handle level data header...
 // this will probably need to be revisited/reworked if 32blit-tools has *any* kind of update to it...
 #pragma pack(push,1)
@@ -291,8 +300,35 @@ LevelSaveData allLevelSaveData[2][LEVEL_COUNT];
 // 259..514 slots are player 2 levelData
 
 
-uint16_t get_version() {
+/*int16_t get_version() {
     return VERSION_MAJOR * 256 + VERSION_MINOR * 16 + VERSION_BUILD;
+}*/
+
+uint16_t get_version(GameVersion version) {
+    return version.major * 256 + version.minor * 16 + version.build;
+}
+
+GameVersion parse_version(std::string versionString) {
+    GameVersion version{};
+
+    uint8_t startIndex, endIndex;
+
+    startIndex = 1;
+    endIndex = versionString.find('.');
+
+    version.major = (uint8_t)std::stoi(versionString.substr(startIndex, endIndex));
+
+    startIndex = endIndex + 1;
+    endIndex = versionString.find('.', startIndex);
+
+    version.minor = (uint8_t)std::stoi(versionString.substr(startIndex, endIndex));
+
+    startIndex = endIndex + 1;
+    endIndex = versionString.size();
+
+    version.build = (uint8_t)std::stoi(versionString.substr(startIndex, endIndex));
+
+    return version;
 }
 
 
@@ -338,7 +374,7 @@ PlayerSaveData load_player_data(uint8_t playerID) {
 }
 
 void reset_save() {
-    gameSaveData.version = get_version();
+    gameSaveData.version = get_version(gameVersion);
     gameSaveData.inputType = InputType::CONTROLLER;
     save_game_data();
 
@@ -3212,6 +3248,13 @@ void init() {
 
     screen.sprites = Surface::load(asset_sprites);
 
+    // Load metadata
+    metadata = get_metadata();
+    gameVersion = parse_version(metadata.version);
+    // New
+    printf("Loaded metadata. Game version: %d (v%d.%d.%d)\n", get_version(gameVersion), gameVersion.major, gameVersion.minor, gameVersion.build);
+    // Old
+    //printf("[OLD STYLE] Loaded metadata. Game version: %d (v%d.%d.%d)\n", get_version(), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
 
     // Populate transition array
     for (uint8_t y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
@@ -3226,8 +3269,8 @@ void init() {
     // Attempt to load the first save slot.
     if (success) {
 #ifdef RESET_SAVE_DATA
-        if (gameSaveData.version < get_version()) {
-            printf("Warning: Saved game data is out of date, save version is %d, but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, get_version(), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
+        if (gameSaveData.version < get_version(gameVersion)) {
+            printf("Warning: Saved game data is out of date, save version is %d, but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, get_version(gameVersion), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
             printf("Resetting save data...\n");
 
             success = false;
@@ -3247,7 +3290,7 @@ void init() {
     }
     else {
         // No save file or it failed to load, set up some defaults.
-        gameSaveData.version = get_version();
+        gameSaveData.version = get_version(gameVersion);
 
         gameSaveData.inputType = InputType::CONTROLLER;
 
