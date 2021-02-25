@@ -12,12 +12,6 @@ using namespace blit;
 //#define RESET_SAVE_DATA
 
 
-//
-//#define VERSION_MAJOR 0
-//#define VERSION_MINOR 6
-//#define VERSION_BUILD 15
-
-
 
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
@@ -62,6 +56,10 @@ const float LEVEL_DEATH_BOUNDARY_SCALE = 1.5f;
 const uint8_t SPRITE_SIZE = 8;
 
 
+
+const float SCREEN_SHAKE_SHAKINESS = 3.0f; //pixels either way - maybe more?
+
+
 const uint8_t ENTITY_DEATH_PARTICLE_COUNT = 100;
 const float ENTITY_DEATH_PARTICLE_GRAVITY_X = 0.0f;
 const float ENTITY_DEATH_PARTICLE_GRAVITY_Y = 60.0f;
@@ -85,12 +83,12 @@ const uint8_t PLAYER_MAX_HEALTH = 3;
 
 const float PLAYER_MAX_JUMP = 190.0f;
 //const float  PLAYER_ATTACK_JUMP = 90.0f;
-const float PLAYER_ATTACK_JUMP_SCALE = 0.5f;
-const float PLAYER_ATTACK_JUMP_MIN = 70.0f;
-const float PLAYER_MAX_SPEED = 85.0f;
-const float PLAYER_IMMUNE_TIME = 2.5f;
-const float PLAYER_ACCELERATION = 380.0f;
-const float PLAYER_DECELERATION = 340.0f;
+const float PLAYER_ATTACK_JUMP_SCALE = 0.6f;
+const float PLAYER_ATTACK_JUMP_MIN = 90.0f;
+const float PLAYER_MAX_SPEED = 87.0f;
+const float PLAYER_IMMUNE_TIME = 2.0f;
+const float PLAYER_ACCELERATION = 350.0f;
+const float PLAYER_DECELERATION = 320.0f;
 const float PLAYER_JUMP_COOLDOWN = 0.4f;
 
 const float ENTITY_IDLE_SPEED = 40.0f;
@@ -98,15 +96,26 @@ const float ENTITY_PURSUIT_SPEED = 55.0f;
 const float ENTITY_JUMP_SPEED = 160.0f;
 const float ENTITY_JUMP_COOLDOWN = 0.5f;
 
-const float BOSS_IDLE_SPEED = 20.0f;
-const float BOSS_PURSUIT_SPEED = 55.0f;
-const float BOSS_ANGRY_SPEED = 100.0f;
+const float BOSS_IDLE_SPEED = 30.0f;
+const float BOSS_PURSUIT_SPEED = 50.0f;
+const float BOSS_ANGRY_SPEED = 105.0f;
+const float BOSS_SPEED_REDUCTION_SCALE = 0.7f;
 const float BOSS_JUMP_SPEED = 160.0f;
-const float BOSS_ANGRY_JUMP_SPEED = 230.0f;
-const float BOSS_JUMP_COOLDOWN = 1.0f;
+const float BOSS_ANGRY_JUMP_SPEED = 220.0f;
+const float BOSS_JUMP_COOLDOWN = 1.5f;
+const float BOSS_MINION_SPAWN_COOLDOWN = 1.5f;
+const float BOSS_MINION_SPEED = 25.0f;
+const float BOSS_MINION_SPEED_REDUCTION = 4.0f;
 const float BOSS_INJURED_TIME = 0.3f;
-const float BOSS_IMMUNE_TIME = 2.0f;
+const float BOSS_IMMUNE_TIME = 1.0f;
 const float BOSS_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 8;
+const float BOSS_IGNORE_MIN_RANGE = SPRITE_SIZE * 9;
+const float BOSS_INJURED_MAX_RANGE = SPRITE_SIZE * 12;
+const float BOSS_DEATH_MAX_RANGE = SPRITE_SIZE * 16;
+const float BOSS_RETURN_TO_SPAWN_RANGE = SPRITE_SIZE * 4;
+//const float BOSS_CAMERA_TRIGGER_RANGE = SPRITE_SIZE * 12;
+const float BOSS_JUMP_SHAKE_TIME = 0.3f;
+const float BOSS_ANGRY_JUMP_SHAKE_TIME = 0.4f;
 
 const float RANGED_MAX_RANGE = 64.0f;
 const float RANGED_RELOAD_TIME = 2.0f;
@@ -219,6 +228,9 @@ uint16_t playerStartX, playerStartY;
 float textFlashTimer = 0.0f;
 uint8_t playerSelected = 0;
 uint8_t pauseMenuItem = 0;
+
+bool freezePlayer = false;
+bool bossBattle = false;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 
@@ -421,6 +433,45 @@ void render_sprite(uint16_t id, Point point, SpriteTransform transform) {
     screen.sprite(id, point, transform);
 }
 
+
+class ScreenShake {
+public:
+    ScreenShake() {
+        set_shake(0);
+        set_shakiness(0);
+    }
+
+    ScreenShake(float shakiness) {
+        set_shake(0);
+        set_shakiness(shakiness);
+    }
+
+    void set_shake(float shake) {
+        this->shake = shake;
+    }
+
+    void set_shakiness(float shakiness) {
+        this->shakiness = 100 / shakiness;
+    }
+
+    float time_to_shake(float dt) {
+        if (shake > 0) {
+            shake -= dt;
+            if (shake < 0) {
+                shake = 0;
+            }
+            return (rand() % 200 - 100) / shakiness;
+        }
+        else {
+            return 0.0f;
+        }
+    }
+
+protected:
+    float shake;
+    float shakiness;
+};
+ScreenShake shaker(SCREEN_SHAKE_SHAKINESS);
 
 class Colour {
 public:
@@ -969,7 +1020,7 @@ public:
             else {
                 // Generate particles
                 // TODO: change constants?
-                particles = generate_particles(x + SPRITE_SIZE, y + SPRITE_SIZE, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, levelTriggerParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x + SPRITE_HALF, y + SPRITE_HALF, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, levelTriggerParticleColours, ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 generateParticles = true;
             }
         }
@@ -1006,6 +1057,7 @@ std::vector<LevelTrigger> levelTriggers;
 class Entity {
 public:
     float x, y;
+    float xVel, yVel;
     uint8_t health;
     bool locked;
     std::vector<Particle> particles;
@@ -1161,7 +1213,6 @@ public:
     }
 
 protected:
-    float xVel, yVel;
     uint16_t anchorFrame;
     bool deathParticles;
     float immuneTimer;
@@ -1349,6 +1400,7 @@ public:
                                 yVel = -ENTITY_JUMP_SPEED;
                                 jumpCooldown = ENTITY_JUMP_COOLDOWN;
                                 //state = JUMP;
+                                break;
                             }
                         }
                     }
@@ -1414,7 +1466,7 @@ public:
             }
             else {
                 // Generate particles
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, enemyDeathParticleColours[(uint8_t)enemyType], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x + SPRITE_HALF, y + SPRITE_HALF, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, enemyDeathParticleColours[(uint8_t)enemyType], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
             }
         }
@@ -1427,6 +1479,14 @@ public:
     void set_player_position(float* x, float* y) {
         playerX = x;
         playerY = y;
+    }
+
+    void set_speed(float speed) {
+        currentSpeed = speed;
+    }
+
+    uint8_t get_state() {
+        return state;
     }
 
 protected:
@@ -1460,123 +1520,89 @@ std::vector<Enemy> enemies;
 class Boss : public Enemy {
 public:
     Boss() : Enemy() {
+        spawnX = spawnY = 0;
+
         anchorFrame = TILE_ID_BOSS_1;
 
         currentSpeed = BOSS_IDLE_SPEED;
 
         injuredTimer = 0;
+        minionsToSpawn = 0;
+        dead = false;
+        shakeOnLanding = false;
     }
 
     Boss(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Enemy(xPosition, yPosition, startHealth, type) {
+        spawnX = xPosition;
+        spawnY = yPosition;
+
         anchorFrame = TILE_ID_BOSS_1 + type * 4;
 
         currentSpeed = BOSS_IDLE_SPEED;
 
         injuredTimer = 0;
+        minionsToSpawn = 0;
+        dead = false;
+        shakeOnLanding = false;
     }
 
     void update(float dt, ButtonStates buttonStates) {
-        if (health > 0) {
-            /*if (reloadTimer) {
-                reloadTimer -= dt;
-                if (reloadTimer < 0) {
-                    reloadTimer = 0;
-                }
-            }*/
+        /*if (reloadTimer) {
+            reloadTimer -= dt;
+            if (reloadTimer < 0) {
+                reloadTimer = 0;
+            }
+        }*/
 
-            if (jumpCooldown) {
-                jumpCooldown -= dt;
-                if (jumpCooldown < 0) {
-                    jumpCooldown = 0;
-                }
+        if (jumpCooldown) {
+            jumpCooldown -= dt;
+            if (jumpCooldown < 0) {
+                jumpCooldown = 0;
+            }
+        }
+
+        if (injuredTimer) {
+            injuredTimer -= dt;
+            if (injuredTimer < 0) {
+                injuredTimer = 0;
+            }
+        }
+
+        if (immuneTimer) {
+            immuneTimer -= dt;
+            if (immuneTimer < 0) {
+                immuneTimer = 0;
+            }
+        }
+
+        if (enemyType == EnemyType::BASIC || enemyType == EnemyType::ARMOURED) {
+            if (lastDirection) {
+                xVel = currentSpeed;
+            }
+            else {
+                xVel = -currentSpeed;
             }
 
-            if (injuredTimer) {
-                injuredTimer -= dt;
-                if (injuredTimer < 0) {
-                    injuredTimer = 0;
-                }
-            }
+            update_collisions();
 
-            if (immuneTimer) {
-                immuneTimer -= dt;
-                if (immuneTimer < 0) {
-                    immuneTimer = 0;
-                }
-            }
+            if (state == 0) {
+                // IDLE
 
-            if (enemyType == EnemyType::BASIC || enemyType == EnemyType::ARMOURED) {
-                if (lastDirection) {
-                    xVel = currentSpeed;
+                if (is_within_range(x, spawnX, BOSS_RETURN_TO_SPAWN_RANGE)) {
+                    // Wait
+                    currentSpeed = 0;
+
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
                 }
                 else {
-                    xVel = -currentSpeed;
-                }
-
-                update_collisions();
-
-
-                if (immuneTimer) {
-                    state = 3;
-                }
-                else if (std::abs(x - *playerX) < BOSS_JUMP_TRIGGER_MAX_RANGE && std::abs(y - *playerY) < BOSS_JUMP_TRIGGER_MAX_RANGE) {
-                    if (jumpCooldown || state == 2) {
-                        state = 2;
-                    }
-                    else {
-                        state = 1;
-                    }
-                }
-                else {
-                    state = 0;
-                }
-
-                if (state == 0) {
-                    // Patrol
+                    // Return to spawn
                     currentSpeed = BOSS_IDLE_SPEED;
 
-                    bool reverseDirection = true;
-
-                    float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
-                            // About to be on block
-                            reverseDirection = false;
-                        }
-                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                            // Walked into side of block
-                            reverseDirection = true;
-                            // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
-                            break;
-                        }
-                    }
-
-                    if (reverseDirection) {
-                        lastDirection = 1 - lastDirection;
-                    }
-                }
-                else if (state == 1) {
-                    // Jump
-                    lastDirection = *playerX < x ? 0 : 1;
-
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                            yVel = -BOSS_ANGRY_JUMP_SPEED;
-                            state == 2;
-                            jumpCooldown = BOSS_JUMP_COOLDOWN;
-                        }
-                    }
-                }
-                else if (state == 2) {
-                    // Pursue
-
-                    currentSpeed = BOSS_PURSUIT_SPEED;
-
-                    lastDirection = *playerX < x ? 0 : 1;
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
 
                     bool jump = true;
 
-                    float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+                    float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
                             // About to be on block
@@ -1593,7 +1619,6 @@ public:
                         }
                     }
 
-
                     if (jump && !jumpCooldown) {
                         for (uint16_t i = 0; i < foreground.size(); i++) {
                             if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
@@ -1601,113 +1626,356 @@ public:
                                 // Jump
                                 yVel = -BOSS_JUMP_SPEED;
                                 jumpCooldown = BOSS_JUMP_COOLDOWN;
+                                shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
                                 //state = JUMP;
+                                break;
                             }
                         }
                     }
                 }
-                else if (state == 3) {
-                    // Do some angry stuff
-                    currentSpeed = BOSS_ANGRY_SPEED;
 
-                    bool reverseDirection = true;
 
-                    float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                // Handle states
+                if (is_within_range(x, *playerX, BOSS_JUMP_TRIGGER_MAX_RANGE) && is_within_range(y, *playerY, BOSS_JUMP_TRIGGER_MAX_RANGE)) {
+                    state = 1;
+                    bossBattle = true;
+
+                    // JUMP
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
+
                     for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
-                            // About to be on block
-                            reverseDirection = false;
-                        }
-                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                            // Walked into side of block
-                            reverseDirection = true;
-                            // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                            yVel = -BOSS_ANGRY_JUMP_SPEED;
+                            jumpCooldown = BOSS_JUMP_COOLDOWN;
+                            shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
                             break;
                         }
                     }
+                }
+            }
+            else if (state == 1) {
+                // PURSUE
 
-                    if (reverseDirection) {
-                        lastDirection = 1 - lastDirection;
+                // Only go fast once on ground
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                        // On block
+                        currentSpeed = BOSS_PURSUIT_SPEED;
                     }
                 }
 
-                // Consider adding acceleration?
-                //if (lastDirection) {
-                //    xVel = currentSpeed;
-                //}
-                //else {
-                //    xVel = -currentSpeed;
-                //}
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
 
-                //update_collisions();
+                bool jump = true;
 
-                //bool reverseDirection = true;
+                float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                        // About to be on block
+                        jump = false;
+                        break;
+                    }
+                }
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        // Walked into side of block
+                        jump = true;
+                        // Break because we definitely need to jump
+                        break;
+                    }
+                }
 
-                //float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
-                //for (uint16_t i = 0; i < foreground.size(); i++) {
-                //    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
-                //        // About to be on block
-                //        reverseDirection = false;
+
+                if (jump && !jumpCooldown) {
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                            // On top of block
+                            // Jump
+                            yVel = -BOSS_JUMP_SPEED;
+                            jumpCooldown = BOSS_JUMP_COOLDOWN;
+                            shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
+                            //state = JUMP;
+                            break;
+                        }
+                    }
+                }
+
+
+
+                // Handle states
+                if (!is_within_range(x, *playerX, BOSS_IGNORE_MIN_RANGE) || !is_within_range(y, *playerY, BOSS_IGNORE_MIN_RANGE)) {
+                    state = 0;
+                }
+                else if (is_immune()) {
+                    state = 2;
+                    // freeze player
+                    freezePlayer = true;
+                }
+            }
+            else if (state == 2) {
+                // IMMUNE
+
+                currentSpeed = BOSS_ANGRY_SPEED - BOSS_SPEED_REDUCTION_SCALE * get_abs_center_range(x, *playerX);
+
+                //printf("Immune state (2), current speed %f\n", currentSpeed);
+
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 1 : 0;
+
+                bool hitWall = false;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        // Walked into side of block
+                        hitWall = true;
+                        // Break because we definitely have hit wall
+                        break;
+                    }
+                }
+
+                bool atEdge = true;
+                float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                        // About to be on block
+                        atEdge = false;
+                        break;
+                    }
+                }
+
+                // add jumping?
+                //if (jump && !jumpCooldown) {
+                //    for (uint16_t i = 0; i < foreground.size(); i++) {
+                //        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                //            // On top of block
+                //            // Jump
+                //            yVel = -BOSS_JUMP_SPEED;
+                //            jumpCooldown = BOSS_JUMP_COOLDOWN;
+                //            shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
+                //            //state = JUMP;
+                //            break;
+                //        }
                 //    }
-                //    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                //        // Walked into side of block
-                //        reverseDirection = true;
-                //        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
-                //        break;
-                //    }
                 //}
 
-                //if (reverseDirection) {
-                //    lastDirection = 1 - lastDirection;
-                //}
+                // Handle states
+                if (hitWall || atEdge || !is_within_range(x, *playerX, health == 0 ? BOSS_DEATH_MAX_RANGE : BOSS_INJURED_MAX_RANGE) || !is_within_range(y, *playerY, health == 0 ? BOSS_DEATH_MAX_RANGE : BOSS_INJURED_MAX_RANGE)) {
+                    // NOTE: bug if you kill boss right on edge of platform
+                    state = 3;
+                    minionsToSpawn = 3 - health;
+                    jumpCooldown = BOSS_MINION_SPAWN_COOLDOWN; // delay minion spawning
+                }
+            }
+            else if (state == 3) {
+                // SPAWN MINIONS
 
-                //if (health == 1) {
-                //    // EnemyType::ARMOURED has helmet on, and 2 hp
-                //    enemyType = EnemyType::BASIC;
-                //    anchorFrame = TILE_ID_BOSS_1 + (int)enemyType * 4;
-                //}
+                currentSpeed = 0;//BOSS_IDLE_SPEED;
+
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
+
+                // Jump whenever spawn minion
+                if (!jumpCooldown && minionsToSpawn) {
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                            // On top of block
+                            // Jump
+                            yVel = -BOSS_ANGRY_JUMP_SPEED;
+                            jumpCooldown = BOSS_MINION_SPAWN_COOLDOWN;
+                            shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
+                            //state = JUMP;
+
+                            // Spawn minion
+                            enemies.push_back(Enemy(x + SPRITE_SIZE, y + SPRITE_SIZE, enemyHealths[(uint8_t)enemyType], (uint8_t)enemyType));
+                            enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;;
+                            enemies[enemies.size() - 1].set_speed(BOSS_MINION_SPEED - BOSS_MINION_SPEED_REDUCTION * (2 - health));
+                            minionsToSpawn--;
+                            break;
+                        }
+                    }
+                }
+
+                // Handle states
+                if (!jumpCooldown && !minionsToSpawn) {
+                    if (health > 0) {
+                        // Not dead
+                        state = 1;
+                        immuneTimer = 0;
+
+                        // Unfreeze player
+                        freezePlayer = false;
+                    }
+                    else {
+                        // Dead
+                        // Generate particles
+                        particles = generate_particles(x + SPRITE_SIZE, y + SPRITE_SIZE, BOSS_DEATH_PARTICLE_GRAVITY_X, BOSS_DEATH_PARTICLE_GRAVITY_Y, bossDeathParticleColours[(uint8_t)enemyType], BOSS_DEATH_PARTICLE_SPEED, BOSS_DEATH_PARTICLE_COUNT);
+                        deathParticles = true;
+                        state = 4;
+                        dead = true;
+                    }
+                }
+            }
+            else if (state == 4) {
+                // Dead, displaying particles
+
+                if (deathParticles) {
+                    if (particles.size() == 0) {
+                        // No particles left
+                        deathParticles = false;
+
+                        // Unfreeze player
+                        freezePlayer = false;
+                    }
+                    else {
+                        for (uint8_t i = 0; i < particles.size(); i++) {
+                            particles[i].update(dt);
+                        }
+
+                        // Remove any particles which are too old
+                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
+                    }
+                }
             }
 
+            /*
+            if (state == 0) {
+                // Patrol
+                currentSpeed = BOSS_IDLE_SPEED;
 
-            if (y > levelDeathBoundary) {
-                health = 0;
-                xVel = yVel = 0;
+                bool reverseDirection = true;
+
+                float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                        // About to be on block
+                        reverseDirection = false;
+                    }
+                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        // Walked into side of block
+                        reverseDirection = true;
+                        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                        break;
+                    }
+                }
+
+                if (reverseDirection) {
+                    lastDirection = 1 - lastDirection;
+                }
             }
+            else if (state == 1) {
+                // Jump
+                lastDirection = *playerX < x ? 0 : 1;
+
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                        yVel = -BOSS_ANGRY_JUMP_SPEED;
+                        state = 2;
+                        jumpCooldown = BOSS_JUMP_COOLDOWN;
+                    }
+                }
+            }
+            else if (state == 2) {
+                // Pursue
+
+                currentSpeed = BOSS_PURSUIT_SPEED;
+
+                lastDirection = *playerX < x ? 0 : 1;
+
+                bool jump = true;
+
+                float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                        // About to be on block
+                        jump = false;
+                        break;
+                    }
+                }
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        // Walked into side of block
+                        jump = true;
+                        // Break because we definitely need to jump
+                        break;
+                    }
+                }
+
+
+                if (jump && !jumpCooldown) {
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                            // On top of block
+                            // Jump
+                            yVel = -BOSS_JUMP_SPEED;
+                            jumpCooldown = BOSS_JUMP_COOLDOWN;
+                            //state = JUMP;
+                        }
+                    }
+                }
+            }
+            else if (state == 3) {
+                // Do some angry stuff
+                currentSpeed = BOSS_ANGRY_SPEED;
+
+                bool reverseDirection = true;
+
+                float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                for (uint16_t i = 0; i < foreground.size(); i++) {
+                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                        // About to be on block
+                        reverseDirection = false;
+                    }
+                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        // Walked into side of block
+                        reverseDirection = true;
+                        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
+                        break;
+                    }
+                }
+
+                if (reverseDirection) {
+                    lastDirection = 1 - lastDirection;
+                }
+            }
+            */
         }
 
-        if (health == 0) {
-            //state = DEAD;
 
-            if (deathParticles) {
-                if (particles.size() == 0) {
-                    // No particles left
-                    deathParticles = false;
-                }
-                else {
-                    for (uint8_t i = 0; i < particles.size(); i++) {
-                        particles[i].update(dt);
-                    }
-
-                    // Remove any particles which are too old
-                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
-                }
-            }
-            else {
-                // Generate particles
-                particles = generate_particles(x, y, BOSS_DEATH_PARTICLE_GRAVITY_X, BOSS_DEATH_PARTICLE_GRAVITY_Y, bossDeathParticleColours[(uint8_t)enemyType], BOSS_DEATH_PARTICLE_SPEED, BOSS_DEATH_PARTICLE_COUNT);
-                deathParticles = true;
-            }
+        if (y > levelDeathBoundary) {
+            health = 0;
+            xVel = yVel = 0;
         }
     }
 
     void set_immune() {
         immuneTimer = BOSS_IMMUNE_TIME;
-        lastDirection = *playerX < x ? 1 : 0;
+        lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
     }
 
     void set_injured() {
         injuredTimer = BOSS_INJURED_TIME;
         set_immune();
+    }
+
+    bool is_within_range(float me, float them, float range) {
+        //return get_range(me, them) < range;
+        return get_abs_center_range(me, them) < range;
+    }
+
+    //float get_range(float me, float them) {
+    //    if (them > me) {
+    //        // They are right
+    //        return them - (me + SPRITE_SIZE * 2);
+    //    }
+    //    else {
+    //        // They are left
+    //        return me - (them + SPRITE_SIZE);
+    //    }
+    //}
+
+    float get_center_range(float me, float them) {
+        return (me + SPRITE_SIZE) - (them + SPRITE_HALF);
+    }
+
+    float get_abs_center_range(float me, float them) {
+        return std::abs(get_center_range(me, them));
     }
 
     void update_collisions() {
@@ -1725,10 +1993,14 @@ public:
                     if (yVel > 0) {
                         // Collided from top
                         y = foreground[i].y - SPRITE_SIZE * 2;
+                        if (shakeOnLanding) {
+                            shakeOnLanding = false;
+                            shaker.set_shake(BOSS_JUMP_SHAKE_TIME);
+                        }
                     }
                     else if (yVel < 0) {
-                        // Collided from bottom
-                        y = foreground[i].y + SPRITE_SIZE;
+                    // Collided from bottom
+                    y = foreground[i].y + SPRITE_SIZE;
                     }
                     yVel = 0;
                 }
@@ -1762,7 +2034,7 @@ public:
     }
 
     void render(Camera camera) {
-        if (health != 0) {
+        if (!dead) {
             uint16_t frame = anchorFrame;
 
             if (yVel < -50) {
@@ -1771,7 +2043,7 @@ public:
             else if (yVel > 160) {
                 frame = anchorFrame + 4;
             }
-            
+
             if (injuredTimer) {
                 frame = anchorFrame + 6;
             }
@@ -1803,10 +2075,45 @@ public:
         return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE * 2 - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE * 2);
     }
 
+    bool spawning_minions() {
+        return minionsToSpawn;
+    }
+
+    bool is_dead() {
+        return dead;
+    }
+
+    bool particles_left() {
+        return deathParticles;
+    }
+
+    void reset() {
+        dead = false;
+        particles.clear();
+        shakeOnLanding = false;
+        x = spawnX;
+        y = spawnY;
+        injuredTimer = 0;
+        minionsToSpawn = 0;
+        state = 0;
+        health = bossHealths[(uint8_t)enemyType];
+    }
+
 protected:
     float injuredTimer;
+    uint8_t minionsToSpawn;
+
+    uint16_t spawnX, spawnY;
+    bool dead;
+    bool shakeOnLanding;
 };
 std::vector<Boss> bosses; // used for levels where there is a boss.
+
+void reset_bosses() {
+    for (uint8_t i = 0; i < bosses.size(); i++) {
+        bosses[i].reset();
+    }
+}
 
 class Player : public Entity {
 public:
@@ -1856,7 +2163,13 @@ public:
             if (!locked) {
                 levelTimer += dt;
 
-                if (buttonStates.A && jumpCooldown == 0) {
+                if (freezePlayer) {
+                    if (bosses.size() == 1) {
+                        lastDirection = bosses[0].x + SPRITE_SIZE < x + SPRITE_HALF ? 0 : 1;
+                    }
+                }
+
+                if (!freezePlayer && buttonStates.A && jumpCooldown == 0) {
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
                             // On top of block
@@ -1864,6 +2177,7 @@ public:
                             yVel = -PLAYER_MAX_JUMP;
                             jumpCooldown = PLAYER_JUMP_COOLDOWN;
                             //state = JUMP;
+                            break;
                         }
                     }
 
@@ -1877,19 +2191,20 @@ public:
                                 yVel = -PLAYER_MAX_JUMP;
                                 jumpCooldown = PLAYER_JUMP_COOLDOWN;
                                 //state = JUMP;
+                                break;
                             }
                         }
                     }
                 }
 
 
-                if (buttonStates.LEFT) {
+                if (!freezePlayer && buttonStates.LEFT) {
                     xVel -= PLAYER_ACCELERATION * dt;
                     if (xVel < -PLAYER_MAX_SPEED) {
                         xVel = -PLAYER_MAX_SPEED;
                     }
                 }
-                else if (buttonStates.RIGHT) {
+                else if (!freezePlayer && buttonStates.RIGHT) {
                     xVel += PLAYER_ACCELERATION * dt;
                     if (xVel > PLAYER_MAX_SPEED) {
                         xVel = PLAYER_MAX_SPEED;
@@ -1926,7 +2241,7 @@ public:
 
             // Remove enemies if no health left
             enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
-            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss boss) { return (boss.health == 0 && boss.particles.size() == 0); }), bosses.end());
+            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
 
             enemiesKilled += enemyCount - enemies.size();// - bosses.size();
 
@@ -1968,6 +2283,10 @@ public:
                         // Stop player from moving while respawning
                         cameraRespawn = true;
                         locked = true;
+                        freezePlayer = false;
+                        bossBattle = false;
+
+                        reset_bosses();
 
                         // Make player immune when respawning?
                         //set_immune();
@@ -1987,7 +2306,7 @@ public:
             }
             else if (lives) {
                 // Generate particles
-                particles = generate_particles(x, y, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, playerDeathParticleColours[id], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x + SPRITE_HALF, y + SPRITE_HALF, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, playerDeathParticleColours[id], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
 
                 // Reduce player lives by one
@@ -2045,36 +2364,90 @@ public:
                 }
             }
 
+            //for (uint16_t i = 0; i < enemies.size(); i++) {
+            //    if (enemies[i].health && colliding(enemies[i])) {
+            //        if (yVel > 0 && y < enemies[i].y + SPRITE_HALF) {
+            //            // Collided from top
+            //            y = enemies[i].y - SPRITE_SIZE;
+            //            //yVel = -PLAYER_ATTACK_JUMP;
+            //            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+
+            //            // Take health off enemy
+            //            enemies[i].health--;
+
+            //            // Stop enemy's jump
+            //            enemies[i].yVel = 0;
+            //        }
+            //        //else if (yVel < 0 ){
+            //        //    // Collided from bottom
+            //        //    y = enemies[i].y + SPRITE_SIZE;
+            //        //}
+            //    }
+            //}
+
             for (uint16_t i = 0; i < enemies.size(); i++) {
                 if (enemies[i].health && colliding(enemies[i])) {
-                    if (yVel > 0 && y < enemies[i].y + SPRITE_HALF) {
+                    if (y + SPRITE_HALF < enemies[i].y) {
                         // Collided from top
                         y = enemies[i].y - SPRITE_SIZE;
-                        //yVel = -PLAYER_ATTACK_JUMP;
-                        yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
-                        // Take health off enemy
-                        enemies[i].health--;
+                        if (yVel > 0) { // && !enemies[i].is_immune()
+                            //yVel = -PLAYER_ATTACK_JUMP;
+                            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+
+                            // Take health off enemy
+                            enemies[i].health--;
+
+                            if (enemies[i].yVel < 0) {
+                                // Enemy is jumping
+                                // Stop enemy's jump
+                                enemies[i].yVel = 0;
+                            }
+                        }
                     }
-                    //else if (yVel < 0 ){
-                    //    // Collided from bottom
-                    //    y = enemies[i].y + SPRITE_SIZE;
-                    //}
                 }
             }
 
+            //for (uint16_t i = 0; i < bosses.size(); i++) {
+            //    if (bosses[i].health && !bosses[i].is_immune() && colliding(bosses[i])) {
+            //        if (yVel > 0 && y < bosses[i].y + SPRITE_HALF) {
+            //            // Collided from top
+            //            y = bosses[i].y - SPRITE_SIZE;
+            //            //yVel = -PLAYER_ATTACK_JUMP;
+            //            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+
+            //            // Take health off enemy
+            //            bosses[i].health--;
+
+            //            // Stop enemy's jump
+            //            bosses[i].yVel = 0;
+
+            //            bosses[i].set_injured();
+            //        }
+            //    }
+            //}
+
             for (uint16_t i = 0; i < bosses.size(); i++) {
-                if (bosses[i].health && !bosses[i].is_immune() && colliding(bosses[i])) {
-                    if (yVel > 0 && y < bosses[i].y + SPRITE_HALF) {
+                if (!bosses[i].is_dead() && colliding(bosses[i])) {
+                    if (y + SPRITE_HALF < bosses[i].y) {
                         // Collided from top
                         y = bosses[i].y - SPRITE_SIZE;
-                        //yVel = -PLAYER_ATTACK_JUMP;
-                        yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
-                        // Take health off enemy
-                        bosses[i].health--;
+                        if (yVel > 0 && !bosses[i].is_immune() && bosses[i].health) {
+                            //yVel = -PLAYER_ATTACK_JUMP;
+                            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
-                        bosses[i].set_injured();
+                            // Take health off enemy
+                            bosses[i].health--;
+
+                            if (bosses[i].yVel < 0) {
+                                // Enemy is jumping
+                                // Stop enemy's jump
+                                bosses[i].yVel = 0;
+                            }
+
+                            bosses[i].set_injured();
+                        }
                     }
                 }
             }
@@ -2151,7 +2524,49 @@ public:
     }
 
     void render(Camera camera) {
-        Entity::render(camera);
+        if (health != 0) {
+            bool visible = false;
+
+            if (immuneTimer) {
+                uint16_t immuneTimer_ms = (uint16_t)(immuneTimer * 1000);
+                if (immuneTimer_ms % 150 < 75) {
+                    visible = true;
+                }
+            }
+            else {
+                visible = true;
+            }
+
+            if (visible) {
+                uint16_t frame = anchorFrame;
+
+                if (yVel < -50) {
+                    frame = anchorFrame + 1;
+                }
+                else if (yVel > 160) {
+                    frame = anchorFrame + 2;
+                }
+
+                if (lastDirection == 1) {
+                    //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                    render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                }
+                else {
+                    //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                    render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                }
+
+
+                if (freezePlayer) {
+                    render_sprite(448, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                }
+            }
+        }
+
+        // Particles
+        for (uint8_t i = 0; i < particles.size(); i++) {
+            particles[i].render(camera);
+        }
     }
 
     bool colliding(Tile tile) {
@@ -2785,25 +3200,14 @@ void render_game() {
 
     render_level();
 
-    render_finish();
+    if (bosses.size() == 0) {
+        render_finish();
+    }
 
     render_entities();
 
 
-    if (cameraIntro) {
-        // Level <num> message
-        background_rect(0);
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-        screen.text("Level " + std::to_string(currentLevelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
-
-        // Press <key> to skip intro message
-        background_rect(1);
-        if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-            screen.text(messageStrings[1][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
-        }
-    }
-    else if (gamePaused) {
+    if (gamePaused) {
         screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b, hudBackground.a); // use hudBackground.a to make background semi transparent
         screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
         screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
@@ -2839,6 +3243,19 @@ void render_game() {
         /*if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
             screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
         }*/
+    }
+    else if (cameraIntro) {
+        // Level <num> message
+        background_rect(0);
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.text("Level " + std::to_string(currentLevelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+        // Press <key> to skip intro message
+        background_rect(1);
+        if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+            screen.text(messageStrings[1][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        }
     }
     else {
         render_hud();
@@ -3034,19 +3451,8 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 
     update_level_triggers(dt, buttonStates);
 
-    //update_coins(dt, buttonStates);
-
-    //update_projectiles(dt, buttonStates);
-
-    //finish.update(dt, buttonStates);
 
     // Button handling
-
-    //printf("%u, %u, %f, %f, %f, %f\n", player.health, player.lives, player.x, camera.x, player.y, camera.y);
-
-
-
-
 
     if (transition[0].is_ready_to_open()) {
         if (menuBack) {
@@ -3111,14 +3517,15 @@ void update_game(float dt, ButtonStates buttonStates) {
 
         update_projectiles(dt, buttonStates);
 
-        finish.update(dt, buttonStates);
+        if (bosses.size() == 0) {
+            finish.update(dt, buttonStates);
 
-        if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
-            // lock player to finish
-            player.x = finish.x;
-            player.y = finish.y - 1;
+            if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
+                // lock player to finish
+                player.x = finish.x;
+                player.y = finish.y - 1;
+            }
         }
-
 
     }
     //if (player.x + SPRITE_SIZE > finish.x - SPRITE_SIZE && player.x < finish.x + SPRITE_SIZE * 2 && player.y + SPRITE_SIZE > finish.y - SPRITE_SIZE && player.y < finish.y + SPRITE_SIZE * 2) {
@@ -3158,7 +3565,6 @@ void update_game(float dt, ButtonStates buttonStates) {
             }
         }
         else {
-
             if (cameraIntro) {
                 //camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
                 camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
@@ -3187,11 +3593,32 @@ void update_game(float dt, ButtonStates buttonStates) {
                 }
             }
             else {
-                camera.ease_out_to(dt, player.x, player.y);
+                /*if (freezePlayer) {
+                    for (uint8_t i = 0; i < bosses.size(); i++) {
+                        if (bosses[i].get_state() == 2 || bosses[i].get_state() == 3 || bosses[i].is_dead()) {
+                            foundBoss = true;
+                            camera.ease_out_to(dt, bosses[i].x - (bosses[i].x - player.x) / 2, bosses[i].y - (bosses[i].y - player.y) / 2);
+                            break;
+                        }
+                    }
+                }*/
+                if (bossBattle) {
+                    if (bosses.size() == 1) {
+                        // Keep both player and boss on screen
+                        camera.ease_out_to(dt, bosses[0].x - (bosses[0].get_center_range(bosses[0].x, player.x) / 2) + SPRITE_SIZE, bosses[0].y - (bosses[0].get_center_range(bosses[0].y, player.y) / 2) + SPRITE_SIZE);
+                    }
+                    else {
+                        bossBattle = false;
+                    }
+                }
+                // This can't be else {}, since bossBattle is modified in above statements
+                if (!bossBattle) {
+                    camera.ease_out_to(dt, player.x, player.y);
+                }
 
 
                 // Handle level end
-                if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
+                if (bosses.size() == 0 && player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
                     close_transition();
                 }
 
@@ -3253,8 +3680,6 @@ void init() {
     gameVersion = parse_version(metadata.version);
     // New
     printf("Loaded metadata. Game version: %d (v%d.%d.%d)\n", get_version(gameVersion), gameVersion.major, gameVersion.minor, gameVersion.build);
-    // Old
-    //printf("[OLD STYLE] Loaded metadata. Game version: %d (v%d.%d.%d)\n", get_version(), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
 
     // Populate transition array
     for (uint8_t y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
@@ -3382,8 +3807,6 @@ void update(uint32_t time) {
         textFlashTimer -= TEXT_FLASH_TIME;
     }
 
-    //printf("%f\n", dt);
-
     // Update buttonStates
     if (buttons & Button::A) {
         if (buttonStates.A == 2) {
@@ -3506,4 +3929,8 @@ void update(uint32_t time) {
     }
 
     update_transition(dt, buttonStates);
+
+    // Screen shake
+    camera.x += shaker.time_to_shake(dt);
+    camera.y += shaker.time_to_shake(dt);
 }
