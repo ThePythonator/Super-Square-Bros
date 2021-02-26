@@ -640,8 +640,8 @@ public:
         angle += (rand() % (angleWiggle * 2 + 1)) - angleWiggle;
         angle %= 360;
 
-        xVel = std::cos(angle) * speed;
-        yVel = std::sin(angle) * speed;
+        xVel = std::cos((float)angle) * speed;
+        yVel = std::sin((float)angle) * speed;
 
         Particle::update(dt);
     }
