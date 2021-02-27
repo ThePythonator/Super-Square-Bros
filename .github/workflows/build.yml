@@ -7,6 +7,8 @@ name: Build
 
 on:
   push:
+    branches:
+      - '**' # only run on branches
   pull_request:
   release:
     types: [created]
@@ -27,32 +29,32 @@ jobs:
           - os: ubuntu-20.04
             name: Linux
             release-suffix: LIN64
-            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit-sdk
             apt-packages: libsdl2-dev libsdl2-image-dev libsdl2-net-dev python3-setuptools
 
           - os: ubuntu-20.04
             name: STM32
             release-suffix: STM32
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/32blit/32blit.toolchain
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/32blit-sdk/32blit.toolchain
             apt-packages: gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib python3-setuptools
-            
+
           - os: ubuntu-20.04
             name: Emscripten
             release-suffix: WEB
-            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit-sdk
             cmake-prefix: emcmake
             apt-packages: python3-setuptools
 
           - os: macos-latest
             name: macOS
             release-suffix: MACOS
-            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit-sdk
             brew-packages: sdl2 sdl2_image sdl2_net
 
           - os: windows-latest
             name: Visual Studio
             release-suffix: WIN64
-            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit-sdk
 
     runs-on: ${{matrix.os}}
 
@@ -70,8 +72,8 @@ jobs:
     - name: Checkout 32Blit API
       uses: actions/checkout@v2
       with:
-        repository: pimoroni/32blit-beta
-        path: 32blit
+        repository: 32blit/32blit-sdk
+        path: 32blit-sdk
 
     # Linux dependencies
     - name: Install Linux deps
@@ -109,11 +111,11 @@ jobs:
       with:
         version: ${{env.EM_VERSION}}
         actions-cache-folder: ${{env.EM_CACHE_FOLDER}}
-        
+
     - name: Pre-build Emscripten ports
       if: matrix.name == 'Emscripten'
       run: embuilder.py build sdl2 sdl2-image-jpg sdl2-net
-    
+
     # Set up the cmake build environment
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/main/build
@@ -137,7 +139,7 @@ jobs:
       shell: bash
       working-directory: ${{runner.workspace}}/main/build
       run: |
-        cmake --build . --target package
+        cmake --build . --config $BUILD_TYPE --target package
 
     # Push the tar file to the release
     - name: Upload tar
