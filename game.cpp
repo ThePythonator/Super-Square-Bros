@@ -9,7 +9,7 @@ using namespace blit;
 
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
-//#define RESET_SAVE_DATA
+//#define RESET_SAVE_DATA_IF_MINOR_DIFF
 
 
 
@@ -330,8 +330,22 @@ LevelSaveData allLevelSaveData[2][LEVEL_COUNT];
     return VERSION_MAJOR * 256 + VERSION_MINOR * 16 + VERSION_BUILD;
 }*/
 
-uint16_t get_version(GameVersion version) {
-    return version.major * 256 + version.minor * 16 + version.build;
+uint16_t get_version(GameVersion gameVersion) {
+    return gameVersion.major * 256 + gameVersion.minor * 16 + gameVersion.build;
+}
+
+GameVersion get_version_struct(uint16_t version) {
+    GameVersion gameVersion{};
+
+    gameVersion.major = version / 256;
+    version %= 256;
+
+    gameVersion.minor = version / 16;
+    version %= 16;
+
+    gameVersion.build = version;
+
+    return gameVersion;
 }
 
 GameVersion parse_version(std::string versionString) {
@@ -764,7 +778,8 @@ protected:
 };
 std::vector<Tile> foreground;
 std::vector<Tile> background;
-//std::vector<Tile> platforms;
+// Platforms are only collidable when falling (or travelling sideways)
+std::vector<Tile> platforms;
 
 class ParallaxTile : public Tile {
 public:
@@ -1179,6 +1194,17 @@ public:
                 }
             }
 
+            // Platforms may need work
+            for (uint16_t i = 0; i < platforms.size(); i++) {
+                if (colliding(platforms[i])) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = platforms[i].y - SPRITE_SIZE;
+                        yVel = 0;
+                    }
+                }
+            }
+
             // Move entity x
             x += xVel * dt;
 
@@ -1204,6 +1230,33 @@ public:
                 lastDirection = 0;
             }
         }
+    }
+
+    bool jump(float jumpVel, float cooldown) {
+        // Allow entity to jump on tiles
+        for (uint16_t i = 0; i < foreground.size(); i++) {
+            if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
+                // On top of block
+                // Jump
+                yVel = -jumpVel;
+                jumpCooldown = cooldown;
+                return true;
+            }
+        }
+
+        // Allow entity to jump on platforms
+        for (uint16_t i = 0; i < platforms.size(); i++) {
+            if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE) {
+                // On top of block
+                // Jump
+                yVel = -jumpVel;
+                jumpCooldown = cooldown;
+                return true;
+            }
+        }
+
+        // Entity didn't jump
+        return false;
     }
     
     void render(Camera camera) {
@@ -1425,36 +1478,27 @@ public:
 
                     lastDirection = *playerX < x ? 0 : 1;
 
-                    bool jump = true;
+                    bool shouldJump = true;
 
                     float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
-                            jump = false;
+                            shouldJump = false;
                             break;
                         }
                     }
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if ((lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
                             // Walked into side of block
-                            jump = true;
+                            shouldJump = true;
                             // Break because we definitely need to jump
                             break;
                         }
                     }
 
-                    if (jump && jumpCooldown == 0) {
-                        for (uint16_t i = 0; i < foreground.size(); i++) {
-                            if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
-                                // On top of block
-                                // Jump
-                                yVel = -ENTITY_JUMP_SPEED;
-                                jumpCooldown = ENTITY_JUMP_COOLDOWN;
-                                //state = JUMP;
-                                break;
-                            }
-                        }
+                    if (shouldJump && jumpCooldown == 0) {
+                        jump(ENTITY_JUMP_SPEED, ENTITY_JUMP_COOLDOWN);
                     }
                 }
             }
@@ -1652,36 +1696,28 @@ public:
 
                     lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
 
-                    bool jump = true;
+                    bool shouldJump = true;
 
                     float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
                             // About to be on block
-                            jump = false;
+                            shouldJump = false;
                             break;
                         }
                     }
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
                             // Walked into side of block
-                            jump = true;
+                            shouldJump = true;
                             // Break because we definitely need to jump
                             break;
                         }
                     }
 
-                    if (jump && !jumpCooldown) {
-                        for (uint16_t i = 0; i < foreground.size(); i++) {
-                            if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                                // On top of block
-                                // Jump
-                                yVel = -BOSS_JUMP_SPEED;
-                                jumpCooldown = BOSS_JUMP_COOLDOWN;
-                                shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
-                                //state = JUMP;
-                                break;
-                            }
+                    if (shouldJump && !jumpCooldown) {
+                        if (jump(BOSS_JUMP_SPEED, BOSS_JUMP_COOLDOWN)) {
+                            shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
                         }
                     }
                 }
@@ -1692,16 +1728,12 @@ public:
                     state = 1;
                     bossBattle = true;
 
-                    // JUMP
                     lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
 
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                            yVel = -BOSS_ANGRY_JUMP_SPEED;
-                            jumpCooldown = BOSS_JUMP_COOLDOWN;
-                            shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
-                            break;
-                        }
+
+                    // JUMP
+                    if (jump(BOSS_ANGRY_JUMP_SPEED, BOSS_JUMP_COOLDOWN)) {
+                        shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
                     }
                 }
             }
@@ -1718,37 +1750,29 @@ public:
 
                 lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
 
-                bool jump = true;
+                bool shouldJump = true;
 
                 float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
                         // About to be on block
-                        jump = false;
+                        shouldJump = false;
                         break;
                     }
                 }
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
                         // Walked into side of block
-                        jump = true;
+                        shouldJump = true;
                         // Break because we definitely need to jump
                         break;
                     }
                 }
 
 
-                if (jump && !jumpCooldown) {
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                            // On top of block
-                            // Jump
-                            yVel = -BOSS_JUMP_SPEED;
-                            jumpCooldown = BOSS_JUMP_COOLDOWN;
-                            shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
-                            //state = JUMP;
-                            break;
-                        }
+                if (shouldJump && !jumpCooldown) {
+                    if (jump(BOSS_JUMP_SPEED, BOSS_JUMP_COOLDOWN)) {
+                        shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
                     }
                 }
 
@@ -1795,19 +1819,11 @@ public:
                 //}
 
                 // add jumping?
-                //if (jump && !jumpCooldown) {
-                //    for (uint16_t i = 0; i < foreground.size(); i++) {
-                //        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                //            // On top of block
-                //            // Jump
-                //            yVel = -BOSS_JUMP_SPEED;
-                //            jumpCooldown = BOSS_JUMP_COOLDOWN;
-                //            shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
-                //            //state = JUMP;
-                //            break;
-                //        }
-                //    }
-                //}
+                /*if (shouldJump && !jumpCooldown) {
+                    if (jump(BOSS_JUMP_SPEED, BOSS_JUMP_COOLDOWN)) {
+                        shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
+                    }
+                }*/
 
                 // Handle states
                 if (hitWall || /*atEdge ||*/ !is_within_range(x, *playerX, health == 0 ? BOSS_DEATH_MAX_RANGE : BOSS_INJURED_MAX_RANGE) || !is_within_range(y, *playerY, health == 0 ? BOSS_DEATH_MAX_RANGE : BOSS_INJURED_MAX_RANGE)) {
@@ -1826,22 +1842,14 @@ public:
 
                 // Jump whenever spawn minion
                 if (!jumpCooldown && minionsToSpawn) {
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                            // On top of block
-                            // Jump
-                            yVel = -BOSS_ANGRY_JUMP_SPEED;
-                            jumpCooldown = BOSS_MINION_SPAWN_COOLDOWN;
-                            shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
-                            //state = JUMP;
+                    if (jump(BOSS_ANGRY_JUMP_SPEED, BOSS_MINION_SPAWN_COOLDOWN)) {
+                        shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
 
-                            // Spawn minion
-                            enemies.push_back(Enemy(x + SPRITE_SIZE, y + SPRITE_SIZE, enemyHealths[(uint8_t)enemyType], (uint8_t)enemyType));
-                            enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;;
-                            enemies[enemies.size() - 1].set_speed(BOSS_MINION_SPEED - BOSS_MINION_SPEED_REDUCTION * (2 - health));
-                            minionsToSpawn--;
-                            break;
-                        }
+                        // Spawn minion
+                        enemies.push_back(Enemy(x + SPRITE_SIZE, y + SPRITE_SIZE, enemyHealths[(uint8_t)enemyType], (uint8_t)enemyType));
+                        enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;;
+                        enemies[enemies.size() - 1].set_speed(BOSS_MINION_SPEED - BOSS_MINION_SPEED_REDUCTION * (2 - health));
+                        minionsToSpawn--;
                     }
                 }
 
@@ -1886,115 +1894,39 @@ public:
                     }
                 }
             }
-
-            /*
-            if (state == 0) {
-                // Patrol
-                currentSpeed = BOSS_IDLE_SPEED;
-
-                bool reverseDirection = true;
-
-                float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
-                        // About to be on block
-                        reverseDirection = false;
-                    }
-                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                        // Walked into side of block
-                        reverseDirection = true;
-                        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
-                        break;
-                    }
-                }
-
-                if (reverseDirection) {
-                    lastDirection = 1 - lastDirection;
-                }
-            }
-            else if (state == 1) {
-                // Jump
-                lastDirection = *playerX < x ? 0 : 1;
-
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                        yVel = -BOSS_ANGRY_JUMP_SPEED;
-                        state = 2;
-                        jumpCooldown = BOSS_JUMP_COOLDOWN;
-                    }
-                }
-            }
-            else if (state == 2) {
-                // Pursue
-
-                currentSpeed = BOSS_PURSUIT_SPEED;
-
-                lastDirection = *playerX < x ? 0 : 1;
-
-                bool jump = true;
-
-                float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
-                        // About to be on block
-                        jump = false;
-                        break;
-                    }
-                }
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                        // Walked into side of block
-                        jump = true;
-                        // Break because we definitely need to jump
-                        break;
-                    }
-                }
-
-
-                if (jump && !jumpCooldown) {
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                            // On top of block
-                            // Jump
-                            yVel = -BOSS_JUMP_SPEED;
-                            jumpCooldown = BOSS_JUMP_COOLDOWN;
-                            //state = JUMP;
-                        }
-                    }
-                }
-            }
-            else if (state == 3) {
-                // Do some angry stuff
-                currentSpeed = BOSS_ANGRY_SPEED;
-
-                bool reverseDirection = true;
-
-                float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
-                        // About to be on block
-                        reverseDirection = false;
-                    }
-                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                        // Walked into side of block
-                        reverseDirection = true;
-                        // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
-                        break;
-                    }
-                }
-
-                if (reverseDirection) {
-                    lastDirection = 1 - lastDirection;
-                }
-            }
-            */
         }
-
 
         if (y > levelDeathBoundary) {
             health = 0;
             xVel = yVel = 0;
         }
+    }
+
+    bool jump(float jumpVel, float cooldown) {
+        // Allow entity to jump on tiles
+        for (uint16_t i = 0; i < foreground.size(); i++) {
+            if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                // On top of block
+                // Jump
+                yVel = -jumpVel;
+                jumpCooldown = cooldown;
+                return true;
+            }
+        }
+
+        // Allow entity to jump on platforms
+        for (uint16_t i = 0; i < platforms.size(); i++) {
+            if (y + SPRITE_SIZE * 2 == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE * 2) {
+                // On top of block
+                // Jump
+                yVel = -jumpVel;
+                jumpCooldown = cooldown;
+                return true;
+            }
+        }
+
+        // Entity didn't jump
+        return false;
     }
 
     void set_immune() {
@@ -2066,6 +1998,17 @@ public:
                     y = foreground[i].y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                }
+            }
+
+            // Platforms may need work
+            for (uint16_t i = 0; i < platforms.size(); i++) {
+                if (colliding(platforms[i])) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = platforms[i].y - SPRITE_SIZE * 2;
+                        yVel = 0;
+                    }
                 }
             }
 
@@ -2194,6 +2137,8 @@ public:
         id = 0;
 
         lives = PLAYER_START_LIVES;
+
+        slowPlayerParticleTimer = 0;
     }
 
     Player(uint16_t xPosition, uint16_t yPosition, uint8_t colour) : Entity(xPosition, yPosition, TILE_ID_PLAYER_1 + colour * 4, PLAYER_MAX_HEALTH) {
@@ -2204,6 +2149,8 @@ public:
         id = colour;
 
         lives = PLAYER_START_LIVES;
+
+        slowPlayerParticleTimer = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -2227,40 +2174,27 @@ public:
                 levelTimer += dt;
 
                 if (buttonStates.A && jumpCooldown == 0) {
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
-                            // On top of block
-                            // Jump
-                            if (slowPlayer) {
-                                yVel = -PLAYER_SLOW_MAX_JUMP;
-                                jumpCooldown = PLAYER_SLOW_JUMP_COOLDOWN;
-                            }
-                            else {
-                                yVel = -PLAYER_MAX_JUMP;
-                                jumpCooldown = PLAYER_JUMP_COOLDOWN;
-                            }
-                            //state = JUMP;
-                            break;
-                        }
-                    }
+                    if (!jump(slowPlayer ? PLAYER_SLOW_MAX_JUMP : PLAYER_MAX_JUMP, slowPlayer ? PLAYER_SLOW_JUMP_COOLDOWN : PLAYER_JUMP_COOLDOWN)) {
+                        // Player didn't jump
 
-                    // Allow player to jump on locked levelTriggers
-                    for (uint16_t i = 0; i < levelTriggers.size(); i++) {
-                        if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE - 1 > x && levelTriggers[i].x + 1< x + SPRITE_SIZE) {
-                            // On top of block
-                            if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
-                                // LevelTrigger is locked
-                                // Jump
-                                if (slowPlayer) {
-                                    yVel = -PLAYER_SLOW_MAX_JUMP;
-                                    jumpCooldown = PLAYER_SLOW_JUMP_COOLDOWN;
+                        // Allow player to jump on locked levelTriggers
+                        for (uint16_t i = 0; i < levelTriggers.size(); i++) {
+                            if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE - 1 > x && levelTriggers[i].x + 1 < x + SPRITE_SIZE) {
+                                // On top of block
+                                if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
+                                    // LevelTrigger is locked
+                                    // Jump
+                                    if (slowPlayer) {
+                                        yVel = -PLAYER_SLOW_MAX_JUMP;
+                                        jumpCooldown = PLAYER_SLOW_JUMP_COOLDOWN;
+                                    }
+                                    else {
+                                        yVel = -PLAYER_MAX_JUMP;
+                                        jumpCooldown = PLAYER_JUMP_COOLDOWN;
+                                    }
+                                    //state = JUMP;
+                                    break;
                                 }
-                                else {
-                                    yVel = -PLAYER_MAX_JUMP;
-                                    jumpCooldown = PLAYER_JUMP_COOLDOWN;
-                                }
-                                //state = JUMP;
-                                break;
                             }
                         }
                     }
@@ -2450,6 +2384,17 @@ public:
                         y = foreground[i].y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                }
+            }
+
+            // Platforms may need work
+            for (uint16_t i = 0; i < platforms.size(); i++) {
+                if (colliding(platforms[i])) {
+                    if (yVel > 0 && y + SPRITE_SIZE < platforms[i].y + SPRITE_QUARTER) {
+                        // Collided from top
+                        y = platforms[i].y - SPRITE_SIZE;
+                        yVel = 0;
+                    }
                 }
             }
 
@@ -2838,6 +2783,7 @@ void render_level() {
     render_parallax(parallax);
 
     render_tiles(background);
+    render_tiles(platforms);
     render_tiles(foreground);
 
     render_coins();
@@ -2961,6 +2907,7 @@ void load_level(uint8_t levelNumber) {
 
     foreground.clear();
     background.clear();
+    platforms.clear();
     parallax.clear();
     coins.clear();
     enemies.clear();
@@ -2981,10 +2928,22 @@ void load_level(uint8_t levelNumber) {
         }
     }
 
+    // Platform Layer
+    for (uint32_t i = 0; i < levelSize; i++) {
+        uint32_t index = i + levelSize * 2;
+
+        if (tmx->data[index] == TILE_ID_EMPTY) {
+            // Is a blank tile, don't do anything
+        }
+        else {
+            // Background tiles are non-solid. If semi-solidity (can jump up but not fall through) is required, use platforms (will be a separate layer).
+            platforms.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
+        }
+    }
 
     // Background Layer
     for (uint32_t i = 0; i < levelSize; i++) {
-        uint32_t index = i + levelSize * 2;
+        uint32_t index = i + levelSize * 3;
 
         if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
@@ -3049,7 +3008,7 @@ void load_level(uint8_t levelNumber) {
 
     // Parallax Background Layer
     for (uint32_t i = 0; i < levelSize; i++) {
-        uint32_t index = i + levelSize * 4;
+        uint32_t index = i + levelSize * 5;
 
         if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
@@ -3061,7 +3020,7 @@ void load_level(uint8_t levelNumber) {
 
     // Parallax Foreground Layer
     for (uint32_t i = 0; i < levelSize; i++) {
-        uint32_t index = i + levelSize * 3;
+        uint32_t index = i + levelSize * 4;
 
         if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
@@ -3646,6 +3605,9 @@ void update_game(float dt, ButtonStates buttonStates) {
         update_projectiles(dt, buttonStates);
 
         if (bosses.size() == 0) {
+            // Only show finish if there are no bosses
+
+            // Need to rework finish
             finish.update(dt, buttonStates);
 
             if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
@@ -3821,18 +3783,31 @@ void init() {
     // Load save data
     // Attempt to load the first save slot.
     if (success) {
-#ifdef RESET_SAVE_DATA
-        if (gameSaveData.version < get_version(gameVersion)) {
-            printf("Warning: Saved game data is out of date, save version is %d, but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, get_version(gameVersion), VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
+        bool reset = false;
+
+        if (get_version_struct(gameSaveData.version).major != gameVersion.major) {
+            reset = true;
+        }
+#ifdef RESET_SAVE_DATA_IF_MINOR_DIFF
+        else if (get_version_struct(gameSaveData.version).minor != gameVersion.minor) {
+            reset = true;
+        }
+#endif
+
+        if (reset) {
+            GameVersion saveDataVersion = get_version_struct(gameSaveData.version);
+
+            printf("Warning: Saved game data is out of date, save version is %d (v%d.%d.%d), but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, saveDataVersion.major, saveDataVersion.minor, saveDataVersion.build, get_version(gameVersion), gameVersion.major, gameVersion.minor, gameVersion.build);
             printf("Resetting save data...\n");
 
             success = false;
             reset_save();
         }
-#endif
     }
 
     if (success) {
+        GameVersion saveDataVersion = get_version_struct(gameSaveData.version);
+        printf("Save data loaded, save version: %d (v%d.%d.%d)\n", gameSaveData.version, saveDataVersion.major, saveDataVersion.minor, saveDataVersion.build);
 
         // Loaded sucessfully!
         gameState = GameState::STATE_CHARACTER_SELECT;
