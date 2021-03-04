@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.8)
 
 project(Super-Square-Bros)
-set(PROJECT_SOURCE game.cpp game.hpp)
+set(PROJECT_SOURCE SuperSquareBros.cpp)# BezierCurve.cpp Point.cpp
 set(PROJECT_DISTRIBS LICENSE README.md)
 
 # Build configuration; approach this with caution!
