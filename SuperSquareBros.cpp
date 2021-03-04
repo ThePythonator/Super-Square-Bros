@@ -3568,7 +3568,7 @@ void render_game_lost() {
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
-    screen.text("You lost.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+    screen.text("Level failed.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     display_stats();
 
@@ -3586,7 +3586,7 @@ void render_game_won() {
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
-    screen.text("You won.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+    screen.text("Level complete!", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     display_stats();
 
