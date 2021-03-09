@@ -11,16 +11,18 @@ using namespace blit;
 
 #define RESET_SAVE_DATA_IF_MINOR_DIFF
 
-
+void init_game();
 
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
 
-const uint8_t LEVEL_COUNT = 6;
+const uint8_t LEVEL_COUNT = 9;
 const uint8_t LEVEL_SELECT_NUMBER = LEVEL_COUNT + 2;
 const uint8_t LEVELS_PER_WORLD = 4;
 
 const uint8_t SNOW_WORLD = 1;
+
+const uint8_t FADE_STEP = 3;
 
 const float FRAME_LENGTH = 0.15f;
 const float TRANSITION_FRAME_LENGTH = 0.1f;
@@ -68,7 +70,7 @@ const float LEVEL_DEATH_BOUNDARY_SCALE = 1.5f;
 
 const uint8_t SPRITE_SIZE = 8;
 
-
+const uint8_t SG_ICON_SIZE = SPRITE_SIZE * 4;
 
 const float SNOW_GENERATE_DELAY = 0.08f;
 const uint16_t SNOW_INIT_COUNT = 500;
@@ -186,7 +188,7 @@ const uint8_t SPRITE_QUARTER = SPRITE_SIZE / 4;
 
 const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
 
-const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2, 2 };
+const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2, 2, 2, 2 };
 const uint8_t bossHealths[] = { 3 };
 
 const std::vector<uint16_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
@@ -214,6 +216,9 @@ const uint8_t* asset_levels[] = {
     asset_level3,
     asset_level4,
     asset_level5,
+    asset_level6,
+    asset_level7,
+    asset_level8,
     asset_level_title,
     asset_level_char_select,
     asset_level_level_select
@@ -251,10 +256,15 @@ uint16_t levelDeathBoundary;
 float dt;
 uint32_t lastTime = 0;
 
+Surface* sg_icon_image = Surface::load(asset_scorpion_games);
 Surface* background_image = Surface::load(asset_background);
+
+AudioHandler::AudioHandler audioHandler;
 
 bool menuBack = false; // tells menu to go backwards instead of forwards.
 bool gamePaused = false; // used for determining if game is paused or not.
+
+bool coinSfxAlternator = false; // used for alternating channel used for coin pickup sfx
 
 bool cameraIntro = false;
 bool cameraRespawn = false;
@@ -275,6 +285,7 @@ bool bossBattle = false;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 uint8_t currentWorldNumber = 0;
+bool levelSelect = false;
 //
 //std::vector<VFXCollection::Point2D<double>> animatedPlatformBezierNodes = {
 //    VFXCollection::Point2D<double>(0,0),
@@ -310,6 +321,7 @@ struct TMX {
 #pragma pack(pop)
 
 enum class GameState {
+    STATE_SG_ICON,
     STATE_INPUT_SELECT,
     STATE_CHARACTER_SELECT,
     STATE_MENU,
@@ -318,7 +330,7 @@ enum class GameState {
     STATE_LOST,
     STATE_WON
 };
-GameState gameState = GameState::STATE_INPUT_SELECT;
+GameState gameState = GameState::STATE_SG_ICON;
 
 enum InputType {
     CONTROLLER = 0,
@@ -584,6 +596,7 @@ const Colour inputSelectColour = Colour(255, 199, 89);
 const Colour hudBackground = Colour(7, 0, 14, 64);
 const Colour gameBackground = Colour(62, 106, 178);
 const Colour defaultWhite = Colour(255, 255, 242);
+Colour splashColour = Colour(7, 0, 14, 0);
 
 class Camera {
 public:
@@ -888,35 +901,6 @@ std::vector<Tile> generic_entities; // used because platforms are rendered over 
 std::vector<Tile> background;
 // Platforms are only collidable when falling (or travelling sideways)
 std::vector<Tile> platforms;
-
-//class BouncyPlatform : public Tile {
-//public:
-//    BouncyPlatform() : Tile() {
-//        spawnX = spawnY = 0;
-//        springStrength = 0.0f;
-//    }
-//
-//    BouncyPlatform(uint16_t xPosition, uint16_t yPosition, uint16_t tileID, float springStrength) : Tile(xPosition, yPosition, tileID) {
-//        spawnX = xPosition;
-//        spawnY = yPosition;
-//        this->springStrength = springStrength;
-//    }
-//
-//    void update(float dt, ButtonStates buttonStates) {
-//        // Only bounces in y direction
-//        //printf("%f",springStrength * ((float)spawnY - y));
-//        y += springStrength * (spawnY - y) * dt;
-//    }
-//
-//    void render(Camera camera) {
-//        Tile::render(camera);
-//    }
-//
-//protected:
-//    uint16_t spawnX, spawnY;
-//    float springStrength;
-//};
-//std::vector<BouncyPlatform> bouncyPlatforms;
 
 class ParallaxTile : public Tile {
 public:
@@ -1338,9 +1322,6 @@ public:
             for (uint16_t i = 0; i < platforms.size(); i++) {
                 handle_platform_collisions(platforms[i]);
             }
-            /*for (uint16_t i = 0; i < bouncyPlatforms.size(); i++) {
-                handle_platform_collisions(bouncyPlatforms[i]);
-            }*/
 
             // Move entity x
             x += xVel * dt;
@@ -2192,8 +2173,6 @@ public:
                 }
             }
 
-            // CURRENTLY BOUNCY_PLATFORMS ARE NOT COLLIDABLE BY BOSS
-
             // Move entity x
             x += xVel * dt;
 
@@ -2435,6 +2414,13 @@ public:
             // Add points to player score (1 point per coin which has been deleted)
             score += coinCount - coins.size();
 
+            if (coinCount != coins.size()) {
+                // Must have picked up a coin
+                // Play coin sfx
+                //audioHandler.play(coinSfxAlternator ? 0 : 2);
+                coinSfxAlternator = !coinSfxAlternator;
+            }
+
 
             uint8_t enemyCount = enemies.size();// + bosses.size();
 
@@ -2608,17 +2594,6 @@ public:
             for (uint16_t i = 0; i < platforms.size(); i++) {
                 handle_platform_collisions(platforms[i]);
             }
-            //for (uint16_t i = 0; i < bouncyPlatforms.size(); i++) {
-            //    //handle_platform_collisions(bouncyPlatforms[i]);
-            //    if (colliding(bouncyPlatforms[i])) {
-            //        if (yVel > 0 && y + SPRITE_SIZE < bouncyPlatforms[i].y + SPRITE_QUARTER) {
-            //            // Collided from top
-            //            y = bouncyPlatforms[i].y - SPRITE_SIZE;
-            //            bouncyPlatforms[i].y += yVel*0.1;
-            //            yVel *= 0.3;
-            //        }
-            //    }
-            //}
 
             for (uint16_t i = 0; i < levelTriggers.size(); i++) {
                 if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
@@ -2877,12 +2852,6 @@ void render_tiles(std::vector<Tile> tiles) {
     }
 }
 
-//void render_bouncy_platforms(std::vector<BouncyPlatform> platforms) {
-//    for (uint32_t i = 0; i < platforms.size(); i++) {
-//        platforms[i].render(camera);
-//    }
-//}
-
 void render_parallax(std::vector<ParallaxTile> parallax) {
     for (uint32_t i = 0; i < parallax.size(); i++) {
         parallax[i].render(camera);
@@ -2939,7 +2908,6 @@ void render_level() {
     render_tiles(background);
     render_tiles(platforms);
     render_tiles(generic_entities);
-    //render_bouncy_platforms(bouncyPlatforms);
     render_tiles(foreground);
 
     render_coins();
@@ -3043,7 +3011,7 @@ void render_nearby_level_info() {
 }
 
 void load_level(uint8_t levelNumber) {
-    uint8_t levelTriggerCount = 0;
+    levelSelect = (levelNumber == LEVEL_SELECT_NUMBER);
 
     snowGenTimer = 0.0f;
 
@@ -3125,7 +3093,7 @@ void load_level(uint8_t levelNumber) {
             finishY = (i / levelWidth) * SPRITE_SIZE;
         }
         else if (tmx->data[index] == TILE_ID_LEVEL_TRIGGER) {
-            levelTriggers.push_back(LevelTrigger((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, levelTriggerCount++));
+            levelTriggers.push_back(LevelTrigger((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, 0));
         }
         else if (tmx->data[index] == TILE_ID_ENEMY_1) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[0], 0));
@@ -3239,6 +3207,7 @@ void load_level(uint8_t levelNumber) {
     // Check there aren't any levelTriggers which have levelNumber >= LEVEL_COUNT
     levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger levelTrigger) { return levelTrigger.levelNumber >= LEVEL_COUNT; }), levelTriggers.end());
 
+    // Prep snow particles (create some so that it isn't empty to start with)
     if (currentWorldNumber == SNOW_WORLD) {
         // Generate snow particles
         for (uint16_t i = 0; i < SNOW_INIT_COUNT; i++) {
@@ -3247,6 +3216,19 @@ void load_level(uint8_t levelNumber) {
             float xVel = rand() % 5 - 2;
             float yVel = rand() % 5 + 8;
             float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
+            float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
+            imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
+        }
+    }
+    else if (levelSelect) {
+        for (uint16_t i = 0; i < SNOW_INIT_COUNT; i++) {
+            // Generate snow particles
+            // Get random position
+            float xVel = rand() % 3 - 1;
+            float yVel = rand() % 5 + 8;
+            uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
+            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
+            float x = (rand() % (endX - startX)) + startX;
             float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
             imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
         }
@@ -3264,6 +3246,9 @@ void reset_level_vars() {
 
 void start_level(uint8_t levelNumber) {
     gameState = GameState::STATE_IN_GAME;
+
+    // Load coin sfx slot into select sfx slot
+    audioHandler.load(0, 2);
 
     // Load level
     load_level(levelNumber);
@@ -3393,6 +3378,9 @@ void start_game_won() {
 }
 
 
+void render_sg_icon() {
+    screen.stretch_blit(sg_icon_image, Rect(0, 0, SG_ICON_SIZE, SG_ICON_SIZE), Rect(SCREEN_MID_WIDTH - SG_ICON_SIZE, SCREEN_MID_HEIGHT - SG_ICON_SIZE, SG_ICON_SIZE * 2, SG_ICON_SIZE * 2));
+}
 
 void render_input_select() {
     render_background();
@@ -3479,6 +3467,8 @@ void render_level_select() {
     render_entities();
 
     render_level_triggers();
+
+    render_particles();
 
 
     background_rect(0);
@@ -3667,10 +3657,23 @@ void update_particles(float dt) {
             snowGenTimer -= SNOW_GENERATE_DELAY;
             // Generate snow particles
             // Get random position
-            // Change vel later
             float xVel = rand() % 3 - 1;
             float yVel = rand() % 5 + 8;
             float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
+            imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
+        }
+    }
+    else if (levelSelect) {
+        snowGenTimer += dt;
+        while (snowGenTimer >= SNOW_GENERATE_DELAY) {
+            snowGenTimer -= SNOW_GENERATE_DELAY;
+            // Generate snow particles
+            // Get random position
+            float xVel = rand() % 3 - 1;
+            float yVel = rand() % 5 + 8;
+            uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
+            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
+            float x = (rand() % (endX - startX)) + startX;
             imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
         }
     }
@@ -3678,66 +3681,107 @@ void update_particles(float dt) {
     imageParticles.erase(std::remove_if(imageParticles.begin(), imageParticles.end(), [](ImageParticle particle) { return particle.y > levelDeathBoundary; }), imageParticles.end());
 }
 
-void update_input_select(float dt, ButtonStates buttonStates) {
-    if (transition[0].is_ready_to_open()) {
-        start_character_select();
+void update_sg_icon(float dt, ButtonStates buttonStates) {
+    if (splashColour.a == 255) {
+        // Init game
+        gameState = GameState::STATE_INPUT_SELECT;
+        init_game();
     }
-    else if (transition[0].is_open()) {
-        if (gameSaveData.inputType == InputType::CONTROLLER) {
-            if (buttonStates.DOWN) {
-                gameSaveData.inputType = InputType::KEYBOARD;
-            }
+    else if (splashColour.a > 0) {
+        if (splashColour.a <= 255 - FADE_STEP) {
+            splashColour.a += FADE_STEP;
         }
-        else if (gameSaveData.inputType == InputType::KEYBOARD) {
-            if (buttonStates.UP) {
-                gameSaveData.inputType = InputType::CONTROLLER;
-            }
+        else {
+            splashColour.a = 255;
         }
+    }
+    else {
+        if (buttonStates.A || buttonStates.B || buttonStates.X || buttonStates.Y) {
+            splashColour.a = FADE_STEP;
+        }
+    }
+}
+
+void update_input_select(float dt, ButtonStates buttonStates) {
+    if (splashColour.a > 0) {
+        if (splashColour.a >= FADE_STEP) {
+            splashColour.a -= FADE_STEP;
+        }
+        else {
+            splashColour.a = 0;
+        }
+    }
+    else {
+        if (transition[0].is_ready_to_open()) {
+            start_character_select();
+        }
+        else if (transition[0].is_open()) {
+            if (gameSaveData.inputType == InputType::CONTROLLER) {
+                if (buttonStates.DOWN) {
+                    gameSaveData.inputType = InputType::KEYBOARD;
+                }
+            }
+            else if (gameSaveData.inputType == InputType::KEYBOARD) {
+                if (buttonStates.UP) {
+                    gameSaveData.inputType = InputType::CONTROLLER;
+                }
+            }
 
 
-        if (buttonStates.A == 2) {
-            close_transition();
+            if (buttonStates.A == 2) {
+                close_transition();
 
-            // Save inputType
-            save_game_data();
+                // Save inputType
+                save_game_data();
+            }
         }
     }
 }
 
 void update_character_select(float dt, ButtonStates buttonStates) {
-    // Dummy states is used to make selected player continually jump (sending A key pressed).
-    ButtonStates dummyStates = { 0 };
-    dummyStates.A = 2;
-    player.update(dt, dummyStates);
-
-
-    if (buttonStates.RIGHT && !playerSelected) {
-        playerSelected = 1;
-        player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
-        player.lastDirection = 0;
-    }
-    else if (buttonStates.LEFT && playerSelected) {
-        playerSelected = 0;
-        player = Player(playerStartX, playerStartY, 0);
-        player.lastDirection = 1;
-    }
-
-    if (transition[0].is_ready_to_open()) {
-        if (menuBack) {
-            menuBack = false;
-            start_input_select();
+    if (splashColour.a > 0) {
+        if (splashColour.a >= FADE_STEP) {
+            splashColour.a -= FADE_STEP;
         }
         else {
-            start_menu();
+            splashColour.a = 0;
         }
     }
-    else if (transition[0].is_open()) {
-        if (buttonStates.A == 2) {
-            close_transition();
+    else {
+        // Dummy states is used to make selected player continually jump (sending A key pressed).
+        ButtonStates dummyStates = { 0 };
+        dummyStates.A = 2;
+        player.update(dt, dummyStates);
+
+
+        if (buttonStates.RIGHT && !playerSelected) {
+            playerSelected = 1;
+            player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
+            player.lastDirection = 0;
         }
-        else if (buttonStates.Y == 2) {
-            menuBack = true;
-            close_transition();
+        else if (buttonStates.LEFT && playerSelected) {
+            playerSelected = 0;
+            player = Player(playerStartX, playerStartY, 0);
+            player.lastDirection = 1;
+        }
+
+        if (transition[0].is_ready_to_open()) {
+            if (menuBack) {
+                menuBack = false;
+                start_input_select();
+            }
+            else {
+                start_menu();
+            }
+        }
+        else if (transition[0].is_open()) {
+            if (buttonStates.A == 2) {
+                close_transition();
+            }
+            else if (buttonStates.Y == 2) {
+                menuBack = true;
+                close_transition();
+            }
         }
     }
 }
@@ -3774,6 +3818,8 @@ void update_level_select(float dt, ButtonStates buttonStates) {
     update_enemies(dt, buttonStates);
 
     update_level_triggers(dt, buttonStates);
+
+    update_particles(dt);
 
 
     // Button handling
@@ -3903,7 +3949,8 @@ void update_game(float dt, ButtonStates buttonStates) {
             start_game_lost();
         }
 
-        //start_level_select();
+        // Unload coin sfx, load select sfx file back into select sfx slot
+        audioHandler.load(0, 0);
     }
     else if (transition[0].is_open()) {
         if (gamePaused) {
@@ -3911,6 +3958,9 @@ void update_game(float dt, ButtonStates buttonStates) {
                 if (pauseMenuItem == 0) {
                     // Unpause game
                     gamePaused = false;
+
+                    // Load coin sfx file into select sfx slot
+                    audioHandler.load(0, 2);
                 }
                 else if (pauseMenuItem == 1) {
                     // Exit level
@@ -3986,8 +4036,17 @@ void update_game(float dt, ButtonStates buttonStates) {
 
         // Allow player to toggle pause game (if game is paused, selecting 'resume' also does same thing
         if (buttonStates.Y == 2) {
-            gamePaused = !gamePaused;
-            pauseMenuItem = 0;
+            if (gamePaused) {
+                // Load coin sfx into select sfx slot
+                audioHandler.load(0, 2);
+                gamePaused = false;
+            }
+            else {
+                gamePaused = true;
+                pauseMenuItem = 0;
+                // Unload coin sfx, put select sfx back into select sfx slot
+                audioHandler.load(0, 0);
+            }
         }
     }
 }
@@ -4015,33 +4074,7 @@ void update_game_won(float dt, ButtonStates buttonStates) {
     }
 }
 
-
-
-
-///////////////////////////////////////////////////////////////////////////
-//
-// init()
-//
-// setup your game here
-//
-void init() {
-    set_screen_mode(ScreenMode::lores);
-
-    screen.sprites = Surface::load(asset_sprites);
-
-    // Load metadata
-    metadata = get_metadata();
-    gameVersion = parse_version(metadata.version);
-    // New
-    printf("Loaded metadata. Game version: %d (v%d.%d.%d)\n", get_version(gameVersion), gameVersion.major, gameVersion.minor, gameVersion.build);
-
-    // Populate transition array
-    for (uint8_t y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
-        for (uint8_t x = 0; x < SCREEN_WIDTH / SPRITE_SIZE; x++) {
-            transition[y * (SCREEN_WIDTH / SPRITE_SIZE) + x] = AnimatedTransition(x * SPRITE_SIZE, y * SPRITE_SIZE, transitionFramesOpen, transitionFramesClose);
-        }
-    }
-
+void init_game() {
     bool success = read_save(gameSaveData);
 
     // Load save data
@@ -4099,6 +4132,49 @@ void init() {
         load_level(LEVEL_COUNT + 1);
 #endif
     }
+}
+
+void load_audio() {
+    // Sfx
+    audioHandler.load(0, asset_sound_select, asset_sound_select_length);
+    //audioHandler.load(1, asset_sound_jump, asset_sound_jump_length);
+    audioHandler.load(2, asset_sound_coin, asset_sound_coin_length);
+    /*audioHandler.load(3, asset_sound_enemydeath, asset_sound_enemydeath_length);
+    audioHandler.load(4, asset_sound_enemythrow, asset_sound_enemythrow_length);*/
+    // Music
+    //audioHandler.load(7, asset_music_menu, asset_music_menu_length);
+
+    // Start music playing
+    //audioHandler.play(7);
+
+    // Note: to play sfx0, call audioHandler.play(0)
+    // For music, need to load sound when changing (i.e. audioHandler.load(7, asset_music_<music>, asset_music_<music>_length); audioHandler.play(7, 0b11);
+}
+
+///////////////////////////////////////////////////////////////////////////
+//
+// init()
+//
+// setup your game here
+//
+void init() {
+    set_screen_mode(ScreenMode::lores);
+
+    screen.sprites = Surface::load(asset_sprites);
+
+    load_audio();
+
+    // Load metadata
+    metadata = get_metadata();
+    gameVersion = parse_version(metadata.version);
+    printf("Loaded metadata. Game version: %d (v%d.%d.%d)\n", get_version(gameVersion), gameVersion.major, gameVersion.minor, gameVersion.build);
+
+    // Populate transition array
+    for (uint8_t y = 0; y < SCREEN_HEIGHT / SPRITE_SIZE; y++) {
+        for (uint8_t x = 0; x < SCREEN_WIDTH / SPRITE_SIZE; x++) {
+            transition[y * (SCREEN_WIDTH / SPRITE_SIZE) + x] = AnimatedTransition(x * SPRITE_SIZE, y * SPRITE_SIZE, transitionFramesOpen, transitionFramesClose);
+        }
+    }
 
 
     allPlayerSaveData[0] = load_player_data(0);
@@ -4130,7 +4206,10 @@ void render(uint32_t time) {
     screen.mask = nullptr;
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
-    if (gameState == GameState::STATE_INPUT_SELECT) {
+    if (gameState == GameState::STATE_SG_ICON) {
+        render_sg_icon();
+    }
+    else if (gameState == GameState::STATE_INPUT_SELECT) {
         render_input_select();
     }
     else if (gameState == GameState::STATE_CHARACTER_SELECT) {
@@ -4153,6 +4232,11 @@ void render(uint32_t time) {
     }
 
     render_transition();
+
+    if (splashColour.a != 0) {
+        screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b, splashColour.a);
+        screen.clear();
+    }
 
     screen.pen = Pen(0, 0, 0);
 }
@@ -4273,7 +4357,10 @@ void update(uint32_t time) {
 
 
     // Update game
-    if (gameState == GameState::STATE_INPUT_SELECT) {
+    if (gameState == GameState::STATE_SG_ICON) {
+        update_sg_icon(dt, buttonStates);
+    }
+    else if (gameState == GameState::STATE_INPUT_SELECT) {
         update_input_select(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_CHARACTER_SELECT) {
@@ -4300,4 +4387,6 @@ void update(uint32_t time) {
     // Screen shake
     camera.x += shaker.time_to_shake(dt);
     camera.y += shaker.time_to_shake(dt);
+
+    audioHandler.update();
 }

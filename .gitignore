@@ -4,3 +4,4 @@ build.stm32/
 .vs/
 out/
 *.zip
+*.wav
