@@ -14,6 +14,7 @@ namespace AudioHandler {
 		void load(uint8_t, const uint8_t[], const uint32_t);
 		void load(uint8_t, uint8_t);
 		void play(uint8_t, uint8_t = 0);
+		bool is_playing(uint8_t);
 		void update();
 
 	protected:

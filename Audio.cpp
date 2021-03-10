@@ -33,6 +33,10 @@ namespace AudioHandler {
 		mp3_channels[channel].play(channel, flags);
 	}
 
+	bool AudioHandler::is_playing(uint8_t channel) {
+		return blit::channels[channel].adsr_phase != blit::ADSRPhase::OFF;
+	}
+
 	void AudioHandler::update() {
 		for (uint8_t i = 0; i < 8; i++) {
 			mp3_channels[i].update();

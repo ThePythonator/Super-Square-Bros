@@ -1554,6 +1554,8 @@ public:
                         // Maybe make these values constants?
                         projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, currentWorldNumber == SNOW_WORLD ? TILE_ID_ENEMY_PROJECTILE_SNOWBALL : TILE_ID_ENEMY_PROJECTILE_ROCK));
                         reloadTimer = RANGED_RELOAD_TIME;
+
+                        audioHandler.play(6);
                     }
                 }
 
@@ -2495,6 +2497,8 @@ public:
 
                 // Reduce player lives by one
                 lives--;
+
+                audioHandler.play(5);
             }
         }
     }
@@ -3683,7 +3687,7 @@ void update_sg_icon(float dt, ButtonStates buttonStates) {
         }
     }
     else {
-        if (buttonStates.A || buttonStates.B || buttonStates.X || buttonStates.Y) {
+        if (buttonStates.A || buttonStates.B || buttonStates.X || buttonStates.Y || !audioHandler.is_playing(7)) {
             splashColour.a = FADE_STEP;
         }
     }
@@ -3855,16 +3859,19 @@ void update_level_select(float dt, ButtonStates buttonStates) {
         }
         else {
             camera.ease_out_to(dt, player.x, player.y);
+
             player.locked = false;
         }
 
 
         if (currentLevelNumber != NO_LEVEL_SELECTED) {
             close_transition();
+            player.locked = true;
         }
         else if (buttonStates.Y == 2) {
             menuBack = true;
             close_transition();
+            player.locked = true;
         }
     }
 }
@@ -4126,12 +4133,13 @@ void load_audio() {
     audioHandler.load(2, asset_sound_coin, asset_sound_coin_length);
     audioHandler.load(3, asset_sound_enemydeath, asset_sound_enemydeath_length);
     audioHandler.load(4, asset_sound_enemyinjured, asset_sound_enemyinjured_length);
-    //audioHandler.load(5, asset_sound_enemythrow, asset_sound_enemythrow_length);
+    audioHandler.load(5, asset_sound_playerdeath, asset_sound_playerdeath_length);
+    audioHandler.load(6, asset_sound_enemythrow, asset_sound_enemythrow_length);
     // Music
-    //audioHandler.load(7, asset_music_menu, asset_music_menu_length);
+    audioHandler.load(7, asset_music_splash, asset_music_splash_length);
 
-    // Start music playing
-    //audioHandler.play(7);
+    // Start splash music playing
+    audioHandler.play(7);
 
     // Note: to play sfx0, call audioHandler.play(0)
     // For music, need to load sound when changing (i.e. audioHandler.load(7, asset_music_<music>, asset_music_<music>_length); audioHandler.play(7, 0b11);
