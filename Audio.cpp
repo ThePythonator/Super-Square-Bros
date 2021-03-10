@@ -1,7 +1,19 @@
 #include "Audio.hpp"
 
+// Todo: rework to pick a free channel rather than always using same one.
+
 namespace AudioHandler {
 	AudioHandler::AudioHandler() { }
+
+	void AudioHandler::set_volume(uint32_t volume) {
+		for (uint8_t i = 0; i < 8; i++) {
+			set_volume(i, volume);
+		}
+	}
+
+	void AudioHandler::set_volume(uint8_t channel, uint32_t volume) {
+		blit::channels[channel].volume = volume;
+	}
 
 	void AudioHandler::load(uint8_t channel, const uint8_t mp3_data[], const uint32_t mp3_size) {
 		if (channel > 7) {

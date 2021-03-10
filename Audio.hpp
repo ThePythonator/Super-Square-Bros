@@ -7,6 +7,9 @@ namespace AudioHandler {
 	class AudioHandler {
 	public:
 		AudioHandler();
+
+		void set_volume(uint32_t = 0xffff);
+		void set_volume(uint8_t, uint32_t);
 		
 		void load(uint8_t, const uint8_t[], const uint32_t);
 		void load(uint8_t, uint8_t);

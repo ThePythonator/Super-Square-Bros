@@ -86,6 +86,9 @@ assets.cpp:
   assets/sound_enemydeath.mp3:
     name: asset_sound_enemydeath
     
+  assets/sound_enemyinjured.mp3:
+    name: asset_sound_enemyinjured
+    
   assets/sound_enemythrow.mp3:
     name: asset_sound_enemythrow
     

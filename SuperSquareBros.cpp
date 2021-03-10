@@ -57,8 +57,6 @@ const uint16_t TILE_ID_HUD_COINS = 424;
 const uint16_t TILE_ID_HUD_ENEMIES_KILLED = 425;
 const uint16_t TILE_ID_HUD_TIME_TAKEN = 426;
 
-//const float PLATFORM_BOUNCE = 0.4f;
-
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
 const float CAMERA_PAN_TIME = 7.0f;
@@ -72,8 +70,10 @@ const uint8_t SPRITE_SIZE = 8;
 
 const uint8_t SG_ICON_SIZE = SPRITE_SIZE * 4;
 
-const float SNOW_GENERATE_DELAY = 0.08f;
-const uint16_t SNOW_INIT_COUNT = 500;
+const float SNOW_LEVEL_GENERATE_DELAY = 0.1f;
+const float SNOW_LEVEL_SELECT_GENERATE_DELAY = 0.16f;
+const uint16_t SNOW_LEVEL_INIT_COUNT = 300;
+const uint16_t SNOW_LEVEL_SELECT_INIT_COUNT = 150;
 
 const float SCREEN_SHAKE_SHAKINESS = 3.0f; //pixels either way - maybe more?
 
@@ -285,17 +285,6 @@ bool bossBattle = false;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 uint8_t currentWorldNumber = 0;
-bool levelSelect = false;
-//
-//std::vector<VFXCollection::Point2D<double>> animatedPlatformBezierNodes = {
-//    VFXCollection::Point2D<double>(0,0),
-//    VFXCollection::Point2D<double>(7,68),
-//    VFXCollection::Point2D<double>(55,131),
-//    VFXCollection::Point2D<double>(100,100)
-//};
-//
-//float animatedPlatformBezierMaxT = 2.0f;
-//float animatedPlatformBezierOffset = 100.0f;
 
 // For version handling
 struct GameVersion {
@@ -1373,14 +1362,6 @@ public:
             }
         }
 
-        // Is entity on a bouncy platform?
-        //for (uint16_t i = 0; i < bouncyPlatforms.size(); i++) {
-        //    if (y + SPRITE_SIZE == bouncyPlatforms[i].y && bouncyPlatforms[i].x + SPRITE_SIZE - 1 > x && bouncyPlatforms[i].x + 1 < x + SPRITE_SIZE) {
-        //        // On top of block
-        //        return true;
-        //    }
-        //}
-
         // Is entity on a locked LevelTrigger?
         for (uint16_t i = 0; i < levelTriggers.size(); i++) {
             if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE - 1 > x && levelTriggers[i].x + 1 < x + SPRITE_SIZE) {
@@ -1664,7 +1645,7 @@ public:
                 }
             }
             else if (enemyType == EnemyType::FLYING || enemyType == EnemyType::ARMOURED_FLYING) {
-            // Should it be EnemyType::BOUNCING instead?
+                // Should it be EnemyType::BOUNCING instead?
                 // Consider adding acceleration?
                 if (lastDirection) {
                     xVel = currentSpeed;
@@ -1677,7 +1658,6 @@ public:
 
 
                 bool reverseDirection = false;
-
                 float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
@@ -1686,10 +1666,14 @@ public:
                         // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
                         break;
                     }
-                    if (jumpCooldown == 0 && y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
+                    /*if (jumpCooldown == 0 && y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
                         yVel = -ENTITY_JUMP_SPEED;
                         jumpCooldown = ENTITY_JUMP_COOLDOWN;
-                    }
+                    }*/
+                }
+
+                if (jumpCooldown == 0 && is_on_block()) {
+                    jump(ENTITY_JUMP_SPEED, ENTITY_JUMP_COOLDOWN);
                 }
 
                 if (reverseDirection) {
@@ -1731,6 +1715,8 @@ public:
                 // Generate particles
                 particles = generate_particles(x + SPRITE_HALF, y + SPRITE_HALF, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, enemyDeathParticleColours[(uint8_t)enemyType], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
+                // Play enemydeath sfx
+                audioHandler.play(3);
             }
         }
     }
@@ -2345,6 +2331,10 @@ public:
 
                 if (buttonStates.A && jumpCooldown == 0 && airTime < PLAYER_JUMP_MIN_AIR_TIME) {
                     jump(slowPlayer ? PLAYER_SLOW_MAX_JUMP : PLAYER_MAX_JUMP, slowPlayer ? PLAYER_SLOW_JUMP_COOLDOWN : PLAYER_JUMP_COOLDOWN);
+                    if (gameState != GameState::STATE_CHARACTER_SELECT) {
+                        // Play jump sfx
+                        audioHandler.play(1);
+                    }
                 }
 
 
@@ -2417,7 +2407,7 @@ public:
             if (coinCount != coins.size()) {
                 // Must have picked up a coin
                 // Play coin sfx
-                //audioHandler.play(coinSfxAlternator ? 0 : 2);
+                audioHandler.play(coinSfxAlternator ? 0 : 2);
                 coinSfxAlternator = !coinSfxAlternator;
             }
 
@@ -2429,13 +2419,6 @@ public:
             bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
 
             enemiesKilled += enemyCount - enemies.size();// - bosses.size();
-
-            // Now done in update_collisions
-            //for (uint8_t i = 0; i < enemies.size(); i++) {
-            //    if (enemies[i].x + SPRITE_SIZE > x && enemies[i].x < x + SPRITE_SIZE && enemies[i].y == y + SPRITE_SIZE && enemies[0].health) {
-            //        enemies[i].health = 0; // or --?
-            //    }
-            //}
 
             update_collisions();
 
@@ -2541,6 +2524,9 @@ public:
                             // Take health off enemy
                             enemies[i].health--;
 
+                            // Play enemy injured sfx
+                            audioHandler.play(4);
+
                             if (enemies[i].yVel < 0) {
                                 // Enemy is jumping
                                 // Stop enemy's jump
@@ -2607,6 +2593,9 @@ public:
                             yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
                             levelTriggers[i].set_active();
+
+                            // Play sfx
+                            audioHandler.play(4);
                         }
                         else {
                             // Level is locked, act as a solid object
@@ -3011,8 +3000,6 @@ void render_nearby_level_info() {
 }
 
 void load_level(uint8_t levelNumber) {
-    levelSelect = (levelNumber == LEVEL_SELECT_NUMBER);
-
     snowGenTimer = 0.0f;
 
     // Variables for finding start and finish positions
@@ -3208,20 +3195,8 @@ void load_level(uint8_t levelNumber) {
     levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger levelTrigger) { return levelTrigger.levelNumber >= LEVEL_COUNT; }), levelTriggers.end());
 
     // Prep snow particles (create some so that it isn't empty to start with)
-    if (currentWorldNumber == SNOW_WORLD) {
-        // Generate snow particles
-        for (uint16_t i = 0; i < SNOW_INIT_COUNT; i++) {
-            // Get random position
-            // Change vel later (use wind?)
-            float xVel = rand() % 5 - 2;
-            float yVel = rand() % 5 + 8;
-            float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
-            float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
-            imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
-        }
-    }
-    else if (levelSelect) {
-        for (uint16_t i = 0; i < SNOW_INIT_COUNT; i++) {
+    if (gameState == GameState::STATE_LEVEL_SELECT) {
+        for (uint16_t i = 0; i < SNOW_LEVEL_SELECT_INIT_COUNT; i++) {
             // Generate snow particles
             // Get random position
             float xVel = rand() % 3 - 1;
@@ -3229,6 +3204,21 @@ void load_level(uint8_t levelNumber) {
             uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
             uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
             float x = (rand() % (endX - startX)) + startX;
+            float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
+            if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
+                // At edges, only make a half as many particles
+                imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
+            }
+        }
+    }
+    else if (currentWorldNumber == SNOW_WORLD) {
+        // Generate snow particles
+        for (uint16_t i = 0; i < SNOW_LEVEL_INIT_COUNT; i++) {
+            // Get random position
+            // Change vel later (use wind?)
+            float xVel = rand() % 5 - 2;
+            float yVel = rand() % 5 + 8;
+            float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
             float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
             imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
         }
@@ -3585,12 +3575,6 @@ void render_game_won() {
     }
 }
 
-//void update_bouncy_platforms(float dt, ButtonStates buttonStates) {
-//    for (int i = 0; i < bouncyPlatforms.size(); i++) {
-//        bouncyPlatforms[i].update(dt, buttonStates);
-//    }
-//}
-
 void update_enemies(float dt, ButtonStates buttonStates) {
     for (int i = 0; i < enemies.size(); i++) {
         enemies[i].update(dt, buttonStates);
@@ -3651,22 +3635,10 @@ void update_particles(float dt) {
         imageParticles[i].update(dt);
     }
 
-    if (currentWorldNumber == SNOW_WORLD) {
+    if (gameState == GameState::STATE_LEVEL_SELECT) {
         snowGenTimer += dt;
-        while (snowGenTimer >= SNOW_GENERATE_DELAY) {
-            snowGenTimer -= SNOW_GENERATE_DELAY;
-            // Generate snow particles
-            // Get random position
-            float xVel = rand() % 3 - 1;
-            float yVel = rand() % 5 + 8;
-            float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
-            imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
-        }
-    }
-    else if (levelSelect) {
-        snowGenTimer += dt;
-        while (snowGenTimer >= SNOW_GENERATE_DELAY) {
-            snowGenTimer -= SNOW_GENERATE_DELAY;
+        while (snowGenTimer >= SNOW_LEVEL_SELECT_GENERATE_DELAY) {
+            snowGenTimer -= SNOW_LEVEL_SELECT_GENERATE_DELAY;
             // Generate snow particles
             // Get random position
             float xVel = rand() % 3 - 1;
@@ -3674,6 +3646,21 @@ void update_particles(float dt) {
             uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
             uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
             float x = (rand() % (endX - startX)) + startX;
+            if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
+                // At edges, only make a half as many particles
+                imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
+            }
+        }
+    }
+    else if (currentWorldNumber == SNOW_WORLD) {
+        snowGenTimer += dt;
+        while (snowGenTimer >= SNOW_LEVEL_GENERATE_DELAY) {
+            snowGenTimer -= SNOW_LEVEL_GENERATE_DELAY;
+            // Generate snow particles
+            // Get random position
+            float xVel = rand() % 3 - 1;
+            float yVel = rand() % 5 + 8;
+            float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
             imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
         }
     }
@@ -3811,8 +3798,6 @@ void update_menu(float dt, ButtonStates buttonStates) {
 }
 
 void update_level_select(float dt, ButtonStates buttonStates) {
-    //update_bouncy_platforms(dt, buttonStates);
-
     player.update(dt, buttonStates);
 
     update_enemies(dt, buttonStates);
@@ -3899,8 +3884,6 @@ void update_game(float dt, ButtonStates buttonStates) {
     }
     else {
         // Game isn't paused, update it.
-
-        //update_bouncy_platforms(dt, buttonStates);
 
         player.update(dt, buttonStates);
 
@@ -4135,12 +4118,15 @@ void init_game() {
 }
 
 void load_audio() {
+    // Set volume to 25% by default
+    audioHandler.set_volume(0x3fff);
     // Sfx
     audioHandler.load(0, asset_sound_select, asset_sound_select_length);
-    //audioHandler.load(1, asset_sound_jump, asset_sound_jump_length);
+    audioHandler.load(1, asset_sound_jump, asset_sound_jump_length);
     audioHandler.load(2, asset_sound_coin, asset_sound_coin_length);
-    /*audioHandler.load(3, asset_sound_enemydeath, asset_sound_enemydeath_length);
-    audioHandler.load(4, asset_sound_enemythrow, asset_sound_enemythrow_length);*/
+    audioHandler.load(3, asset_sound_enemydeath, asset_sound_enemydeath_length);
+    audioHandler.load(4, asset_sound_enemyinjured, asset_sound_enemyinjured_length);
+    //audioHandler.load(5, asset_sound_enemythrow, asset_sound_enemythrow_length);
     // Music
     //audioHandler.load(7, asset_music_menu, asset_music_menu_length);
 
