@@ -49,9 +49,13 @@ const uint16_t TILE_ID_ENEMY_7 = 232;
 const uint16_t TILE_ID_ENEMY_8 = 236;
 
 const uint16_t TILE_ID_BOSS_1 = 256;
+const uint16_t TILE_ID_BOSS_2 = 264;
+
+const uint16_t TILE_ID_SPIKES = 480;
 
 const uint16_t TILE_ID_ENEMY_PROJECTILE_ROCK = 472;
 const uint16_t TILE_ID_ENEMY_PROJECTILE_SNOWBALL = 473;
+
 const uint16_t TILE_ID_HUD_LIVES = 422;
 const uint16_t TILE_ID_HUD_COINS = 424;
 const uint16_t TILE_ID_HUD_ENEMIES_KILLED = 425;
@@ -195,8 +199,7 @@ const std::vector<uint16_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_
 
 const std::vector<uint16_t> finishFrames = { TILE_ID_FINISH, TILE_ID_FINISH + 1, TILE_ID_FINISH + 2, TILE_ID_FINISH + 3, TILE_ID_FINISH + 4, TILE_ID_FINISH + 5 };
 
-//const std::vector<uint16_t> transitionFrames = { TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3 };
-const std::vector<uint16_t> transitionFramesClose = { TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 7 };
+const std::vector<uint16_t> transitionFramesClose = { TILE_ID_TRANSITION, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 7};
 const std::vector<uint16_t> transitionFramesOpen = { TILE_ID_TRANSITION + 6, TILE_ID_TRANSITION + 5, TILE_ID_TRANSITION + 4, TILE_ID_TRANSITION + 3, TILE_ID_TRANSITION + 2, TILE_ID_TRANSITION + 1, TILE_ID_TRANSITION};
 
 const float parallaxFactorLayersX[2] = {
@@ -890,6 +893,7 @@ std::vector<Tile> generic_entities; // used because platforms are rendered over 
 std::vector<Tile> background;
 // Platforms are only collidable when falling (or travelling sideways)
 std::vector<Tile> platforms;
+std::vector<Tile> spikes;
 
 class ParallaxTile : public Tile {
 public:
@@ -2425,6 +2429,16 @@ public:
             update_collisions();
 
 
+            if (!is_immune()) {
+                for (uint8_t i = 0; i < spikes.size(); i++) {
+                    if (colliding(spikes[i]) && y + SPRITE_SIZE >= spikes[i].y + SPRITE_HALF) {
+                        health -= 1;
+                        set_immune();
+                        break;
+                    }
+                }
+            }
+
             if (y > levelDeathBoundary) {
                 health = 0;
                 xVel = yVel = 0;
@@ -2447,6 +2461,8 @@ public:
         }
         // Remove any particles which are too old
         slowParticles.erase(std::remove_if(slowParticles.begin(), slowParticles.end(), [](BrownianParticle particle) { return (particle.age >= PLAYER_SLOW_PARTICLE_AGE); }), slowParticles.end());
+
+
 
         if (health == 0) {
             //state = DEAD;
@@ -2901,6 +2917,7 @@ void render_level() {
     render_tiles(background);
     render_tiles(platforms);
     render_tiles(generic_entities);
+    render_tiles(spikes);
     render_tiles(foreground);
 
     render_coins();
@@ -3037,6 +3054,7 @@ void load_level(uint8_t levelNumber) {
     levelTriggers.clear();
     projectiles.clear();
     imageParticles.clear();
+    spikes.clear();
 
     // Foreground Layer
     for (uint32_t i = 0; i < levelSize; i++) {
@@ -3112,6 +3130,12 @@ void load_level(uint8_t levelNumber) {
         }
         else if (tmx->data[index] == TILE_ID_BOSS_1) {
             bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[0], 0));
+        }
+        /*else if (tmx->data[index] == TILE_ID_BOSS_2) {
+            bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[1], 1));
+        }*/
+        else if (tmx->data[index] == TILE_ID_SPIKES) {
+            spikes.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
         }
         else if (tmx->data[index] < BYTE_SIZE) {
             // Don't create tiles for bosses etc (no terrain/non-enemy entity tiles are >=256)
@@ -4125,8 +4149,8 @@ void init_game() {
 }
 
 void load_audio() {
-    // Set volume to 25% by default
-    audioHandler.set_volume(0x3fff);
+    // Set volume to a default
+    audioHandler.set_volume(0x5000);
     // Sfx
     audioHandler.load(0, asset_sound_select, asset_sound_select_length);
     audioHandler.load(1, asset_sound_jump, asset_sound_jump_length);
@@ -4193,6 +4217,7 @@ void init() {
 void render(uint32_t time) {
 
     // clear the screen -- screen is a reference to the frame buffer and can be used to draw all things with the 32blit
+    screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b);
     screen.clear();
 
     // draw some text at the top of the screen
@@ -4231,8 +4256,6 @@ void render(uint32_t time) {
         screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b, splashColour.a);
         screen.clear();
     }
-
-    screen.pen = Pen(0, 0, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////

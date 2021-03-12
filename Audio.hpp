@@ -19,7 +19,7 @@ namespace AudioHandler {
 
 	protected:
 		blit::MP3Stream mp3_channels[8];
-		std::string filenames[8] = {
+		const char* filenames[8] = {
 			"temp0.mp3", "temp1.mp3", "temp2.mp3", "temp3.mp3", "temp4.mp3", "temp5.mp3", "temp6.mp3", "temp7.mp3"
 		};
 	};
