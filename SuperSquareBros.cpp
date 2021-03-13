@@ -51,7 +51,10 @@ const uint16_t TILE_ID_ENEMY_8 = 236;
 const uint16_t TILE_ID_BOSS_1 = 256;
 const uint16_t TILE_ID_BOSS_2 = 264;
 
-const uint16_t TILE_ID_SPIKES = 480;
+const uint16_t TILE_ID_SPIKE_BOTTOM = 480;
+const uint16_t TILE_ID_SPIKE_TOP = 481;
+const uint16_t TILE_ID_SPIKE_LEFT = 482;
+const uint16_t TILE_ID_SPIKE_RIGHT = 483;
 
 const uint16_t TILE_ID_ENEMY_PROJECTILE_ROCK = 472;
 const uint16_t TILE_ID_ENEMY_PROJECTILE_SNOWBALL = 473;
@@ -121,6 +124,8 @@ const float PLAYER_ACCELERATION = 370.0f;
 const float PLAYER_DECELERATION = 330.0f;
 const float PLAYER_JUMP_COOLDOWN = 0.4f;
 const float PLAYER_JUMP_MIN_AIR_TIME = 0.05f;
+//const float PLAYER_JUMP_EXTRA_GRAVITY = 500.0f;
+const float PLAYER_JUMP_EXTRA_DOWNSCALE = 0.92f;
 
 const float PLAYER_SLOW_MAX_JUMP = 110.0f;
 const float PLAYER_SLOW_MAX_SPEED = 15.0f;
@@ -885,6 +890,10 @@ public:
         render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
     }
 
+    uint16_t get_id() {
+        return id;
+    }
+    
 protected:
     uint16_t id;
 };
@@ -2342,7 +2351,9 @@ public:
                         audioHandler.play(1);
                     }
                 }
-
+                else if (!buttonStates.A && yVel < 0) {
+                    yVel *= PLAYER_JUMP_EXTRA_DOWNSCALE;
+                }
 
                 if (buttonStates.LEFT) {
                     if (slowPlayer) {
@@ -2431,10 +2442,16 @@ public:
 
             if (!is_immune()) {
                 for (uint8_t i = 0; i < spikes.size(); i++) {
-                    if (colliding(spikes[i]) && y + SPRITE_SIZE >= spikes[i].y + SPRITE_HALF) {
-                        health -= 1;
-                        set_immune();
-                        break;
+                    if (colliding(spikes[i])) {
+                        if ((spikes[i].get_id() == TILE_ID_SPIKE_BOTTOM && y + SPRITE_SIZE >= spikes[i].y + SPRITE_HALF) ||
+                            (spikes[i].get_id() == TILE_ID_SPIKE_TOP && y <= spikes[i].y + SPRITE_HALF) ||
+                            (spikes[i].get_id() == TILE_ID_SPIKE_LEFT && x <= spikes[i].x + SPRITE_HALF) ||
+                            (spikes[i].get_id() == TILE_ID_SPIKE_RIGHT && x + SPRITE_SIZE >= spikes[i].x + SPRITE_HALF)) {
+
+                            health -= 1;
+                            set_immune();
+                            break;
+                        }
                     }
                 }
             }
@@ -3134,7 +3151,11 @@ void load_level(uint8_t levelNumber) {
         /*else if (tmx->data[index] == TILE_ID_BOSS_2) {
             bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[1], 1));
         }*/
-        else if (tmx->data[index] == TILE_ID_SPIKES) {
+        else if (tmx->data[index] == TILE_ID_SPIKE_BOTTOM ||
+            tmx->data[index] == TILE_ID_SPIKE_TOP ||
+            tmx->data[index] == TILE_ID_SPIKE_LEFT ||
+            tmx->data[index] == TILE_ID_SPIKE_RIGHT) {
+
             spikes.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
         }
         else if (tmx->data[index] < BYTE_SIZE) {
@@ -3312,17 +3333,20 @@ void start_menu() {
 }
 
 void start_level_select() {
+    bool wonLevel = gameState == GameState::STATE_WON;
+
     gameState = GameState::STATE_LEVEL_SELECT;
 
     // Load level select level
     load_level(LEVEL_SELECT_NUMBER);
 
+
     if (currentLevelNumber != NO_LEVEL_SELECTED) {
-        // Must have just completed a level
-        // Place player next to finished level
+        // Must have just attempted a level
+        // Place player next to finished level, on right if just finished, on left if failed.
         for (uint8_t i = 0; i < levelTriggers.size(); i++) {
             if (levelTriggers[i].levelNumber == currentLevelNumber) {
-                playerStartX = levelTriggers[i].x + SPRITE_HALF * 3;
+                playerStartX = wonLevel ? levelTriggers[i].x + SPRITE_HALF * 3 : levelTriggers[i].x - SPRITE_HALF * 3;
                 playerStartY = levelTriggers[i].y;
                 player.x = playerStartX;
                 player.y = playerStartY;
@@ -3385,8 +3409,6 @@ void start_game_won() {
     if (allLevelSaveData[playerSelected][currentLevelNumber].time > player.levelTimer || allLevelSaveData[playerSelected][currentLevelNumber].time == 0.0f) {
         allLevelSaveData[playerSelected][currentLevelNumber].time = player.levelTimer;
     }
-
-    // save level stats?
 
     //save_game_data();
     save_player_data(playerSelected);
