@@ -302,7 +302,7 @@ GameMetadata metadata;
 // struct to handle level data header...
 // this will probably need to be revisited/reworked if 32blit-tools has *any* kind of update to it...
 #pragma pack(push,1)
-struct TMX {
+struct TMX16 {
     char head[4];
     uint8_t empty_tile;
     uint16_t width;
@@ -3032,7 +3032,7 @@ void load_level(uint8_t levelNumber) {
 
 
     // Get a pointer to the map header
-    TMX* tmx = (TMX*)asset_levels[levelNumber];
+    TMX16* tmx = (TMX16*)asset_levels[levelNumber];
 
     uint16_t levelWidth = tmx->width;
     uint16_t levelHeight = tmx->height;
