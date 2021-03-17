@@ -47,6 +47,7 @@ const uint16_t TILE_ID_ENEMY_5 = 224;
 const uint16_t TILE_ID_ENEMY_6 = 228;
 const uint16_t TILE_ID_ENEMY_7 = 232;
 const uint16_t TILE_ID_ENEMY_8 = 236;
+const uint16_t TILE_ID_ENEMY_9 = 240;
 
 const uint16_t TILE_ID_BOSS_1 = 256;
 const uint16_t TILE_ID_BOSS_2 = 264;
@@ -58,6 +59,7 @@ const uint16_t TILE_ID_SPIKE_RIGHT = 483;
 
 const uint16_t TILE_ID_ENEMY_PROJECTILE_ROCK = 472;
 const uint16_t TILE_ID_ENEMY_PROJECTILE_SNOWBALL = 473;
+const uint16_t TILE_ID_ENEMY_PROJECTILE_BULLET = 474;
 
 const uint16_t TILE_ID_HUD_LIVES = 422;
 const uint16_t TILE_ID_HUD_COINS = 424;
@@ -164,6 +166,14 @@ const float RANGED_RELOAD_TIME = 2.0f;
 const float RANGED_PROJECTILE_X_VEL_SCALE = 0.8f;
 const float RANGED_PROJECTILE_Y_VEL_SCALE = 0.5f;
 
+const float SHOOTING_MAX_RANGE_X = 64.0f;
+const float SHOOTING_MAX_RANGE_Y = 32.0f;
+const float SHOOTING_RELOAD_TIME = 2.5f;
+const float SHOOTING_RAPID_RELOAD_TIME = 0.5f;
+const uint8_t SHOOTING_ENEMY_CLIP_SIZE = 2;
+
+const float BULLET_PROJECTILE_SPEED = 64.0f;
+
 const float PURSUIT_MAX_RANGE = 48.0f;
 
 const float LEVEL_INFO_MAX_RANGE = SPRITE_SIZE * 4;
@@ -197,8 +207,8 @@ const uint8_t SPRITE_QUARTER = SPRITE_SIZE / 4;
 
 const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
 
-const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2, 2, 2, 2 };
-const uint8_t bossHealths[] = { 3 };
+const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2, 2, 2, 2, 1 };
+const uint8_t bossHealths[] = { 3, 3 };
 
 const std::vector<uint16_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
@@ -576,11 +586,12 @@ const std::vector<Colour> playerDeathParticleColours[2] = {
     { Colour(255, 255, 242), Colour(255, 204, 181), Colour(178, 53, 53) },
     { Colour(255, 255, 242), Colour(178, 214, 96), Colour(37, 124, 73) }
 };
-const std::vector<Colour> enemyDeathParticleColours[4] = {
+const std::vector<Colour> enemyDeathParticleColours[5] = {
     { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) },
     { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) },
     { Colour(255, 255, 242), Colour(255, 204, 181), Colour(229, 114, 57) },
-    { Colour(255, 255, 242), Colour(204, 137, 124), Colour(127, 24, 75) }
+    { Colour(255, 255, 242), Colour(204, 137, 124), Colour(127, 24, 75) },
+    { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) }
 };
 const std::vector<Colour> bossDeathParticleColours[1] = {
     { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) }
@@ -812,26 +823,35 @@ public:
     float x, y;
     float xVel, yVel;
     uint16_t id;
+    uint8_t width;
 
     Projectile() {
         x = y = 0;
         xVel = yVel = 0;
 
         id = 0;
+
+        gravity = false;
+
+        width = SPRITE_HALF;
     }
 
-    Projectile(float xPosition, float yPosition, float xVelocity, float yVelocity, uint16_t tileId) {
+    Projectile(float xPosition, float yPosition, float xVelocity, float yVelocity, uint16_t tileId, bool gravity=true, uint8_t rectWidth=SPRITE_HALF) {
         x = xPosition;
         y = yPosition;
         xVel = xVelocity;
         yVel = yVelocity;
         id = tileId;
+        this->gravity = gravity;
+        width = rectWidth;
     }
 
     void update(float dt, ButtonStates buttonStates) {
-        // Update gravity
-        yVel += PROJECTILE_GRAVITY * dt;
-        yVel = std::min(yVel, (float)PROJECTILE_GRAVITY_MAX);
+        if (gravity) {
+            // Update gravity
+            yVel += PROJECTILE_GRAVITY * dt;
+            yVel = std::min(yVel, (float)PROJECTILE_GRAVITY_MAX);
+        }
 
         // Move entity y
         y += yVel * dt;
@@ -841,10 +861,17 @@ public:
     }
 
     void render(Camera camera) {
-        render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x - SPRITE_QUARTER, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_QUARTER));
+        render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
         //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x - SPRITE_QUARTER, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_QUARTER));
         //screen.rectangle(Rect(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y, 4, 4));
     }
+
+    bool is_colliding(float playerX, float playerY) {
+        return x + SPRITE_HALF + width / 2 > playerX && x + SPRITE_HALF - width / 2 < playerX + SPRITE_SIZE && y + SPRITE_HALF + width / 2 > playerY && y + SPRITE_HALF - width / 2 < playerY + SPRITE_SIZE;
+    }
+
+protected:
+    bool gravity;
 };
 std::vector<Projectile> projectiles;
 
@@ -1474,6 +1501,7 @@ public:
     Enemy() : Entity() {
         enemyType = EnemyType::BASIC;
         reloadTimer = 0;
+        rapidfireTimer = 0;
 
         playerX = nullptr;
         playerY = nullptr;
@@ -1481,11 +1509,14 @@ public:
         currentSpeed = ENTITY_IDLE_SPEED;
 
         state = 0;
+
+        shotsLeft = 0;
     }
 
     Enemy(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Entity(xPosition, yPosition, TILE_ID_ENEMY_1 + type * 4, startHealth) {
         enemyType = (EnemyType)type;
         reloadTimer = 0;
+        rapidfireTimer = 0;
 
         playerX = nullptr;
         playerY = nullptr;
@@ -1493,6 +1524,13 @@ public:
         currentSpeed = ENTITY_IDLE_SPEED;
 
         state = 0;
+
+        if (enemyType == EnemyType::SHOOTING) {
+            shotsLeft = SHOOTING_ENEMY_CLIP_SIZE;
+        }
+        else {
+            shotsLeft = 0;
+        }
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -1501,6 +1539,13 @@ public:
                 reloadTimer -= dt;
                 if (reloadTimer < 0) {
                     reloadTimer = 0;
+                }
+            }
+
+            if (rapidfireTimer) {
+                rapidfireTimer -= dt;
+                if (rapidfireTimer < 0) {
+                    rapidfireTimer = 0;
                 }
             }
 
@@ -1526,6 +1571,14 @@ public:
                 bool reverseDirection = true;
 
                 float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+
+                for (uint16_t i = 0; i < platforms.size(); i++) {
+                    if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE > tempX + 1 && platforms[i].x < tempX + SPRITE_SIZE - 1) {
+                        // About to be on block
+                        reverseDirection = false;
+                    }
+                }
+
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                         // About to be on block
@@ -1604,6 +1657,14 @@ public:
                     bool reverseDirection = true;
 
                     float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+
+                    for (uint16_t i = 0; i < platforms.size(); i++) {
+                        if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE > tempX + 1 && platforms[i].x < tempX + SPRITE_SIZE - 1) {
+                            // About to be on block
+                            reverseDirection = false;
+                        }
+                    }
+
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
@@ -1630,6 +1691,15 @@ public:
                     bool shouldJump = true;
 
                     float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
+
+                    for (uint16_t i = 0; i < platforms.size(); i++) {
+                        if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE > tempX + 1 && platforms[i].x < tempX + SPRITE_SIZE - 1) {
+                            // About to be on block
+                            shouldJump = false;
+                            break;
+                        }
+                    }
+
                     for (uint16_t i = 0; i < foreground.size(); i++) {
                         if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
@@ -1701,6 +1771,38 @@ public:
                     anchorFrame = TILE_ID_ENEMY_1 + (int)enemyType * 4;
                 }
             }
+            else if (enemyType == EnemyType::SHOOTING) {
+                Entity::update_collisions();
+
+                lastDirection = *playerX < x ? 0 : 1;
+
+                if (std::abs(x - *playerX) < SHOOTING_MAX_RANGE_X && std::abs(y - *playerY) < SHOOTING_MAX_RANGE_Y) {
+                    state = 1;
+                }
+                else {
+                    state = 0;
+                }
+
+                if (state == 1) {
+                    if (!reloadTimer && !shotsLeft) {
+                        shotsLeft = SHOOTING_ENEMY_CLIP_SIZE;
+                    }
+                    if (shotsLeft && !rapidfireTimer) {
+                        // Fire!
+                        // Maybe make these values constants?
+                        float magnitude = std::sqrtf(std::powf(*playerX - x, 2) + std::powf(*playerY - y, 2));
+                        projectiles.push_back(Projectile(x, y, BULLET_PROJECTILE_SPEED * (*playerX - x) / magnitude, BULLET_PROJECTILE_SPEED * (*playerY - y) / magnitude, TILE_ID_ENEMY_PROJECTILE_BULLET, false, SPRITE_QUARTER));
+                        shotsLeft--;
+                        rapidfireTimer = SHOOTING_RAPID_RELOAD_TIME;
+
+                        if (!shotsLeft) {
+                            reloadTimer = SHOOTING_RELOAD_TIME;
+                        }
+
+                        audioHandler.play(6);
+                    }
+                }
+            }
 
 
             if (y > levelDeathBoundary) {
@@ -1728,7 +1830,7 @@ public:
             }
             else {
                 // Generate particles
-                particles = generate_particles(x + SPRITE_HALF, y + SPRITE_HALF, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, enemyDeathParticleColours[(uint8_t)enemyType], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
+                particles = generate_particles(x + SPRITE_HALF, y + SPRITE_HALF, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, enemyDeathParticleColours[enemyType == EnemyType::SHOOTING ? 4 : ((uint8_t)enemyType % 4)], ENTITY_DEATH_PARTICLE_SPEED, ENTITY_DEATH_PARTICLE_COUNT);
                 deathParticles = true;
                 // Play enemydeath sfx
                 audioHandler.play(3);
@@ -1762,10 +1864,15 @@ protected:
         ARMOURED, // type 5
         ARMOURED_RANGED, // type 6
         ARMOURED_PURSUIT, // type 7
-        ARMOURED_FLYING // type 8
+        ARMOURED_FLYING, // type 8
+        SHOOTING // type 9
     } enemyType;
 
     float reloadTimer;
+
+    // Used for SHOOTING enemy
+    float rapidfireTimer;
+    uint8_t shotsLeft;
 
     float currentSpeed;
 
@@ -3145,6 +3252,10 @@ void load_level(uint8_t levelNumber) {
         else if (tmx->data[index] == TILE_ID_ENEMY_8) {
             enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[7], 7));
         }
+        else if (tmx->data[index] == TILE_ID_ENEMY_9) {
+            // A ninth enemy!?
+            enemies.push_back(Enemy((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, enemyHealths[8], 8));
+        }
         else if (tmx->data[index] == TILE_ID_BOSS_1) {
             bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[0], 0));
         }
@@ -3668,7 +3779,7 @@ void update_projectiles(float dt) {
 
     if (!player.is_immune()) {
         uint8_t projectileCount = projectiles.size();
-        projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile projectile) { return (projectile.x + SPRITE_HALF > player.x && projectile.x < player.x + SPRITE_SIZE && projectile.y + SPRITE_HALF > player.y && projectile.y < player.y + SPRITE_SIZE); }), projectiles.end());
+        projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile projectile) { return projectile.is_colliding(player.x, player.y); }), projectiles.end());
         if (projectileCount - projectiles.size() > 0) {
             player.health -= 1;
             player.set_immune();
@@ -3756,16 +3867,22 @@ void update_input_select(float dt, ButtonStates buttonStates) {
             if (gameSaveData.inputType == InputType::CONTROLLER) {
                 if (buttonStates.DOWN) {
                     gameSaveData.inputType = InputType::KEYBOARD;
+
+                    audioHandler.play(0);
                 }
             }
             else if (gameSaveData.inputType == InputType::KEYBOARD) {
                 if (buttonStates.UP) {
                     gameSaveData.inputType = InputType::CONTROLLER;
+
+                    audioHandler.play(0);
                 }
             }
 
 
             if (buttonStates.A == 2) {
+                audioHandler.play(0);
+
                 close_transition();
 
                 // Save inputType
@@ -3792,11 +3909,15 @@ void update_character_select(float dt, ButtonStates buttonStates) {
 
 
         if (buttonStates.RIGHT && !playerSelected) {
+            audioHandler.play(0);
+
             playerSelected = 1;
             player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
             player.lastDirection = 0;
         }
         else if (buttonStates.LEFT && playerSelected) {
+            audioHandler.play(0);
+
             playerSelected = 0;
             player = Player(playerStartX, playerStartY, 0);
             player.lastDirection = 1;
@@ -3813,9 +3934,13 @@ void update_character_select(float dt, ButtonStates buttonStates) {
         }
         else if (transition[0].is_open()) {
             if (buttonStates.A == 2) {
+                audioHandler.play(0);
+
                 close_transition();
             }
             else if (buttonStates.Y == 2) {
+                audioHandler.play(0);
+
                 menuBack = true;
                 close_transition();
             }
@@ -3838,9 +3963,13 @@ void update_menu(float dt, ButtonStates buttonStates) {
     }
     else if (transition[0].is_open()) {
         if (buttonStates.A == 2) {
+            audioHandler.play(0);
+
             close_transition();
         }
         else if (buttonStates.Y == 2) {
+            audioHandler.play(0);
+
             menuBack = true;
             close_transition();
         }
@@ -3915,6 +4044,8 @@ void update_level_select(float dt, ButtonStates buttonStates) {
             player.locked = true;
         }
         else if (buttonStates.Y == 2) {
+            audioHandler.play(0);
+
             menuBack = true;
             close_transition();
             player.locked = true;
@@ -3927,11 +4058,13 @@ void update_game(float dt, ButtonStates buttonStates) {
         if (pauseMenuItem == 0) {
             if (buttonStates.RIGHT == 2) {
                 pauseMenuItem = 1;
+                audioHandler.play(0);
             }
         }
         else if (pauseMenuItem == 1) {
             if (buttonStates.LEFT == 2) {
                 pauseMenuItem = 0;
+                audioHandler.play(0);
             }
         }
     }
@@ -3991,6 +4124,8 @@ void update_game(float dt, ButtonStates buttonStates) {
     else if (transition[0].is_open()) {
         if (gamePaused) {
             if (buttonStates.A == 2) {
+                audioHandler.play(0);
+
                 if (pauseMenuItem == 0) {
                     // Unpause game
                     gamePaused = false;
@@ -4073,6 +4208,7 @@ void update_game(float dt, ButtonStates buttonStates) {
         // Allow player to toggle pause game (if game is paused, selecting 'resume' also does same thing
         if (buttonStates.Y == 2) {
             if (gamePaused) {
+                audioHandler.play(0);
                 // Load coin sfx into select sfx slot
                 audioHandler.load(0, 2);
                 gamePaused = false;
@@ -4082,6 +4218,7 @@ void update_game(float dt, ButtonStates buttonStates) {
                 pauseMenuItem = 0;
                 // Unload coin sfx, put select sfx back into select sfx slot
                 audioHandler.load(0, 0);
+                audioHandler.play(0);
             }
         }
     }
@@ -4093,6 +4230,8 @@ void update_game_lost(float dt, ButtonStates buttonStates) {
     }
     else if (transition[0].is_open()) {
         if (buttonStates.A == 2) {
+            audioHandler.play(0);
+
             close_transition();
         }
     }
@@ -4105,6 +4244,8 @@ void update_game_won(float dt, ButtonStates buttonStates) {
     }
     else if (transition[0].is_open()) {
         if (buttonStates.A == 2) {
+            audioHandler.play(0);
+
             close_transition();
         }
     }
