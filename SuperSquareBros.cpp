@@ -1790,7 +1790,7 @@ public:
                     if (shotsLeft && !rapidfireTimer) {
                         // Fire!
                         // Maybe make these values constants?
-                        float magnitude = std::sqrtf(std::powf(*playerX - x, 2) + std::powf(*playerY - y, 2));
+                        float magnitude = std::sqrt(std::pow(*playerX - x, 2) + std::pow(*playerY - y, 2));
                         projectiles.push_back(Projectile(x, y, BULLET_PROJECTILE_SPEED * (*playerX - x) / magnitude, BULLET_PROJECTILE_SPEED * (*playerY - y) / magnitude, TILE_ID_ENEMY_PROJECTILE_BULLET, false, SPRITE_QUARTER));
                         shotsLeft--;
                         rapidfireTimer = SHOOTING_RAPID_RELOAD_TIME;
@@ -4312,6 +4312,8 @@ void init_game() {
 }
 
 void load_audio() {
+    // NOTE: CURRENTLY ISSUE WITH LEAVING PAUSE MENU, blip AUDIO IS PLAYED, BUT THEN NEW SOUND IS LOADED IN, STOPPING PLAYBACK.
+
     // Set volume to a default
     audioHandler.set_volume(0x5000);
     // Sfx
