@@ -37,7 +37,8 @@ const uint16_t TILE_ID_CAMERA = 509;
 const uint16_t TILE_ID_TRANSITION = 496;
 const uint16_t TILE_ID_FINISH = 432;
 const uint16_t TILE_ID_LEVEL_TRIGGER = 420;
-const uint16_t TILE_ID_LEVEL_BRIDGE = 510;
+const uint16_t TILE_ID_LEVEL_BRIDGE_1 = 510;
+const uint16_t TILE_ID_LEVEL_BRIDGE_2 = 172;
 
 const uint16_t TILE_ID_ENEMY_1 = 208;
 const uint16_t TILE_ID_ENEMY_2 = 212;
@@ -3497,7 +3498,7 @@ void load_level(uint8_t levelNumber) {
         if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
         }
-        else if (levelNumber == LEVEL_SELECT_NUMBER && tmx->data[index] == TILE_ID_LEVEL_BRIDGE) {
+        else if (levelNumber == LEVEL_SELECT_NUMBER && (tmx->data[index] == TILE_ID_LEVEL_BRIDGE_1 || tmx->data[index] == TILE_ID_LEVEL_BRIDGE_2)) {
             // Platforms are bouncy because why not :)
 
             // TEMPORARY - NEED TO ANIMATE
