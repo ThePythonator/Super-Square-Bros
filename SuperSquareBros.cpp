@@ -16,7 +16,7 @@ void init_game();
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
 
-const uint8_t LEVEL_COUNT = 9;
+const uint8_t LEVEL_COUNT = 10;
 const uint8_t LEVEL_SELECT_NUMBER = LEVEL_COUNT + 2;
 const uint8_t LEVELS_PER_WORLD = 4;
 
@@ -61,6 +61,9 @@ const uint16_t TILE_ID_ENEMY_PROJECTILE_ROCK = 472;
 const uint16_t TILE_ID_ENEMY_PROJECTILE_SNOWBALL = 473;
 const uint16_t TILE_ID_ENEMY_PROJECTILE_BULLET = 474;
 
+const uint16_t TILE_ID_BOSS_PROJECTILE_ROCK = 476;
+const uint16_t TILE_ID_BOSS_PROJECTILE_SNOWBALL = 477;
+
 const uint16_t TILE_ID_HUD_LIVES = 422;
 const uint16_t TILE_ID_HUD_COINS = 424;
 const uint16_t TILE_ID_HUD_ENEMIES_KILLED = 425;
@@ -80,9 +83,9 @@ const uint8_t SPRITE_SIZE = 8;
 const uint8_t SG_ICON_SIZE = SPRITE_SIZE * 4;
 
 const float SNOW_LEVEL_GENERATE_DELAY = 0.1f;
-const float SNOW_LEVEL_SELECT_GENERATE_DELAY = 0.16f;
+const float SNOW_LEVEL_SELECT_GENERATE_DELAY = 0.15f;
 const uint16_t SNOW_LEVEL_INIT_COUNT = 300;
-const uint16_t SNOW_LEVEL_SELECT_INIT_COUNT = 150;
+const uint16_t SNOW_LEVEL_SELECT_INIT_COUNT = 200;
 
 const float SCREEN_SHAKE_SHAKINESS = 3.0f; //pixels either way - maybe more?
 
@@ -108,7 +111,7 @@ const float PLAYER_SLOW_PARTICLE_SPAWN_DELAY = 0.05f;
 
 
 const float GRAVITY = 600.0f;
-const float GRAVITY_MAX = 200.0f;
+const float GRAVITY_MAX = 190.0f;
 const float PROJECTILE_GRAVITY = 55.0f;
 const float PROJECTILE_GRAVITY_MAX = 100.0f;
 
@@ -118,7 +121,7 @@ const uint8_t PLAYER_MAX_HEALTH = 3;
 
 const float PLAYER_MAX_JUMP = 190.0f;
 //const float  PLAYER_ATTACK_JUMP = 90.0f;
-const float PLAYER_ATTACK_JUMP_SCALE = 0.6f;
+const float PLAYER_ATTACK_JUMP_SCALE = 0.65f;
 const float PLAYER_ATTACK_JUMP_MIN = 90.0f;
 const float PLAYER_MAX_SPEED = 87.0f;
 const float PLAYER_IMMUNE_TIME = 2.0f;
@@ -140,26 +143,45 @@ const float ENTITY_PURSUIT_SPEED = 55.0f;
 const float ENTITY_JUMP_SPEED = 160.0f;
 const float ENTITY_JUMP_COOLDOWN = 0.5f;
 
-const float BOSS_IDLE_SPEED = 30.0f;
-const float BOSS_PURSUIT_SPEED = 50.0f;
-const float BOSS_ANGRY_SPEED = 105.0f;
-const float BOSS_SPEED_REDUCTION_SCALE = 0.7f;
-const float BOSS_JUMP_SPEED = 160.0f;
-const float BOSS_ANGRY_JUMP_SPEED = 220.0f;
-const float BOSS_JUMP_COOLDOWN = 1.5f;
-const float BOSS_MINION_SPAWN_COOLDOWN = 1.5f;
-const float BOSS_MINION_SPEED = 25.0f;
-const float BOSS_MINION_SPEED_REDUCTION = 4.0f;
+
 const float BOSS_INJURED_TIME = 0.3f;
 const float BOSS_IMMUNE_TIME = 1.0f;
-const float BOSS_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 8;
-const float BOSS_IGNORE_MIN_RANGE = SPRITE_SIZE * 9;
-const float BOSS_INJURED_MAX_RANGE = SPRITE_SIZE * 12;
-const float BOSS_DEATH_MAX_RANGE = SPRITE_SIZE * 16;
-const float BOSS_RETURN_TO_SPAWN_RANGE = SPRITE_SIZE * 4;
-//const float BOSS_CAMERA_TRIGGER_RANGE = SPRITE_SIZE * 12;
-const float BOSS_JUMP_SHAKE_TIME = 0.3f;
-const float BOSS_ANGRY_JUMP_SHAKE_TIME = 0.4f;
+
+const float BOSS_1_IDLE_SPEED = 30.0f;
+const float BOSS_1_PURSUIT_SPEED = 50.0f;
+const float BOSS_1_ANGRY_SPEED = 105.0f;
+const float BOSS_1_SPEED_REDUCTION_SCALE = 0.7f;
+const float BOSS_1_JUMP_SPEED = 160.0f;
+const float BOSS_1_ANGRY_JUMP_SPEED = 220.0f;
+const float BOSS_1_JUMP_COOLDOWN = 1.5f;
+const float BOSS_1_MINION_SPAWN_COOLDOWN = 1.5f;
+const float BOSS_1_MINION_SPEED = 25.0f;
+const float BOSS_1_MINION_SPEED_REDUCTION = 4.0f;
+const float BOSS_1_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 8;
+const float BOSS_1_IGNORE_MIN_RANGE = SPRITE_SIZE * 9;
+const float BOSS_1_INJURED_MAX_RANGE = SPRITE_SIZE * 12;
+const float BOSS_1_DEATH_MAX_RANGE = SPRITE_SIZE * 16;
+const float BOSS_1_RETURN_TO_SPAWN_RANGE = SPRITE_SIZE * 4;
+const float BOSS_1_JUMP_SHAKE_TIME = 0.3f;
+const float BOSS_1_ANGRY_JUMP_SHAKE_TIME = 0.35f;
+
+const float BOSS_2_JUMP_SPEED = 160.0f;
+const float BOSS_2_ANGRY_JUMP_SPEED = 220.0f;
+const float BOSS_2_JUMP_COOLDOWN = 1.5f;
+const float BOSS_2_RELOAD_TIME = 2.0f;
+const float BOSS_2_RAPID_RELOAD_TIME = 0.4f;
+const float BOSS_2_SUPER_RAPID_RELOAD_TIME = 0.1f;
+const uint8_t BOSS_2_RAPID_SHOT_COUNT = 3;
+const float BOSS_2_PROJECTILE_FLIGHT_TIME = 1.1f;
+const float BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME = 0.8f;
+const float BOSS_2_SUPER_RAPID_PROJECTILE_FLIGHT_TIME = 0.8f;
+const float BOSS_2_RESET_COOLDOWN = 2.0f;
+const float BOSS_2_INJURED_TIME = 0.3f;
+const float BOSS_2_IMMUNE_TIME = 1.0f;
+const float BOSS_2_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 10;
+const float BOSS_2_IGNORE_MIN_RANGE = SPRITE_SIZE * 11;
+const float BOSS_2_JUMP_SHAKE_TIME = 0.3f;
+const float BOSS_2_ANGRY_JUMP_SHAKE_TIME = 0.35f;
 
 const float RANGED_MAX_RANGE = 64.0f;
 const float RANGED_RELOAD_TIME = 2.0f;
@@ -237,6 +259,7 @@ const uint8_t* asset_levels[] = {
     asset_level6,
     asset_level7,
     asset_level8,
+    asset_level9,
     asset_level_title,
     asset_level_char_select,
     asset_level_level_select
@@ -299,6 +322,7 @@ uint8_t pauseMenuItem = 0;
 float snowGenTimer = 0.0f;
 
 bool slowPlayer = false;
+bool dropPlayer = false;
 bool bossBattle = false;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
@@ -593,8 +617,9 @@ const std::vector<Colour> enemyDeathParticleColours[5] = {
     { Colour(255, 255, 242), Colour(204, 137, 124), Colour(127, 24, 75) },
     { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) }
 };
-const std::vector<Colour> bossDeathParticleColours[1] = {
-    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) }
+const std::vector<Colour> bossDeathParticleColours[2] = {
+    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) },
+    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) }
 };
 const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
 
@@ -1618,7 +1643,7 @@ public:
                     if (!reloadTimer) {
                         // Fire!
                         // Maybe make these values constants?
-                        projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, currentWorldNumber == SNOW_WORLD ? TILE_ID_ENEMY_PROJECTILE_SNOWBALL : TILE_ID_ENEMY_PROJECTILE_ROCK));
+                        projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_ENEMY_PROJECTILE_SNOWBALL : TILE_ID_ENEMY_PROJECTILE_ROCK));
                         reloadTimer = RANGED_RELOAD_TIME;
 
                         audioHandler.play(6);
@@ -1898,26 +1923,26 @@ public:
 
         anchorFrame = TILE_ID_BOSS_1;
 
-        currentSpeed = BOSS_IDLE_SPEED;
+        currentSpeed = BOSS_1_IDLE_SPEED;
 
         injuredTimer = 0;
         minionsToSpawn = 0;
         dead = false;
-        shakeOnLanding = false;
+        shakeOnLanding = 0;
     }
 
     Boss(uint16_t xPosition, uint16_t yPosition, uint8_t startHealth, uint8_t type) : Enemy(xPosition, yPosition, startHealth, type) {
         spawnX = xPosition;
         spawnY = yPosition;
 
-        anchorFrame = TILE_ID_BOSS_1 + type * 4;
+        anchorFrame = TILE_ID_BOSS_1 + type * 8;
 
-        currentSpeed = BOSS_IDLE_SPEED;
+        currentSpeed = BOSS_1_IDLE_SPEED;
 
         injuredTimer = 0;
         minionsToSpawn = 0;
         dead = false;
-        shakeOnLanding = false;
+        shakeOnLanding = 0;
     }
 
     void update(float dt, ButtonStates buttonStates) {
@@ -1949,7 +1974,14 @@ public:
             }
         }
 
-        if (enemyType == EnemyType::BASIC || enemyType == EnemyType::ARMOURED) {
+        if (reloadTimer) {
+            reloadTimer -= dt;
+            if (reloadTimer < 0) {
+                reloadTimer = 0;
+            }
+        }
+
+        if (enemyType == EnemyType::BASIC) {
             if (lastDirection) {
                 xVel = currentSpeed;
             }
@@ -1962,7 +1994,7 @@ public:
             if (state == 0) {
                 // IDLE
 
-                if (is_within_range(x, spawnX, BOSS_RETURN_TO_SPAWN_RANGE)) {
+                if (is_within_range(x, spawnX, BOSS_1_RETURN_TO_SPAWN_RANGE)) {
                     // Wait
                     currentSpeed = 0;
 
@@ -1970,7 +2002,7 @@ public:
                 }
                 else {
                     // Return to spawn
-                    currentSpeed = BOSS_IDLE_SPEED;
+                    currentSpeed = BOSS_1_IDLE_SPEED;
 
                     lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
 
@@ -1995,15 +2027,15 @@ public:
 
                     if (shouldJump && !jumpCooldown) {
                         if (is_on_block()) {
-                            shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
+                            shakeOnLanding = BOSS_1_JUMP_SHAKE_TIME;
+                            jump(BOSS_1_JUMP_SPEED, BOSS_1_JUMP_COOLDOWN);
                         }
-                        jump(BOSS_JUMP_SPEED, BOSS_JUMP_COOLDOWN);
                     }
                 }
 
 
                 // Handle states
-                if (is_within_range(x, *playerX, BOSS_JUMP_TRIGGER_MAX_RANGE) && is_within_range(y, *playerY, BOSS_JUMP_TRIGGER_MAX_RANGE)) {
+                if (is_within_range(x, *playerX, BOSS_1_JUMP_TRIGGER_MAX_RANGE) && is_within_range(y, *playerY, BOSS_1_JUMP_TRIGGER_MAX_RANGE)) {
                     state = 1;
                     bossBattle = true;
 
@@ -2012,9 +2044,9 @@ public:
 
                     // JUMP
                     if (is_on_block()) {
-                        shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
+                        shakeOnLanding = BOSS_1_ANGRY_JUMP_SHAKE_TIME;
+                        jump(BOSS_1_ANGRY_JUMP_SPEED, BOSS_1_JUMP_COOLDOWN);
                     }
-                    jump(BOSS_ANGRY_JUMP_SPEED, BOSS_JUMP_COOLDOWN);
                 }
             }
             else if (state == 1) {
@@ -2024,7 +2056,7 @@ public:
                 for (uint16_t i = 0; i < foreground.size(); i++) {
                     if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
                         // On block
-                        currentSpeed = BOSS_PURSUIT_SPEED;
+                        currentSpeed = BOSS_1_PURSUIT_SPEED;
                     }
                 }
 
@@ -2052,15 +2084,15 @@ public:
 
                 if (shouldJump && !jumpCooldown) {
                     if (is_on_block()) {
-                        shakeOnLanding = BOSS_JUMP_SHAKE_TIME;
+                        shakeOnLanding = BOSS_1_JUMP_SHAKE_TIME;
+                        jump(BOSS_1_JUMP_SPEED, BOSS_1_JUMP_COOLDOWN);
                     }
-                    jump(BOSS_JUMP_SPEED, BOSS_JUMP_COOLDOWN);
                 }
 
 
 
                 // Handle states
-                if (!is_within_range(x, *playerX, BOSS_IGNORE_MIN_RANGE) || !is_within_range(y, *playerY, BOSS_IGNORE_MIN_RANGE)) {
+                if (!is_within_range(x, *playerX, BOSS_1_IGNORE_MIN_RANGE) || !is_within_range(y, *playerY, BOSS_1_IGNORE_MIN_RANGE)) {
                     state = 0;
                 }
                 else if (is_immune()) {
@@ -2072,7 +2104,7 @@ public:
             else if (state == 2) {
                 // IMMUNE
 
-                currentSpeed = BOSS_ANGRY_SPEED - BOSS_SPEED_REDUCTION_SCALE * get_abs_center_range(x, *playerX);
+                currentSpeed = BOSS_1_ANGRY_SPEED - BOSS_1_SPEED_REDUCTION_SCALE * get_abs_center_range(x, *playerX);
 
                 //printf("Immune state (2), current speed %f\n", currentSpeed);
 
@@ -2100,11 +2132,11 @@ public:
                 //}
 
                 // Handle states
-                if (hitWall || /*atEdge ||*/ !is_within_range(x, *playerX, health == 0 ? BOSS_DEATH_MAX_RANGE : BOSS_INJURED_MAX_RANGE) || !is_within_range(y, *playerY, health == 0 ? BOSS_DEATH_MAX_RANGE : BOSS_INJURED_MAX_RANGE)) {
+                if (hitWall || /*atEdge ||*/ !is_within_range(x, *playerX, health == 0 ? BOSS_1_DEATH_MAX_RANGE : BOSS_1_INJURED_MAX_RANGE) || !is_within_range(y, *playerY, health == 0 ? BOSS_1_DEATH_MAX_RANGE : BOSS_1_INJURED_MAX_RANGE)) {
                     // NOTE: bug if you kill boss right on edge of platform or other times?
                     state = 3;
                     minionsToSpawn = 3 - health;
-                    jumpCooldown = BOSS_MINION_SPAWN_COOLDOWN; // delay minion spawning
+                    jumpCooldown = BOSS_1_MINION_SPAWN_COOLDOWN; // delay minion spawning
                 }
             }
             else if (state == 3) {
@@ -2117,15 +2149,16 @@ public:
                 // Jump whenever spawn minion
                 if (!jumpCooldown && minionsToSpawn) {
                     if (is_on_block()) {
-                        shakeOnLanding = BOSS_ANGRY_JUMP_SHAKE_TIME;
+                        shakeOnLanding = BOSS_1_ANGRY_JUMP_SHAKE_TIME;
 
                         // Spawn minion
                         enemies.push_back(Enemy(x + SPRITE_SIZE, y + SPRITE_SIZE, enemyHealths[(uint8_t)enemyType], (uint8_t)enemyType));
                         enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;;
-                        enemies[enemies.size() - 1].set_speed(BOSS_MINION_SPEED - BOSS_MINION_SPEED_REDUCTION * (2 - health));
+                        enemies[enemies.size() - 1].set_speed(BOSS_1_MINION_SPEED - BOSS_1_MINION_SPEED_REDUCTION * (2 - health));
                         minionsToSpawn--;
+
+                        jump(BOSS_1_ANGRY_JUMP_SPEED, BOSS_1_MINION_SPAWN_COOLDOWN);
                     }
-                    jump(BOSS_ANGRY_JUMP_SPEED, BOSS_MINION_SPAWN_COOLDOWN);
                 }
 
                 // Handle states
@@ -2146,6 +2179,162 @@ public:
                         state = 4;
                         dead = true;
                     }
+                }
+            }
+            else if (state == 4) {
+                // Dead, displaying particles
+
+                if (deathParticles) {
+                    if (particles.size() == 0) {
+                        // No particles left
+                        deathParticles = false;
+
+                        // Unslow player
+                        slowPlayer = false;
+                    }
+                    else {
+                        for (uint8_t i = 0; i < particles.size(); i++) {
+                            particles[i].update(dt);
+                        }
+
+                        // Remove any particles which are too old
+                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
+                    }
+                }
+            }
+        }
+        else if (enemyType == EnemyType::RANGED) {
+            update_collisions();
+
+            if (state == 0) {
+                // IDLE
+                currentSpeed = 0;
+
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
+
+                // Handle states
+                if (is_within_range(x, *playerX, BOSS_2_JUMP_TRIGGER_MAX_RANGE) && is_within_range(y, *playerY, BOSS_2_JUMP_TRIGGER_MAX_RANGE)) {
+                    state = 1;
+                    bossBattle = true;
+
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
+
+                    // JUMP
+                    if (is_on_block()) {
+                        shakeOnLanding = BOSS_2_ANGRY_JUMP_SHAKE_TIME;
+                        jump(BOSS_2_ANGRY_JUMP_SPEED, BOSS_2_JUMP_COOLDOWN);
+                    }
+                }
+            }
+            else if (state == 1) {
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
+
+                if (!reloadTimer) {
+                    // Fire!
+                    float xV = (*playerX - x) / BOSS_2_PROJECTILE_FLIGHT_TIME;
+                    // yVel is broken
+                    float yV = ((*playerY - y) / BOSS_2_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_PROJECTILE_FLIGHT_TIME;
+
+                    //x,y should be offset to center
+                    projectiles.push_back(Projectile(x, y, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                    reloadTimer = BOSS_2_RELOAD_TIME;
+
+                    audioHandler.play(6);
+                }
+
+                // Handle states
+                if (!is_within_range(x, *playerX, BOSS_2_IGNORE_MIN_RANGE) || !is_within_range(y, *playerY, BOSS_2_IGNORE_MIN_RANGE)) {
+                    state = 0;
+                }
+                else if (is_immune()) {
+                    if (health == 0) {
+                        state = 3;
+
+                        // JUMP
+                        if (is_on_block()) {
+                            shakeOnLanding = BOSS_2_ANGRY_JUMP_SHAKE_TIME;
+                            jump(BOSS_2_ANGRY_JUMP_SPEED, BOSS_2_JUMP_COOLDOWN);
+                        }
+
+                        shotsLeft = BOSS_2_RAPID_SHOT_COUNT * 3;
+
+                        // Make player drop through floor
+                        dropPlayer = true;
+                    }
+                    else {
+                        state = 2;
+
+                        // JUMP
+                        if (is_on_block()) {
+                            shakeOnLanding = BOSS_2_ANGRY_JUMP_SHAKE_TIME;
+                            jump(BOSS_2_ANGRY_JUMP_SPEED, BOSS_2_JUMP_COOLDOWN);
+                        }
+
+                        shotsLeft = BOSS_2_RAPID_SHOT_COUNT + (3 - health);
+
+                        // Make player drop through floor
+                        dropPlayer = true;
+                    }
+                }
+            }
+            else if (state == 2) {
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
+
+                if (is_on_block()) {
+                    if (shotsLeft && !reloadTimer) {
+                        // Fire!
+                        float xV = ((*playerX - x) / BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME) * (1.15f - shotsLeft / 20);
+                        // yVel is broken
+                        float yV = ((*playerY - y) / BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME;
+
+                        //x,y should be offset to center
+                        projectiles.push_back(Projectile(x, y, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                        reloadTimer = BOSS_2_RAPID_RELOAD_TIME;
+
+                        audioHandler.play(6);
+
+                        shotsLeft--;
+                    }
+                }
+                
+                if (!shotsLeft && !reloadTimer) {
+                    // Not dead
+                    state = 0;
+                    immuneTimer = 0;
+                    reloadTimer = BOSS_2_RESET_COOLDOWN;
+
+                    // Unslow player
+                    slowPlayer = false;
+                }
+            }
+            else if (state == 3) {
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
+
+                if (is_on_block()) {
+                    if (shotsLeft && !reloadTimer) {
+                        // Fire!
+                        float tX = x - (SPRITE_SIZE * BOSS_2_RAPID_SHOT_COUNT * 3) + SPRITE_SIZE * shotsLeft * 2;
+                        float xV = ((tX - x) / BOSS_2_SUPER_RAPID_PROJECTILE_FLIGHT_TIME);
+                        // yVel is broken
+                        float yV = ((*playerY - y) / BOSS_2_SUPER_RAPID_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_SUPER_RAPID_PROJECTILE_FLIGHT_TIME;
+
+                        //x,y should be offset to center
+                        projectiles.push_back(Projectile(x, y, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                        reloadTimer = BOSS_2_SUPER_RAPID_RELOAD_TIME;
+
+                        audioHandler.play(6);
+
+                        shotsLeft--;
+                    }
+                }
+
+                if (!shotsLeft && !reloadTimer) {
+                    // Dead
+                    // Generate particles
+                    particles = generate_particles(x + SPRITE_SIZE, y + SPRITE_SIZE, BOSS_DEATH_PARTICLE_GRAVITY_X, BOSS_DEATH_PARTICLE_GRAVITY_Y, bossDeathParticleColours[(uint8_t)enemyType], BOSS_DEATH_PARTICLE_SPEED, BOSS_DEATH_PARTICLE_COUNT);
+                    deathParticles = true;
+                    state = 4;
+                    dead = true;
                 }
             }
             else if (state == 4) {
@@ -2207,6 +2396,9 @@ public:
         if (enemyType == EnemyType::BASIC) {
             return Entity::is_immune() || state >= 2;
         }
+        else if (enemyType == EnemyType::RANGED) {
+            return Entity::is_immune() || state >= 2;
+        }
         else {
             // Catch-all
             return false;
@@ -2258,13 +2450,13 @@ public:
                         // Collided from top
                         y = foreground[i].y - SPRITE_SIZE * 2;
                         if (shakeOnLanding) {
-                            shakeOnLanding = false;
-                            shaker.set_shake(BOSS_JUMP_SHAKE_TIME);
+                            shaker.set_shake(shakeOnLanding);
+                            shakeOnLanding = 0;
                         }
                     }
                     else if (yVel < 0) {
-                    // Collided from bottom
-                    y = foreground[i].y + SPRITE_SIZE;
+                        // Collided from bottom
+                        y = foreground[i].y + SPRITE_SIZE;
                     }
                     yVel = 0;
                 }
@@ -2276,6 +2468,10 @@ public:
                     if (yVel > 0 && y + SPRITE_SIZE * 2 < platforms[i].y + SPRITE_QUARTER) {
                         // Collided from top
                         y = platforms[i].y - SPRITE_SIZE * 2;
+                        if (shakeOnLanding) {
+                            shaker.set_shake(shakeOnLanding);
+                            shakeOnLanding = 0;
+                        }
                         yVel = 0;
                     }
                 }
@@ -2380,7 +2576,7 @@ protected:
 
     uint16_t spawnX, spawnY;
     bool dead;
-    bool shakeOnLanding;
+    float shakeOnLanding;
 };
 std::vector<Boss> bosses; // used for levels where there is a boss.
 
@@ -2610,6 +2806,7 @@ public:
                         cameraRespawn = true;
                         locked = true;
                         slowPlayer = false;
+                        dropPlayer = false;
                         bossBattle = false;
 
                         reset_bosses();
@@ -2661,7 +2858,7 @@ public:
                         // Collided from top
                         y = enemies[i].y - SPRITE_SIZE;
 
-                        if (yVel > 0) { // && !enemies[i].is_immune()
+                        if (yVel > 0 || enemies[i].yVel < 0) { // && !enemies[i].is_immune()
                             //yVel = -PLAYER_ATTACK_JUMP;
                             yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
@@ -2681,26 +2878,28 @@ public:
                 }
             }
 
-            for (uint16_t i = 0; i < bosses.size(); i++) {
-                if (!bosses[i].is_dead() && colliding(bosses[i])) {
-                    if (y + SPRITE_SIZE < bosses[i].y + SPRITE_QUARTER) {
-                        // Collided from top
-                        y = bosses[i].y - SPRITE_SIZE;
+            if (!dropPlayer) {
+                for (uint16_t i = 0; i < bosses.size(); i++) {
+                    if (!bosses[i].is_dead() && colliding(bosses[i])) {
+                        if (y + SPRITE_SIZE < bosses[i].y + SPRITE_QUARTER) {
+                            // Collided from top
+                            y = bosses[i].y - SPRITE_SIZE;
 
-                        if (yVel > 0 && !bosses[i].is_immune() && bosses[i].health) {
-                            //yVel = -PLAYER_ATTACK_JUMP;
-                            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+                            if (yVel > 0 && !bosses[i].is_immune() && bosses[i].health) {
+                                //yVel = -PLAYER_ATTACK_JUMP;
+                                yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
-                            // Take health off enemy
-                            bosses[i].health--;
+                                // Take health off enemy
+                                bosses[i].health--;
 
-                            if (bosses[i].yVel < 0) {
-                                // Enemy is jumping
-                                // Stop enemy's jump
-                                //bosses[i].yVel = 0;
+                                if (bosses[i].yVel < 0) {
+                                    // Enemy is jumping
+                                    // Stop enemy's jump
+                                    //bosses[i].yVel = 0;
+                                }
+
+                                bosses[i].set_injured();
                             }
-
-                            bosses[i].set_injured();
                         }
                     }
                 }
@@ -2711,6 +2910,7 @@ public:
                     if (yVel > 0 && y + SPRITE_SIZE < foreground[i].y + SPRITE_HALF) {
                         // Collided from top
                         y = foreground[i].y - SPRITE_SIZE;
+                        dropPlayer = false; // stop player falling through platforms (only used in boss #2 currently)
                     }
                     else if (yVel < 0 && y + SPRITE_SIZE > foreground[i].y + SPRITE_HALF) {
                         // Collided from bottom
@@ -2721,8 +2921,10 @@ public:
             }
 
             // Platforms may need work
-            for (uint16_t i = 0; i < platforms.size(); i++) {
-                handle_platform_collisions(platforms[i]);
+            if (!dropPlayer) {
+                for (uint16_t i = 0; i < platforms.size(); i++) {
+                    handle_platform_collisions(platforms[i]);
+                }
             }
 
             for (uint16_t i = 0; i < levelTriggers.size(); i++) {
@@ -2798,7 +3000,7 @@ public:
             //    }
             //}
 
-            if (!immuneTimer) {
+            if (!immuneTimer && !dropPlayer) {
                 for (uint16_t i = 0; i < enemies.size(); i++) {
                     if (colliding(enemies[i]) && enemies[i].health) {
                         health--;
@@ -3039,7 +3241,13 @@ void render_level() {
     render_parallax(parallax);
 
     render_tiles(background);
+
+    if (dropPlayer) {
+        screen.alpha = 128;
+    }
     render_tiles(platforms);
+    screen.alpha = 255;
+
     render_tiles(generic_entities);
     render_tiles(spikes);
     render_tiles(foreground);
@@ -3259,9 +3467,9 @@ void load_level(uint8_t levelNumber) {
         else if (tmx->data[index] == TILE_ID_BOSS_1) {
             bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[0], 0));
         }
-        /*else if (tmx->data[index] == TILE_ID_BOSS_2) {
+        else if (tmx->data[index] == TILE_ID_BOSS_2) {
             bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[1], 1));
-        }*/
+        }
         else if (tmx->data[index] == TILE_ID_SPIKE_BOTTOM ||
             tmx->data[index] == TILE_ID_SPIKE_TOP ||
             tmx->data[index] == TILE_ID_SPIKE_LEFT ||
@@ -3362,16 +3570,18 @@ void load_level(uint8_t levelNumber) {
             float xVel = rand() % 3 - 1;
             float yVel = rand() % 5 + 8;
             uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
-            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
+            //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
+            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
             float x = (rand() % (endX - startX)) + startX;
             float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
+            //if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
             if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
                 // At edges, only make a half as many particles
                 imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
             }
         }
     }
-    else if (currentWorldNumber == SNOW_WORLD) {
+    else if (currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8) {
         // Generate snow particles
         for (uint16_t i = 0; i < SNOW_LEVEL_INIT_COUNT; i++) {
             // Get random position
@@ -3389,6 +3599,7 @@ void reset_level_vars() {
     cameraRespawn = false;
     bossBattle = false;
     slowPlayer = false;
+    dropPlayer = false;
 
     gamePaused = false;
     pauseMenuItem = 0;
@@ -3805,7 +4016,8 @@ void update_particles(float dt) {
             float xVel = rand() % 3 - 1;
             float yVel = rand() % 5 + 8;
             uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
-            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
+            //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
+            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
             float x = (rand() % (endX - startX)) + startX;
             if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
                 // At edges, only make a half as many particles
@@ -3813,7 +4025,7 @@ void update_particles(float dt) {
             }
         }
     }
-    else if (currentWorldNumber == SNOW_WORLD) {
+    else if (currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8) {
         snowGenTimer += dt;
         while (snowGenTimer >= SNOW_LEVEL_GENERATE_DELAY) {
             snowGenTimer -= SNOW_LEVEL_GENERATE_DELAY;
@@ -4380,7 +4592,6 @@ void init() {
 // amount if milliseconds elapsed since the start of your game
 //
 void render(uint32_t time) {
-
     // clear the screen -- screen is a reference to the frame buffer and can be used to draw all things with the 32blit
     screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b);
     screen.clear();
