@@ -37,8 +37,7 @@ const uint16_t TILE_ID_CAMERA = 509;
 const uint16_t TILE_ID_TRANSITION = 496;
 const uint16_t TILE_ID_FINISH = 432;
 const uint16_t TILE_ID_LEVEL_TRIGGER = 420;
-const uint16_t TILE_ID_LEVEL_BRIDGE_1 = 510;
-const uint16_t TILE_ID_LEVEL_BRIDGE_2 = 172;
+const uint16_t TILE_ID_LEVEL_BRIDGE_MIN = 144;
 
 const uint16_t TILE_ID_ENEMY_1 = 208;
 const uint16_t TILE_ID_ENEMY_2 = 212;
@@ -52,6 +51,7 @@ const uint16_t TILE_ID_ENEMY_9 = 240;
 
 const uint16_t TILE_ID_BOSS_1 = 256;
 const uint16_t TILE_ID_BOSS_2 = 264;
+const uint16_t TILE_ID_BIG_BOSS = 288;
 
 const uint16_t TILE_ID_SPIKE_BOTTOM = 480;
 const uint16_t TILE_ID_SPIKE_TOP = 481;
@@ -184,6 +184,25 @@ const float BOSS_2_IGNORE_MIN_RANGE = SPRITE_SIZE * 11;
 const float BOSS_2_JUMP_SHAKE_TIME = 0.3f;
 const float BOSS_2_ANGRY_JUMP_SHAKE_TIME = 0.35f;
 
+const float BIG_BOSS_IDLE_SPEED = 30.0f;
+const float BIG_BOSS_PURSUIT_SPEED = 50.0f;
+//const float BIG_BOSS_ANGRY_SPEED = 100.0f;
+const float BIG_BOSS_JUMP_SPEED = 180.0f;
+const float BIG_BOSS_ANGRY_JUMP_SPEED = 240.0f;
+const float BIG_BOSS_JUMP_COOLDOWN = 1.5f;
+const float BIG_BOSS_MINION_SPAWN_COOLDOWN = 1.5f;
+const float BIG_BOSS_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 10;
+const float BIG_BOSS_IGNORE_MIN_RANGE = SPRITE_SIZE * 12;
+const float BIG_BOSS_INJURED_MAX_RANGE = SPRITE_SIZE * 10;
+//const float BOSS_1_DEATH_MAX_RANGE = SPRITE_SIZE * 16;
+const float BIG_BOSS_RETURN_TO_SPAWN_RANGE = SPRITE_SIZE * 4;
+const float BIG_BOSS_JUMP_SHAKE_TIME = 0.45f;
+const float BIG_BOSS_ANGRY_JUMP_SHAKE_TIME = 0.5f;
+const float BIG_BOSS_RELOAD_TIME = 2.0f;
+const float BIG_BOSS_RAPID_RELOAD_TIME = 0.3f;
+const float BIG_BOSS_PROJECTILE_FLIGHT_TIME = 1.0f;
+
+
 const float RANGED_MAX_RANGE = 64.0f;
 const float RANGED_RELOAD_TIME = 2.0f;
 const float RANGED_PROJECTILE_X_VEL_SCALE = 0.8f;
@@ -231,7 +250,7 @@ const uint8_t SPRITE_QUARTER = SPRITE_SIZE / 4;
 const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT / SPRITE_SIZE);
 
 const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2, 2, 2, 2, 1 };
-const uint8_t bossHealths[] = { 3, 3 };
+const uint8_t bossHealths[] = { 3, 3, 3 };
 
 const std::vector<uint16_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
@@ -324,6 +343,7 @@ float snowGenTimer = 0.0f;
 
 bool slowPlayer = false;
 bool dropPlayer = false;
+bool repelPlayer = false;
 bool bossBattle = false;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
@@ -618,9 +638,10 @@ const std::vector<Colour> enemyDeathParticleColours[5] = {
     { Colour(255, 255, 242), Colour(204, 137, 124), Colour(127, 24, 75) },
     { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) }
 };
-const std::vector<Colour> bossDeathParticleColours[2] = {
+const std::vector<Colour> bossDeathParticleColours[3] = {
     { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) },
-    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) }
+    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) },
+    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) }
 };
 const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
 
@@ -1937,6 +1958,9 @@ public:
         spawnY = yPosition;
 
         anchorFrame = TILE_ID_BOSS_1 + type * 8;
+        if (type == 2) {
+            anchorFrame += 16;
+        }
 
         currentSpeed = BOSS_1_IDLE_SPEED;
 
@@ -1947,13 +1971,6 @@ public:
     }
 
     void update(float dt, ButtonStates buttonStates) {
-        /*if (reloadTimer) {
-            reloadTimer -= dt;
-            if (reloadTimer < 0) {
-                reloadTimer = 0;
-            }
-        }*/
-
         if (jumpCooldown) {
             jumpCooldown -= dt;
             if (jumpCooldown < 0) {
@@ -2154,7 +2171,7 @@ public:
 
                         // Spawn minion
                         enemies.push_back(Enemy(x + SPRITE_SIZE, y + SPRITE_SIZE, enemyHealths[(uint8_t)enemyType], (uint8_t)enemyType));
-                        enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;;
+                        enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 0 : 1;
                         enemies[enemies.size() - 1].set_speed(BOSS_1_MINION_SPEED - BOSS_1_MINION_SPEED_REDUCTION * (2 - health));
                         minionsToSpawn--;
 
@@ -2237,7 +2254,7 @@ public:
                     float yV = ((*playerY - y) / BOSS_2_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_PROJECTILE_FLIGHT_TIME;
 
                     //x,y should be offset to center
-                    projectiles.push_back(Projectile(x, y, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                    projectiles.push_back(Projectile(x + SPRITE_SIZE, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
                     reloadTimer = BOSS_2_RELOAD_TIME;
 
                     audioHandler.play(6);
@@ -2289,7 +2306,7 @@ public:
                         float yV = ((*playerY - y) / BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME;
 
                         //x,y should be offset to center
-                        projectiles.push_back(Projectile(x, y, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                        projectiles.push_back(Projectile(x + SPRITE_SIZE, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
                         reloadTimer = BOSS_2_RAPID_RELOAD_TIME;
 
                         audioHandler.play(6);
@@ -2360,6 +2377,194 @@ public:
                 }
             }
         }
+        else if (enemyType == EnemyType::PURSUIT) {
+            // Use persuit tag for giant boss, even though it's more like a BASIC v2.0
+            if (lastDirection) {
+                xVel = currentSpeed;
+            }
+            else {
+                xVel = -currentSpeed;
+            }
+
+            update_collisions();
+
+            if (state == 0) {
+                // IDLE
+
+                if (is_within_range(x, spawnX, BIG_BOSS_RETURN_TO_SPAWN_RANGE)) {
+                    // Wait
+                    currentSpeed = 0;
+
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+                }
+                else {
+                    // Return to spawn
+                    currentSpeed = BIG_BOSS_IDLE_SPEED;
+
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 1 : 0;
+                }
+
+
+                // Handle states
+                if (is_within_range(x, *playerX, BIG_BOSS_JUMP_TRIGGER_MAX_RANGE) && is_within_range(y, *playerY, BIG_BOSS_JUMP_TRIGGER_MAX_RANGE)) {
+                    state = 1;
+                    bossBattle = true;
+
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+
+
+                    // JUMP
+                    if (is_on_block()) {
+                        shakeOnLanding = BIG_BOSS_ANGRY_JUMP_SHAKE_TIME;
+                        jump(BIG_BOSS_ANGRY_JUMP_SPEED, BIG_BOSS_JUMP_COOLDOWN);
+                    }
+                }
+            }
+            else if (state == 1) {
+                // PURSUE
+
+                if (*playerY < y - SPRITE_SIZE * 4 && std::abs((*playerX + SPRITE_HALF) - (x + SPRITE_SIZE * 2)) < SPRITE_SIZE * 6) {
+                    // Player is a bit above boss, FIRE!
+                    currentSpeed = 0;
+
+                    if (!reloadTimer && !shotsLeft) {
+                        shotsLeft = 3;
+                    }
+
+                    if (is_on_block()) {
+                        if (!rapidfireTimer && shotsLeft) {
+                            // Fire!
+                            float xV = ((*playerX - x) / BIG_BOSS_PROJECTILE_FLIGHT_TIME) * (1.1f - shotsLeft / 20);
+                            // yVel is broken
+                            float yV = ((*playerY - y) / BIG_BOSS_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BIG_BOSS_PROJECTILE_FLIGHT_TIME;
+
+                            //x,y should be offset to center
+                            projectiles.push_back(Projectile(x + SPRITE_SIZE * 2, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                            
+                            rapidfireTimer = BIG_BOSS_RAPID_RELOAD_TIME;
+                            shotsLeft--;
+
+                            audioHandler.play(6);
+                        }
+                    }
+
+                    if (!shotsLeft && !reloadTimer) {
+                        reloadTimer = BIG_BOSS_RELOAD_TIME;
+                    }
+                }
+                else {
+                    // Only go fast once on ground
+                    if (is_on_block()) {
+                        currentSpeed = BIG_BOSS_PURSUIT_SPEED;
+                    }
+
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+
+                    bool shouldStop = true;
+
+                    float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
+                    for (uint16_t i = 0; i < foreground.size(); i++) {
+                        if (y + SPRITE_SIZE * 4 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 4 - 1) {
+                            // About to be on block
+                            shouldStop = false;
+                            break;
+                        }
+                    }
+                    if (shouldStop) {
+                        currentSpeed = 0;
+                    }
+                }
+
+                // Handle states
+                if (!is_within_range(x, *playerX, BIG_BOSS_IGNORE_MIN_RANGE) || !is_within_range(y, *playerY, BIG_BOSS_IGNORE_MIN_RANGE)) {
+                    state = 0;
+                }
+                else if (is_immune()) {
+                    state = 2;
+                    // slow down player
+                    //slowPlayer = true;
+                }
+            }
+            else if (state == 2) {
+                // SELF DEFENCE
+
+                // Push player away, in direction of spawn (i.e. furthest distance)
+
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+
+                repelPlayer = true;
+
+                // Handle states
+                if (!is_within_range(x, *playerX, BIG_BOSS_INJURED_MAX_RANGE) || !is_within_range(y, *playerY, BIG_BOSS_INJURED_MAX_RANGE)) {
+                    state = 3;
+                    minionsToSpawn = 1;
+                }
+
+            }
+            else if (state == 3) {
+                // SPAWN MINIONS
+
+                currentSpeed = 0;
+
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+
+                // Jump whenever spawn minion
+                if (!jumpCooldown && minionsToSpawn) {
+                    if (is_on_block()) {
+                        shakeOnLanding = BIG_BOSS_ANGRY_JUMP_SHAKE_TIME;
+
+                        // Spawn minion
+                        enemies.push_back(Enemy(x + SPRITE_SIZE * 2, y + SPRITE_SIZE * 2, enemyHealths[health + 4], health + 4));
+                        enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+                        //enemies[enemies.size() - 1].set_speed(BIG_BOSS_MINION_SPEED - BIG_BOSS_MINION_SPEED_REDUCTION * (2 - health));
+                        minionsToSpawn--;
+
+                        jump(BIG_BOSS_ANGRY_JUMP_SPEED, BIG_BOSS_MINION_SPAWN_COOLDOWN);
+                    }
+                }
+
+                // Handle states
+                if (!jumpCooldown && !minionsToSpawn) {
+                    if (health > 0) {
+                        // Not dead
+                        state = 1;
+                        immuneTimer = 0;
+
+                        // Unslow player
+                        slowPlayer = false;
+                    }
+                    else {
+                        // Dead
+                        // Generate particles
+                        particles = generate_particles(x + SPRITE_SIZE * 2, y + SPRITE_SIZE * 2, BOSS_DEATH_PARTICLE_GRAVITY_X, BOSS_DEATH_PARTICLE_GRAVITY_Y, bossDeathParticleColours[(uint8_t)enemyType], BOSS_DEATH_PARTICLE_SPEED, BOSS_DEATH_PARTICLE_COUNT);
+                        deathParticles = true;
+                        state = 4;
+                        dead = true;
+                    }
+                }
+            }
+            else if (state == 4) {
+                // Dead, displaying particles
+
+                if (deathParticles) {
+                    if (particles.size() == 0) {
+                        // No particles left
+                        deathParticles = false;
+
+                        // Unslow player
+                        slowPlayer = false;
+                    }
+                    else {
+                        for (uint8_t i = 0; i < particles.size(); i++) {
+                            particles[i].update(dt);
+                        }
+
+                        // Remove any particles which are too old
+                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
+                    }
+                }
+            }
+        }
 
         if (y > levelDeathBoundary) {
             health = 0;
@@ -2368,24 +2573,44 @@ public:
     }
 
     bool is_on_block() {
-        // Allow boss to jump on tiles
-        for (uint16_t i = 0; i < foreground.size(); i++) {
-            if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
-                // On top of block
-                return true;
+        if (is_big()) {
+            // Allow boss to jump on tiles
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (y + SPRITE_SIZE * 4 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 4) {
+                    // On top of block
+                    return true;
+                }
+            }
+
+            // Allow boss to jump on platforms
+            for (uint16_t i = 0; i < platforms.size(); i++) {
+                if (y + SPRITE_SIZE * 4 == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE * 4) {
+                    // On top of block
+                    return true;
+                }
             }
         }
+        else {
+            // Allow boss to jump on tiles
+            for (uint16_t i = 0; i < foreground.size(); i++) {
+                if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                    // On top of block
+                    return true;
+                }
+            }
 
-        // Allow boss to jump on platforms
-        for (uint16_t i = 0; i < platforms.size(); i++) {
-            if (y + SPRITE_SIZE * 2 == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE * 2) {
-                // On top of block
-                return true;
+            // Allow boss to jump on platforms
+            for (uint16_t i = 0; i < platforms.size(); i++) {
+                if (y + SPRITE_SIZE * 2 == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE * 2) {
+                    // On top of block
+                    return true;
+                }
             }
         }
 
         // Boss didn't jump
         return false;
+
     }
 
     void set_immune() {
@@ -2400,6 +2625,9 @@ public:
         else if (enemyType == EnemyType::RANGED) {
             return Entity::is_immune() || state >= 2;
         }
+        else if (enemyType == EnemyType::PURSUIT) {
+            return Entity::is_immune() || state >= 2;
+        }
         else {
             // Catch-all
             return false;
@@ -2409,6 +2637,10 @@ public:
     void set_injured() {
         injuredTimer = BOSS_INJURED_TIME;
         set_immune();
+    }
+
+    bool is_big() {
+        return enemyType == EnemyType::PURSUIT;
     }
 
     bool is_within_range(float me, float them, float range) {
@@ -2449,7 +2681,7 @@ public:
                 if (colliding(foreground[i])) {
                     if (yVel > 0) {
                         // Collided from top
-                        y = foreground[i].y - SPRITE_SIZE * 2;
+                        y = foreground[i].y - SPRITE_SIZE * (is_big() ? 4 : 2);
                         if (shakeOnLanding) {
                             shaker.set_shake(shakeOnLanding);
                             shakeOnLanding = 0;
@@ -2464,16 +2696,18 @@ public:
             }
 
             // Platforms may need work
-            for (uint16_t i = 0; i < platforms.size(); i++) {
-                if (colliding(platforms[i])) {
-                    if (yVel > 0 && y + SPRITE_SIZE * 2 < platforms[i].y + SPRITE_QUARTER) {
-                        // Collided from top
-                        y = platforms[i].y - SPRITE_SIZE * 2;
-                        if (shakeOnLanding) {
-                            shaker.set_shake(shakeOnLanding);
-                            shakeOnLanding = 0;
+            if (!is_big()) {
+                for (uint16_t i = 0; i < platforms.size(); i++) {
+                    if (colliding(platforms[i])) {
+                        if (yVel > 0 && y + SPRITE_SIZE * 2 < platforms[i].y + SPRITE_QUARTER) {
+                            // Collided from top
+                            y = platforms[i].y - SPRITE_SIZE * 2;
+                            if (shakeOnLanding) {
+                                shaker.set_shake(shakeOnLanding);
+                                shakeOnLanding = 0;
+                            }
+                            yVel = 0;
                         }
-                        yVel = 0;
                     }
                 }
             }
@@ -2507,32 +2741,67 @@ public:
 
     void render(Camera camera) {
         if (!dead) {
-            uint16_t frame = anchorFrame;
+            if (is_big()) {
+                uint16_t frame = anchorFrame;
 
-            if (yVel < -50) {
-                frame = anchorFrame + 2;
-            }
-            else if (yVel > 160) {
-                frame = anchorFrame + 4;
-            }
+                if (health < 3) {
+                    frame = anchorFrame + 8 + 16 * 4;
+                }
 
-            if (injuredTimer) {
-                frame = anchorFrame + 6;
-            }
+                if (yVel < -50) {
+                    frame = anchorFrame + 4;
+                }
+                else if (yVel > 160) {
+                    frame = anchorFrame + 8;
+                }
 
-            if (lastDirection == 1) {
-                //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
-                render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
-                render_sprite(frame + 1, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
-                render_sprite(frame + 16, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE), SpriteTransform::HORIZONTAL);
-                render_sprite(frame + 17, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE), SpriteTransform::HORIZONTAL);
+                if (injuredTimer) {
+                    frame = anchorFrame + 12;
+                }
+
+                if (lastDirection == 1) {
+                    for (uint8_t i = 0; i < 4; i++) {
+                        for (uint8_t j = 0; j < 4; j++) {
+                            render_sprite(frame + i + j * 16, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE * (3 - i), SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE * j), SpriteTransform::HORIZONTAL);
+                        }
+                    }
+                }
+                else {
+                    for (uint8_t i = 0; i < 4; i++) {
+                        for (uint8_t j = 0; j < 4; j++) {
+                            render_sprite(frame + i + j * 16, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE * i, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE * j));
+                        }
+                    }
+                }
             }
             else {
-                //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
-                render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
-                render_sprite(frame + 1, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y));
-                render_sprite(frame + 16, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE));
-                render_sprite(frame + 17, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE));
+                uint16_t frame = anchorFrame;
+
+                if (yVel < -50) {
+                    frame = anchorFrame + 2;
+                }
+                else if (yVel > 160) {
+                    frame = anchorFrame + 4;
+                }
+
+                if (injuredTimer) {
+                    frame = anchorFrame + 6;
+                }
+
+                if (lastDirection == 1) {
+                    //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                    render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                    render_sprite(frame + 1, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y), SpriteTransform::HORIZONTAL);
+                    render_sprite(frame + 16, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE), SpriteTransform::HORIZONTAL);
+                    render_sprite(frame + 17, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE), SpriteTransform::HORIZONTAL);
+                }
+                else {
+                    //screen.sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                    render_sprite(frame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+                    render_sprite(frame + 1, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y));
+                    render_sprite(frame + 16, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE));
+                    render_sprite(frame + 17, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_SIZE, SCREEN_MID_HEIGHT + y - camera.y + SPRITE_SIZE));
+                }
             }
         }
 
@@ -2543,8 +2812,12 @@ public:
     }
 
     bool colliding(Tile tile) {
-        // Replace use of this with actual code?
-        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE * 2 - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE * 2);
+        if (is_big()) {
+            return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE * 4 - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE * 4);
+        }
+        else {
+            return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE * 2 - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE * 2);
+        }
     }
 
     bool spawning_minions() {
@@ -2637,7 +2910,7 @@ public:
         }
 
         if (health > 0) {
-
+            health = 3;
             if (!locked) {
                 levelTimer += dt;
 
@@ -2714,8 +2987,6 @@ public:
                     }
                 }
             }
-
-            
 
             uint8_t coinCount = coins.size();
 
@@ -2808,6 +3079,7 @@ public:
                         locked = true;
                         slowPlayer = false;
                         dropPlayer = false;
+                        repelPlayer = false;
                         bossBattle = false;
 
                         reset_bosses();
@@ -3095,8 +3367,12 @@ public:
     }
 
     bool colliding(Boss boss) {
-        // Replace use of this with actual code?
-        return (boss.x + SPRITE_SIZE * 2 > x && boss.x < x + SPRITE_SIZE && boss.y + SPRITE_SIZE * 2 > y && boss.y < y + SPRITE_SIZE);
+        if (boss.is_big()) {
+            return (boss.x + SPRITE_SIZE * 4 > x && boss.x < x + SPRITE_SIZE && boss.y + SPRITE_SIZE * 4 > y && boss.y < y + SPRITE_SIZE);
+        }
+        else {
+            return (boss.x + SPRITE_SIZE * 2 > x && boss.x < x + SPRITE_SIZE && boss.y + SPRITE_SIZE * 2 > y && boss.y < y + SPRITE_SIZE);
+        }
     }
 
     bool colliding(LevelTrigger levelTrigger) {
@@ -3471,6 +3747,9 @@ void load_level(uint8_t levelNumber) {
         else if (tmx->data[index] == TILE_ID_BOSS_2) {
             bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[1], 1));
         }
+        else if (tmx->data[index] == TILE_ID_BIG_BOSS) {
+            bosses.push_back(Boss((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, bossHealths[2], 2));
+        }
         else if (tmx->data[index] == TILE_ID_SPIKE_BOTTOM ||
             tmx->data[index] == TILE_ID_SPIKE_TOP ||
             tmx->data[index] == TILE_ID_SPIKE_LEFT ||
@@ -3498,12 +3777,9 @@ void load_level(uint8_t levelNumber) {
         if (tmx->data[index] == TILE_ID_EMPTY) {
             // Is a blank tile, don't do anything
         }
-        else if (levelNumber == LEVEL_SELECT_NUMBER && (tmx->data[index] == TILE_ID_LEVEL_BRIDGE_1 || tmx->data[index] == TILE_ID_LEVEL_BRIDGE_2)) {
-            // Platforms are bouncy because why not :)
-
-            // TEMPORARY - NEED TO ANIMATE
-            // -    for now, only load these into normal collection of platforms if player has unlocked a level after this location
-            if ((i % levelWidth) * SPRITE_SIZE < levelTriggers[allPlayerSaveData[playerSelected].levelReached].x) {
+        else if (levelNumber == LEVEL_SELECT_NUMBER && tmx->data[index] >= TILE_ID_LEVEL_BRIDGE_MIN) {
+            // For now, only load these into normal collection of platforms if player has unlocked a level after this location
+            if (allPlayerSaveData[playerSelected].levelReached == LEVEL_COUNT || (i % levelWidth) * SPRITE_SIZE < levelTriggers[allPlayerSaveData[playerSelected].levelReached].x) {
                 platforms.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));//,PLATFORM_BOUNCE
             }
         }
@@ -3601,6 +3877,7 @@ void reset_level_vars() {
     bossBattle = false;
     slowPlayer = false;
     dropPlayer = false;
+    repelPlayer = false;
 
     gamePaused = false;
     pauseMenuItem = 0;
@@ -3715,8 +3992,8 @@ void start_game_won() {
         // Just completed level for first time
         allPlayerSaveData[playerSelected].levelReached = currentLevelNumber + 1;
 
-        if (currentLevelNumber % LEVELS_PER_WORLD == LEVELS_PER_WORLD - 1) {
-            // Level was last level in world
+        if (currentLevelNumber % LEVELS_PER_WORLD == LEVELS_PER_WORLD - 1 || currentLevelNumber == 8) {
+            // Level was last level in world or was level 9
             cameraNewWorld = true;
             player.locked = true;
             camera.reset_temp();
@@ -4393,7 +4670,7 @@ void update_game(float dt, ButtonStates buttonStates) {
                 if (bossBattle) {
                     if (bosses.size() == 1) {
                         // Keep both player and boss on screen
-                        camera.ease_out_to(dt, bosses[0].x - (bosses[0].get_center_range(bosses[0].x, player.x) / 2) + SPRITE_SIZE, bosses[0].y - (bosses[0].get_center_range(bosses[0].y, player.y) / 2) + SPRITE_SIZE);
+                        camera.ease_out_to(dt, bosses[0].x - (bosses[0].get_center_range(bosses[0].x, player.x) * 0.65f) + SPRITE_SIZE, bosses[0].y - (bosses[0].get_center_range(bosses[0].y, player.y) * 0.65f) + SPRITE_SIZE);
                     }
                     else {
                         bossBattle = false;
