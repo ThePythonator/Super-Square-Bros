@@ -90,6 +90,8 @@ const uint16_t SNOW_LEVEL_SELECT_INIT_COUNT = 200;
 
 const float SCREEN_SHAKE_SHAKINESS = 3.0f; //pixels either way - maybe more?
 
+const float REPEL_PLAYER_MIN = 4.8f;
+
 
 const uint8_t ENTITY_DEATH_PARTICLE_COUNT = 100;
 const float ENTITY_DEATH_PARTICLE_GRAVITY_X = 0.0f;
@@ -186,6 +188,7 @@ const float BOSS_2_ANGRY_JUMP_SHAKE_TIME = 0.35f;
 
 const float BIG_BOSS_IDLE_SPEED = 30.0f;
 const float BIG_BOSS_PURSUIT_SPEED = 50.0f;
+const float BIG_BOSS_RETREAT_SPEED = 20.0f;
 //const float BIG_BOSS_ANGRY_SPEED = 100.0f;
 const float BIG_BOSS_JUMP_SPEED = 180.0f;
 const float BIG_BOSS_ANGRY_JUMP_SPEED = 240.0f;
@@ -198,8 +201,8 @@ const float BIG_BOSS_INJURED_MAX_RANGE = SPRITE_SIZE * 10;
 const float BIG_BOSS_RETURN_TO_SPAWN_RANGE = SPRITE_SIZE * 4;
 const float BIG_BOSS_JUMP_SHAKE_TIME = 0.45f;
 const float BIG_BOSS_ANGRY_JUMP_SHAKE_TIME = 0.5f;
-const float BIG_BOSS_RELOAD_TIME = 2.0f;
-const float BIG_BOSS_RAPID_RELOAD_TIME = 0.3f;
+const float BIG_BOSS_RELOAD_TIME = 2.3f;
+const float BIG_BOSS_RAPID_RELOAD_TIME = 0.4f;
 const float BIG_BOSS_PROJECTILE_FLIGHT_TIME = 1.0f;
 
 
@@ -251,6 +254,7 @@ const uint16_t SCREEN_TILE_SIZE = (SCREEN_WIDTH / SPRITE_SIZE) * (SCREEN_HEIGHT 
 
 const uint8_t enemyHealths[] = { 1, 1, 1, 1, 2, 2, 2, 2, 1 };
 const uint8_t bossHealths[] = { 3, 3, 3 };
+const uint8_t bigBossMinions[] = { 7, 6, 4 };
 
 const std::vector<uint16_t> coinFrames = { TILE_ID_COIN, TILE_ID_COIN + 1, TILE_ID_COIN + 2, TILE_ID_COIN + 3, TILE_ID_COIN + 2, TILE_ID_COIN + 1 };
 
@@ -1999,6 +2003,13 @@ public:
             }
         }
 
+        if (rapidfireTimer) {
+            rapidfireTimer -= dt;
+            if (rapidfireTimer < 0) {
+                rapidfireTimer = 0;
+            }
+        }
+
         if (enemyType == EnemyType::BASIC) {
             if (lastDirection) {
                 xVel = currentSpeed;
@@ -2401,7 +2412,7 @@ public:
                     // Return to spawn
                     currentSpeed = BIG_BOSS_IDLE_SPEED;
 
-                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 1 : 0;
+                    lastDirection = spawnX < x + SPRITE_SIZE * 2 ? 0 : 1;
                 }
 
 
@@ -2411,6 +2422,8 @@ public:
                     bossBattle = true;
 
                     lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+
+                    shotsLeft = 0;
 
 
                     // JUMP
@@ -2423,9 +2436,11 @@ public:
             else if (state == 1) {
                 // PURSUE
 
-                if (*playerY < y - SPRITE_SIZE * 4 && std::abs((*playerX + SPRITE_HALF) - (x + SPRITE_SIZE * 2)) < SPRITE_SIZE * 6) {
+                if ((*playerY < y - SPRITE_SIZE * 4 && std::abs((*playerX + SPRITE_HALF) - (x + SPRITE_SIZE * 2)) < SPRITE_SIZE * 6) || std::abs((*playerX + SPRITE_HALF) - (x + SPRITE_SIZE * 2)) > SPRITE_SIZE * 9) {
                     // Player is a bit above boss, FIRE!
                     currentSpeed = 0;
+
+                    lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
 
                     if (!reloadTimer && !shotsLeft) {
                         shotsLeft = 3;
@@ -2434,11 +2449,11 @@ public:
                     if (is_on_block()) {
                         if (!rapidfireTimer && shotsLeft) {
                             // Fire!
-                            float xV = ((*playerX - x) / BIG_BOSS_PROJECTILE_FLIGHT_TIME) * (1.1f - shotsLeft / 20);
+                            float xV = ((*playerX - x - SPRITE_HALF * 3) / BIG_BOSS_PROJECTILE_FLIGHT_TIME) * (1.1f - shotsLeft / 20);
                             // yVel is broken
-                            float yV = ((*playerY - y) / BIG_BOSS_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BIG_BOSS_PROJECTILE_FLIGHT_TIME;
+                            float yV = ((*playerY - y - SPRITE_HALF * 3) / BIG_BOSS_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BIG_BOSS_PROJECTILE_FLIGHT_TIME;
 
-                            //x,y should be offset to center
+                            // x,y are offset to center
                             projectiles.push_back(Projectile(x + SPRITE_SIZE * 2, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
                             
                             rapidfireTimer = BIG_BOSS_RAPID_RELOAD_TIME;
@@ -2452,7 +2467,7 @@ public:
                         reloadTimer = BIG_BOSS_RELOAD_TIME;
                     }
                 }
-                else {
+                else if (std::abs((*playerX + SPRITE_HALF) - (x + SPRITE_SIZE * 2)) > SPRITE_SIZE * 4 && !reloadTimer) {
                     // Only go fast once on ground
                     if (is_on_block()) {
                         currentSpeed = BIG_BOSS_PURSUIT_SPEED;
@@ -2474,6 +2489,9 @@ public:
                         currentSpeed = 0;
                     }
                 }
+                else {
+                    currentSpeed = 0;
+                }
 
                 // Handle states
                 if (!is_within_range(x, *playerX, BIG_BOSS_IGNORE_MIN_RANGE) || !is_within_range(y, *playerY, BIG_BOSS_IGNORE_MIN_RANGE)) {
@@ -2490,14 +2508,17 @@ public:
 
                 // Push player away, in direction of spawn (i.e. furthest distance)
 
-                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+                lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 1 : 0;
 
                 repelPlayer = true;
+
+                currentSpeed = BIG_BOSS_RETREAT_SPEED;
 
                 // Handle states
                 if (!is_within_range(x, *playerX, BIG_BOSS_INJURED_MAX_RANGE) || !is_within_range(y, *playerY, BIG_BOSS_INJURED_MAX_RANGE)) {
                     state = 3;
                     minionsToSpawn = 1;
+                    repelPlayer = false;
                 }
 
             }
@@ -2514,8 +2535,9 @@ public:
                         shakeOnLanding = BIG_BOSS_ANGRY_JUMP_SHAKE_TIME;
 
                         // Spawn minion
-                        enemies.push_back(Enemy(x + SPRITE_SIZE * 2, y + SPRITE_SIZE * 2, enemyHealths[health + 4], health + 4));
+                        enemies.push_back(Enemy(x + SPRITE_SIZE * 2, y + SPRITE_SIZE * 2, enemyHealths[bigBossMinions[health]], bigBossMinions[health]));
                         enemies[enemies.size() - 1].lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE * 2 ? 0 : 1;
+                        enemies[enemies.size() - 1].set_player_position(playerX, playerY);
                         //enemies[enemies.size() - 1].set_speed(BIG_BOSS_MINION_SPEED - BIG_BOSS_MINION_SPEED_REDUCTION * (2 - health));
                         minionsToSpawn--;
 
@@ -2744,7 +2766,7 @@ public:
             if (is_big()) {
                 uint16_t frame = anchorFrame;
 
-                if (health < 3) {
+                if (true) { //state != 0 //health < 3
                     frame = anchorFrame + 8 + 16 * 4;
                 }
 
@@ -3533,8 +3555,8 @@ void render_level() {
 }
 
 void render_entities() {
-    render_enemies();
     render_bosses();
+    render_enemies();
 
     player.render(camera);
 
@@ -4235,6 +4257,10 @@ void update_bosses(float dt, ButtonStates buttonStates) {
     for (int i = 0; i < bosses.size(); i++) {
         bosses[i].update(dt, buttonStates);
     }
+
+    if (bosses.size() == 1 && repelPlayer) {
+        player.xVel += std::max((player.x - bosses[0].x) * 0.1f, REPEL_PLAYER_MIN);
+    }
 }
 
 void update_level_triggers(float dt, ButtonStates buttonStates) {
@@ -4579,10 +4605,23 @@ void update_game(float dt, ButtonStates buttonStates) {
             // Need to rework finish
             finish.update(dt, buttonStates);
 
-            if (player.x + SPRITE_SIZE > finish.x + 3 && player.x < finish.x + SPRITE_SIZE - 3 && player.y + SPRITE_SIZE > finish.y + 4 && player.y < finish.y + SPRITE_SIZE) {
-                // lock player to finish
-                player.x = finish.x;
-                player.y = finish.y - 1;
+            if (std::abs(player.x - finish.x) < SPRITE_HALF * 3 && std::abs(player.y - finish.y) < SPRITE_HALF) {
+                //// lock player to finish
+                //player.x = finish.x;
+                //player.y = finish.y - 1;
+
+                if (std::abs(player.x - finish.x) < SPRITE_HALF) {
+                    player.x = finish.x;
+                    player.y = finish.y;
+                }
+                else {
+                    if (player.x < finish.x) {
+                        player.xVel += std::max(SPRITE_SIZE * 2 - (finish.x - player.x), (float)SPRITE_SIZE) * 0.4f;
+                    }
+                    else {
+                        player.xVel -= std::max(SPRITE_SIZE * 2 - (player.x - finish.x), (float)SPRITE_SIZE) * 0.4f;
+                    }
+                }
             }
         }
 
