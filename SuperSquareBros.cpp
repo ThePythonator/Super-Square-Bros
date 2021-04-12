@@ -379,8 +379,8 @@ struct TMX16 {
 enum class GameState {
     STATE_SG_ICON,
     STATE_INPUT_SELECT,
-    STATE_CHARACTER_SELECT,
     STATE_MENU,
+    STATE_CHARACTER_SELECT,
     STATE_LEVEL_SELECT,
     STATE_IN_GAME,
     STATE_LOST,
@@ -4377,7 +4377,7 @@ void update_input_select(float dt, ButtonStates buttonStates) {
     }
     else {
         if (transition[0].is_ready_to_open()) {
-            start_character_select();
+            start_menu();
         }
         else if (transition[0].is_open()) {
             if (gameSaveData.inputType == InputType::CONTROLLER) {
@@ -4409,69 +4409,31 @@ void update_input_select(float dt, ButtonStates buttonStates) {
 }
 
 void update_character_select(float dt, ButtonStates buttonStates) {
-    if (splashColour.a > 0) {
-        if (splashColour.a >= FADE_STEP) {
-            splashColour.a -= FADE_STEP;
-        }
-        else {
-            splashColour.a = 0;
-        }
+    // Dummy states is used to make selected player continually jump (sending A key pressed).
+    ButtonStates dummyStates = { 0 };
+    dummyStates.A = 2;
+    player.update(dt, dummyStates);
+
+
+    if (buttonStates.RIGHT && !playerSelected) {
+        audioHandler.play(0);
+
+        playerSelected = 1;
+        player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
+        player.lastDirection = 0;
     }
-    else {
-        // Dummy states is used to make selected player continually jump (sending A key pressed).
-        ButtonStates dummyStates = { 0 };
-        dummyStates.A = 2;
-        player.update(dt, dummyStates);
+    else if (buttonStates.LEFT && playerSelected) {
+        audioHandler.play(0);
 
-
-        if (buttonStates.RIGHT && !playerSelected) {
-            audioHandler.play(0);
-
-            playerSelected = 1;
-            player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
-            player.lastDirection = 0;
-        }
-        else if (buttonStates.LEFT && playerSelected) {
-            audioHandler.play(0);
-
-            playerSelected = 0;
-            player = Player(playerStartX, playerStartY, 0);
-            player.lastDirection = 1;
-        }
-
-        if (transition[0].is_ready_to_open()) {
-            if (menuBack) {
-                menuBack = false;
-                start_input_select();
-            }
-            else {
-                start_menu();
-            }
-        }
-        else if (transition[0].is_open()) {
-            if (buttonStates.A == 2) {
-                audioHandler.play(0);
-
-                close_transition();
-            }
-            else if (buttonStates.Y == 2) {
-                audioHandler.play(0);
-
-                menuBack = true;
-                close_transition();
-            }
-        }
+        playerSelected = 0;
+        player = Player(playerStartX, playerStartY, 0);
+        player.lastDirection = 1;
     }
-}
-
-void update_menu(float dt, ButtonStates buttonStates) {
-    update_coins(dt);
-
 
     if (transition[0].is_ready_to_open()) {
         if (menuBack) {
             menuBack = false;
-            start_character_select();
+            start_menu();
         }
         else {
             start_level_select();
@@ -4488,6 +4450,44 @@ void update_menu(float dt, ButtonStates buttonStates) {
 
             menuBack = true;
             close_transition();
+        }
+    }
+}
+
+void update_menu(float dt, ButtonStates buttonStates) {
+    update_coins(dt);
+
+
+    if (splashColour.a > 0) {
+        if (splashColour.a >= FADE_STEP) {
+            splashColour.a -= FADE_STEP;
+        }
+        else {
+            splashColour.a = 0;
+        }
+    }
+    else {
+        if (transition[0].is_ready_to_open()) {
+            if (menuBack) {
+                menuBack = false;
+                start_input_select();
+            }
+            else {
+                start_character_select();
+            }
+        }
+        else if (transition[0].is_open()) {
+            if (buttonStates.A == 2) {
+                audioHandler.play(0);
+
+                close_transition();
+            }
+            else if (buttonStates.Y == 2) {
+                audioHandler.play(0);
+
+                menuBack = true;
+                close_transition();
+            }
         }
     }
 }
@@ -4813,10 +4813,10 @@ void init_game() {
         printf("Save data loaded, save version: %d (v%d.%d.%d)\n", gameSaveData.version, saveDataVersion.major, saveDataVersion.minor, saveDataVersion.build);
 
         // Loaded sucessfully!
-        gameState = GameState::STATE_CHARACTER_SELECT;
+        gameState = GameState::STATE_MENU;
 
-        // Load character select level
-        load_level(LEVEL_COUNT + 1);
+        // Load menu level
+        load_level(LEVEL_COUNT);
 
     }
     else {
@@ -4829,13 +4829,13 @@ void init_game() {
 
 #ifdef TARGET_32BLIT_HW
         // If it's a 32blit, don't bother asking
-        gameState = GameState::STATE_CHARACTER_SELECT;
+        gameState = GameState::STATE_MENU;
+
+        // Load menu level
+        load_level(LEVEL_COUNT);
 
         // Save inputType
         save_game_data();
-
-        // Load character select level
-        load_level(LEVEL_COUNT + 1);
 #endif
     }
 }
@@ -4924,11 +4924,11 @@ void render(uint32_t time) {
     else if (gameState == GameState::STATE_INPUT_SELECT) {
         render_input_select();
     }
-    else if (gameState == GameState::STATE_CHARACTER_SELECT) {
-        render_character_select();
-    }
     else if (gameState == GameState::STATE_MENU) {
         render_menu();
+    }
+    else if (gameState == GameState::STATE_CHARACTER_SELECT) {
+        render_character_select();
     }
     else if (gameState == GameState::STATE_LEVEL_SELECT) {
         render_level_select();
@@ -5073,11 +5073,11 @@ void update(uint32_t time) {
     else if (gameState == GameState::STATE_INPUT_SELECT) {
         update_input_select(dt, buttonStates);
     }
-    else if (gameState == GameState::STATE_CHARACTER_SELECT) {
-        update_character_select(dt, buttonStates);
-    }
     else if (gameState == GameState::STATE_MENU) {
         update_menu(dt, buttonStates);
+    }
+    else if (gameState == GameState::STATE_CHARACTER_SELECT) {
+        update_character_select(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_LEVEL_SELECT) {
         update_level_select(dt, buttonStates);
