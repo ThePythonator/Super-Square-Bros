@@ -10,6 +10,7 @@ using namespace blit;
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
 #define RESET_SAVE_DATA_IF_MINOR_DIFF
+//#define TESTING_MODE
 
 void init_game();
 
@@ -90,7 +91,7 @@ const uint16_t SNOW_LEVEL_SELECT_INIT_COUNT = 200;
 
 const float SCREEN_SHAKE_SHAKINESS = 3.0f; //pixels either way - maybe more?
 
-const float REPEL_PLAYER_MIN = 4.8f;
+const float REPEL_PLAYER_MIN = 5.0f;
 
 
 const uint8_t ENTITY_DEATH_PARTICLE_COUNT = 100;
@@ -192,7 +193,7 @@ const float BIG_BOSS_RETREAT_SPEED = 20.0f;
 //const float BIG_BOSS_ANGRY_SPEED = 100.0f;
 const float BIG_BOSS_JUMP_SPEED = 180.0f;
 const float BIG_BOSS_ANGRY_JUMP_SPEED = 240.0f;
-const float BIG_BOSS_JUMP_COOLDOWN = 1.5f;
+const float BIG_BOSS_JUMP_COOLDOWN = 2.0f;
 const float BIG_BOSS_MINION_SPAWN_COOLDOWN = 1.5f;
 const float BIG_BOSS_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 10;
 const float BIG_BOSS_IGNORE_MIN_RANGE = SPRITE_SIZE * 12;
@@ -650,6 +651,7 @@ const std::vector<Colour> bossDeathParticleColours[3] = {
 const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
 
 const std::vector<Colour> slowPlayerParticleColours = { Colour(145, 224, 204), Colour(53, 130, 130) };//Colour(255, 255, 242), 
+const std::vector<Colour> repelPlayerParticleColours = { Colour(255, 235, 140), Colour(255, 199, 89) };
 
 const Colour inputSelectColour = Colour(255, 199, 89);
 const Colour hudBackground = Colour(7, 0, 14, 64);
@@ -2489,6 +2491,17 @@ public:
                         currentSpeed = 0;
                     }
                 }
+                else if (std::abs((*playerX + SPRITE_HALF) - (x + SPRITE_SIZE * 2)) < SPRITE_SIZE * 5 && *playerY > y) {
+                    // Only go fast once on ground
+                    if (is_on_block()) {
+                        currentSpeed = BIG_BOSS_PURSUIT_SPEED;
+
+                        if (!jumpCooldown) {
+                            shakeOnLanding = BIG_BOSS_JUMP_SHAKE_TIME;
+                            jump(BIG_BOSS_JUMP_SPEED, BIG_BOSS_JUMP_COOLDOWN);
+                        }
+                    }
+                }
                 else {
                     currentSpeed = 0;
                 }
@@ -2661,6 +2674,15 @@ public:
         set_immune();
     }
 
+    uint8_t get_size() {
+        if (is_big()) {
+            return SPRITE_SIZE * 4;
+        }
+        else {
+            return SPRITE_SIZE * 2;
+        }
+    }
+
     bool is_big() {
         return enemyType == EnemyType::PURSUIT;
     }
@@ -2742,7 +2764,7 @@ public:
                 if (colliding(foreground[i])) {
                     if (xVel > 0) {
                         // Collided from left
-                        x = foreground[i].x - SPRITE_SIZE * 2 + 1;
+                        x = foreground[i].x - SPRITE_SIZE * (is_big() ? 4 : 2) + 1;
                     }
                     else if (xVel < 0) {
                         // Collided from right
@@ -2766,9 +2788,9 @@ public:
             if (is_big()) {
                 uint16_t frame = anchorFrame;
 
-                if (true) { //state != 0 //health < 3
-                    frame = anchorFrame + 8 + 16 * 4;
-                }
+                //if (true) { //state != 0 //health < 3
+                //    frame = anchorFrame + 8 + 16 * 4;
+                //}
 
                 if (yVel < -50) {
                     frame = anchorFrame + 4;
@@ -2932,7 +2954,16 @@ public:
         }
 
         if (health > 0) {
+
+#ifdef TESTING_MODE
             health = 3;
+
+            if (buttonStates.X) {
+                x = finish.x - SPRITE_SIZE * 2;
+                y = finish.y;
+            }
+#endif // TESTING_MODE
+
             if (!locked) {
                 levelTimer += dt;
 
@@ -3059,11 +3090,11 @@ public:
             }
         }
 
-        if (slowPlayer) {
+        if (slowPlayer || repelPlayer) {
             slowPlayerParticleTimer += dt;
             if (slowPlayerParticleTimer >= PLAYER_SLOW_PARTICLE_SPAWN_DELAY) {
                 slowPlayerParticleTimer -= PLAYER_SLOW_PARTICLE_SPAWN_DELAY;
-                slowParticles.push_back(generate_brownian_particle(x + SPRITE_HALF, y + SPRITE_HALF, PLAYER_SLOW_PARTICLE_GRAVITY_X, PLAYER_SLOW_PARTICLE_GRAVITY_Y, PLAYER_SLOW_PARTICLE_SPEED, slowPlayerParticleColours, PLAYER_SLOW_PARTICLE_WIGGLE));
+                slowParticles.push_back(generate_brownian_particle(x + SPRITE_HALF, y + SPRITE_HALF, PLAYER_SLOW_PARTICLE_GRAVITY_X, PLAYER_SLOW_PARTICLE_GRAVITY_Y, PLAYER_SLOW_PARTICLE_SPEED, repelPlayer ? repelPlayerParticleColours : slowPlayerParticleColours, PLAYER_SLOW_PARTICLE_WIGGLE));
             }
         }
         else {
@@ -3366,7 +3397,7 @@ public:
                 }
 
 
-                if (slowPlayer) {
+                if (slowPlayer || repelPlayer) {
                     render_sprite(448, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
                 }
             }
@@ -4259,7 +4290,7 @@ void update_bosses(float dt, ButtonStates buttonStates) {
     }
 
     if (bosses.size() == 1 && repelPlayer) {
-        player.xVel += std::max((player.x - bosses[0].x) * 0.1f, REPEL_PLAYER_MIN);
+        player.xVel += std::max(std::abs(((player.x + SPRITE_HALF) - (bosses[0].x + bosses[0].get_size() / 2)) * 0.2f), REPEL_PLAYER_MIN) * ((player.x + SPRITE_HALF < bosses[0].x + bosses[0].get_size() / 2) ? -1 : 1);
     }
 }
 
@@ -4415,21 +4446,6 @@ void update_character_select(float dt, ButtonStates buttonStates) {
     player.update(dt, dummyStates);
 
 
-    if (buttonStates.RIGHT && !playerSelected) {
-        audioHandler.play(0);
-
-        playerSelected = 1;
-        player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
-        player.lastDirection = 0;
-    }
-    else if (buttonStates.LEFT && playerSelected) {
-        audioHandler.play(0);
-
-        playerSelected = 0;
-        player = Player(playerStartX, playerStartY, 0);
-        player.lastDirection = 1;
-    }
-
     if (transition[0].is_ready_to_open()) {
         if (menuBack) {
             menuBack = false;
@@ -4440,6 +4456,21 @@ void update_character_select(float dt, ButtonStates buttonStates) {
         }
     }
     else if (transition[0].is_open()) {
+        if (buttonStates.RIGHT && !playerSelected) {
+            audioHandler.play(0);
+
+            playerSelected = 1;
+            player = Player(playerStartX + SPRITE_SIZE * 7, playerStartY, 1);
+            player.lastDirection = 0;
+        }
+        else if (buttonStates.LEFT && playerSelected) {
+            audioHandler.play(0);
+
+            playerSelected = 0;
+            player = Player(playerStartX, playerStartY, 0);
+            player.lastDirection = 1;
+        }
+
         if (buttonStates.A == 2) {
             audioHandler.play(0);
 
@@ -4507,7 +4538,7 @@ void update_level_select(float dt, ButtonStates buttonStates) {
     if (transition[0].is_ready_to_open()) {
         if (menuBack) {
             menuBack = false;
-            start_menu();
+            start_character_select();
         }
         else {
             start_level(currentLevelNumber);
