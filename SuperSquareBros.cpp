@@ -343,6 +343,8 @@ uint16_t playerStartX, playerStartY;
 float textFlashTimer = 0.0f;
 uint8_t playerSelected = 0;
 uint8_t pauseMenuItem = 0;
+uint8_t menuItem = 0;
+uint8_t settingsItem = 0;
 
 float snowGenTimer = 0.0f;
 
@@ -381,6 +383,7 @@ enum class GameState {
     STATE_SG_ICON,
     STATE_INPUT_SELECT,
     STATE_MENU,
+    STATE_SETTINGS,
     STATE_CHARACTER_SELECT,
     STATE_LEVEL_SELECT,
     STATE_IN_GAME,
@@ -3979,8 +3982,18 @@ void start_character_select() {
 void start_menu() {
     gameState = GameState::STATE_MENU;
 
+    menuItem = 0;
+
     // Load menu level
     load_level(LEVEL_COUNT);
+
+    open_transition();
+}
+
+void start_settings() {
+    gameState = GameState::STATE_SETTINGS;
+
+    settingsItem = 0;
 
     open_transition();
 }
@@ -4147,9 +4160,31 @@ void render_menu() {
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
+    if (menuItem == 0) {
+        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+    }
+    screen.text("Play", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT - 10), true, TextAlign::center_center);
+
+    if (menuItem == 0) {
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    }
+    else {
+        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+    }
+    screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + 10), true, TextAlign::center_center);
+
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
         screen.text(messageStrings[0][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
+}
+
+void render_settings() {
+    render_background();
+
+    background_rect(0);
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 }
 
 void render_level_select() {
@@ -4504,7 +4539,12 @@ void update_menu(float dt, ButtonStates buttonStates) {
                 start_input_select();
             }
             else {
-                start_character_select();
+                if (menuItem == 0) {
+                    start_character_select();
+                }
+                else {
+                    start_settings();
+                }
             }
         }
         else if (transition[0].is_open()) {
@@ -4519,6 +4559,52 @@ void update_menu(float dt, ButtonStates buttonStates) {
                 menuBack = true;
                 close_transition();
             }
+            else if (buttonStates.UP == 2) {
+                menuItem = 0;
+                audioHandler.play(0);
+            }
+            else if (buttonStates.DOWN == 2) {
+                menuItem = 1;
+                audioHandler.play(0);
+            }
+        }
+    }
+}
+
+void update_settings(float dt, ButtonStates buttonStates) {
+    if (transition[0].is_ready_to_open()) {
+        if (menuBack) {
+            menuBack = false;
+            start_menu();
+        }
+        else {
+            if (menuItem == 0) {
+                start_character_select();
+            }
+            else {
+                start_settings();
+            }
+        }
+    }
+    else if (transition[0].is_open()) {
+        if (buttonStates.A == 2) {
+            audioHandler.play(0);
+
+            close_transition();
+        }
+        else if (buttonStates.Y == 2) {
+            audioHandler.play(0);
+
+            menuBack = true;
+            close_transition();
+        }
+        else if (buttonStates.UP == 2 && settingsItem) {
+            settingsItem--;
+            audioHandler.play(0);
+        }
+        else if (buttonStates.DOWN == 2 && settingsItem < 2) {
+            settingsItem++;
+            audioHandler.play(0);
         }
     }
 }
@@ -4958,6 +5044,9 @@ void render(uint32_t time) {
     else if (gameState == GameState::STATE_MENU) {
         render_menu();
     }
+    else if (gameState == GameState::STATE_SETTINGS) {
+        render_settings();
+    }
     else if (gameState == GameState::STATE_CHARACTER_SELECT) {
         render_character_select();
     }
@@ -5106,6 +5195,9 @@ void update(uint32_t time) {
     }
     else if (gameState == GameState::STATE_MENU) {
         update_menu(dt, buttonStates);
+    }
+    else if (gameState == GameState::STATE_SETTINGS) {
+        update_settings(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_CHARACTER_SELECT) {
         update_character_select(dt, buttonStates);
