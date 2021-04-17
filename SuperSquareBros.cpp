@@ -10,7 +10,7 @@ using namespace blit;
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
 #define RESET_SAVE_DATA_IF_MINOR_DIFF
-//#define TESTING_MODE
+#define TESTING_MODE
 
 void init_game();
 
@@ -427,6 +427,12 @@ struct LevelSaveData {
     float time;
 };
 LevelSaveData allLevelSaveData[2][LEVEL_COUNT];
+
+struct SettingsData {
+    bool checkpoints = false;
+    bool musicVolume = true;
+    bool sfxVolume = true;
+} settingsData;
 
 
 // 0 slot is gameSaveData
@@ -4173,6 +4179,8 @@ void render_menu() {
     }
     screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + 10), true, TextAlign::center_center);
 
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
         screen.text(messageStrings[0][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
@@ -4185,6 +4193,35 @@ void render_settings() {
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    screen.text("Checkpoints:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_left);
+    screen.text("Music:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_left);
+    screen.text("SFX:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_left);
+
+
+    if (settingsItem == 0) {
+        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+    }
+    screen.text(settingsData.checkpoints ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_right);
+
+    if (settingsItem == 1) {
+        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+    }
+    else {
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    }
+    screen.text(settingsData.musicVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_right);
+
+    if (settingsItem == 2) {
+        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+    }
+    else {
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    }
+    screen.text(settingsData.sfxVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_right);
+
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 }
 
 void render_level_select() {
@@ -4559,11 +4596,11 @@ void update_menu(float dt, ButtonStates buttonStates) {
                 menuBack = true;
                 close_transition();
             }
-            else if (buttonStates.UP == 2) {
+            else if (buttonStates.UP == 2 && menuItem == 1) {
                 menuItem = 0;
                 audioHandler.play(0);
             }
-            else if (buttonStates.DOWN == 2) {
+            else if (buttonStates.DOWN == 2 && menuItem == 0) {
                 menuItem = 1;
                 audioHandler.play(0);
             }
