@@ -37,6 +37,7 @@ const uint16_t TILE_ID_HEART = 416;
 const uint16_t TILE_ID_CAMERA = 509;
 const uint16_t TILE_ID_TRANSITION = 496;
 const uint16_t TILE_ID_FINISH = 432;
+const uint16_t TILE_ID_CHECKPOINT = 404;
 const uint16_t TILE_ID_LEVEL_TRIGGER = 420;
 const uint16_t TILE_ID_LEVEL_BRIDGE_MIN = 144;
 
@@ -113,6 +114,10 @@ const float PLAYER_SLOW_PARTICLE_SPEED = 50.0f;
 const uint8_t PLAYER_SLOW_PARTICLE_WIGGLE = 1;
 const float PLAYER_SLOW_PARTICLE_SPAWN_DELAY = 0.05f;
 
+const uint8_t CHECKPOINT_PARTICLE_COUNT = 250;
+const float CHECKPOINT_PARTICLE_SPEED = 70.0f;
+
+const float FINISH_PARTICLE_SPAWN_DELAY = 0.05f;
 
 const float GRAVITY = 600.0f;
 const float GRAVITY_MAX = 190.0f;
@@ -231,12 +236,16 @@ const float TEXT_GRAVITY = 280.0f;
 
 const uint8_t NO_LEVEL_SELECTED = 255;
 
+const uint8_t CHECKPOINT_FRAMES = 4;
+const float CHECKPOINT_FRAME_LENGTH = 0.2f;
 
-const uint8_t MESSAGE_STRINGS_COUNT = 4;
+
+const uint8_t MESSAGE_STRINGS_COUNT = 7;
 const uint8_t INPUT_TYPE_COUNT = 2;
 
 const uint16_t BYTE_SIZE = 256;
 
+const uint16_t DEFAULT_VOLUME = 0x5000;
 
 // NOTE: all positions (x,y) mark TOP LEFT corner of sprites
 
@@ -313,6 +322,18 @@ const std::string messageStrings[MESSAGE_STRINGS_COUNT][INPUT_TYPE_COUNT] = {
     {
         "Press Y to Resume",
         "Press P to Resume"
+    },
+    {
+        "Press A to Select",
+        "Press U to Select"
+    },
+    {
+        "Y - Back",
+        "P - Back"
+    },
+    {
+        "A - Toggle",
+        "U - Toggle"
     }
 };
 
@@ -414,6 +435,10 @@ ButtonStates buttonStates = { 0 };
 struct GameSaveData {
     uint16_t version;
     uint8_t inputType;
+    // Settings values
+    bool checkpoints;
+    bool musicVolume;
+    bool sfxVolume;
 } gameSaveData;
 
 struct PlayerSaveData {
@@ -427,12 +452,6 @@ struct LevelSaveData {
     float time;
 };
 LevelSaveData allLevelSaveData[2][LEVEL_COUNT];
-
-struct SettingsData {
-    bool checkpoints = false;
-    bool musicVolume = true;
-    bool sfxVolume = true;
-} settingsData;
 
 
 // 0 slot is gameSaveData
@@ -532,6 +551,9 @@ PlayerSaveData load_player_data(uint8_t playerID) {
 void reset_save() {
     gameSaveData.version = get_version(gameVersion);
     gameSaveData.inputType = InputType::CONTROLLER;
+    gameSaveData.checkpoints = false;
+    gameSaveData.musicVolume = true;
+    gameSaveData.sfxVolume = true;
     save_game_data();
 
     allPlayerSaveData[0].levelReached = 0;
@@ -658,6 +680,14 @@ const std::vector<Colour> bossDeathParticleColours[3] = {
     { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) }
 };
 const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
+
+const std::vector<Colour> checkpointParticleColours[3] = {
+    { Colour(255, 255, 242), Colour(184, 197, 216) },
+    { Colour(178, 53, 53), Colour(127, 24, 75) },
+    { Colour(37, 124, 73), Colour(16, 84, 72) }
+};
+
+const std::vector<Colour> finishParticleColours = { Colour(37, 124, 73), Colour(16, 84, 72), Colour(10, 57, 71) };
 
 const std::vector<Colour> slowPlayerParticleColours = { Colour(145, 224, 204), Colour(53, 130, 130) };//Colour(255, 255, 242), 
 const std::vector<Colour> repelPlayerParticleColours = { Colour(255, 235, 140), Colour(255, 199, 89) };
@@ -1106,20 +1136,41 @@ std::vector<Coin> coins;
 
 class Finish : public AnimatedPickup {
 public:
-    Finish() : AnimatedPickup() {
+    std::vector<Particle> particles;
+    float particleTimer;
 
+    Finish() : AnimatedPickup() {
+        particleTimer = 0.0f;
     }
 
     Finish(uint16_t xPosition, uint16_t yPosition, std::vector<uint16_t> animationFrames) : AnimatedPickup(xPosition, yPosition, animationFrames) {
-
+        particleTimer = 0.0f;
     }
 
     void update(float dt, ButtonStates buttonStates) {
         AnimatedPickup::update(dt, buttonStates);
+
+        /*particleTimer += dt;
+        if (particleTimer >= FINISH_PARTICLE_SPAWN_DELAY) {
+            particleTimer -= FINISH_PARTICLE_SPAWN_DELAY;
+            particles.push_back(generate_brownian_particle(x + SPRITE_HALF, y + SPRITE_SIZE, 0, -0.5f, 50.0f, finishParticleColours, 1));
+        }*/
+
+        for (uint8_t i = 0; i < particles.size(); i++) {
+            particles[i].update(dt);
+        }
+
+        // Remove any particles which are too old
+        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= PLAYER_SLOW_PARTICLE_AGE); }), particles.end());
     }
 
     void render(Camera camera) {
         AnimatedPickup::render(camera);
+
+        // Particles
+        for (uint8_t i = 0; i < particles.size(); i++) {
+            particles[i].render(camera);
+        }
     }
 };
 Finish finish;
@@ -1239,6 +1290,89 @@ AnimatedTransition transition[SCREEN_TILE_SIZE];
 
 
 
+
+class Checkpoint {
+public:
+    uint16_t x, y;
+    std::vector<Particle> particles;
+    uint8_t colour;
+    bool generateParticles;
+
+    Checkpoint() {
+        x = y = 0;
+        colour = 0;
+        generateParticles = false;
+        animationTimer = 0.0f;
+        currentFrame = 0;
+    }
+
+    Checkpoint(uint16_t xPosition, uint16_t yPosition) {
+        x = xPosition;
+        y = yPosition;
+
+        colour = 0;
+        generateParticles = false;
+        animationTimer = 0.0f;
+        currentFrame = 0;
+    }
+
+    void update(float dt) {
+        animationTimer += dt;
+
+        if (animationTimer >= CHECKPOINT_FRAME_LENGTH) {
+            animationTimer -= CHECKPOINT_FRAME_LENGTH;
+            currentFrame++;
+            currentFrame %= CHECKPOINT_FRAMES;
+        }
+
+        if (generateParticles) {
+            if (particles.size() == 0) {
+                generateParticles = false;
+            }
+            else {
+                for (uint8_t i = 0; i < particles.size(); i++) {
+                    particles[i].update(dt);
+                }
+
+                // Remove any particles which are too old
+                particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+            }
+        }
+    }
+
+    void render(Camera camera) {
+        if (x && y) {
+            // Only render if not in default position
+
+            render_sprite(TILE_ID_CHECKPOINT, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+            render_sprite(TILE_ID_CHECKPOINT - 16 + (colour * CHECKPOINT_FRAMES) + currentFrame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_SIZE));
+
+            // Particles
+            for (uint8_t i = 0; i < particles.size(); i++) {
+                particles[i].render(camera);
+            }
+        }
+    }
+
+    bool activate(uint8_t c) {
+        if (colour) {
+            return false;
+        }
+        else {
+            // Generate particles, set colour
+            colour = c;
+
+            // TODO: change constants? add age?
+            particles = generate_particles(x + SPRITE_HALF, y - SPRITE_QUARTER, ENTITY_DEATH_PARTICLE_GRAVITY_X, ENTITY_DEATH_PARTICLE_GRAVITY_Y, checkpointParticleColours[colour], CHECKPOINT_PARTICLE_SPEED, CHECKPOINT_PARTICLE_COUNT);
+            generateParticles = true;
+            return true;
+        }
+    }
+
+protected:
+    float animationTimer;
+    uint16_t currentFrame;
+} checkpoint;
 
 
 
@@ -2218,6 +2352,8 @@ public:
                         deathParticles = true;
                         state = 4;
                         dead = true;
+                        // Play death sfx
+                        audioHandler.play(3);
                     }
                 }
             }
@@ -2375,6 +2511,8 @@ public:
                     deathParticles = true;
                     state = 4;
                     dead = true;
+                    // Play death sfx
+                    audioHandler.play(3);
                 }
             }
             else if (state == 4) {
@@ -2584,6 +2722,8 @@ public:
                         deathParticles = true;
                         state = 4;
                         dead = true;
+                        // Play death sfx
+                        audioHandler.play(3);
                     }
                 }
             }
@@ -2738,6 +2878,7 @@ public:
                         if (shakeOnLanding) {
                             shaker.set_shake(shakeOnLanding);
                             shakeOnLanding = 0;
+                            audioHandler.play(4);
                         }
                     }
                     else if (yVel < 0) {
@@ -2758,6 +2899,7 @@ public:
                             if (shakeOnLanding) {
                                 shaker.set_shake(shakeOnLanding);
                                 shakeOnLanding = 0;
+                                audioHandler.play(4);
                             }
                             yVel = 0;
                         }
@@ -3133,8 +3275,16 @@ public:
                         health = 3;
                         xVel = yVel = 0;
                         lastDirection = 1;
-                        x = playerStartX;
-                        y = playerStartY;
+
+                        // Go to checkpoint if checkpoints are enabled, and have reached it.
+                        if (gameSaveData.checkpoints && checkpoint.colour) {
+                            x = checkpoint.x;
+                            y = checkpoint.y;
+                        }
+                        else {
+                            x = playerStartX;
+                            y = playerStartY;
+                        }
 
                         // Stop player from moving while respawning
                         cameraRespawn = true;
@@ -3201,7 +3351,9 @@ public:
                             enemies[i].health--;
 
                             // Play enemy injured sfx
-                            audioHandler.play(4);
+                            if (enemies[i].health) {
+                                audioHandler.play(4);
+                            }
 
                             if (enemies[i].yVel < 0) {
                                 // Enemy is jumping
@@ -3226,6 +3378,11 @@ public:
 
                                 // Take health off enemy
                                 bosses[i].health--;
+
+                                // Play enemy injured sfx
+                                if (bosses[i].health) {
+                                    audioHandler.play(4);
+                                }
 
                                 if (bosses[i].yVel < 0) {
                                     // Enemy is jumping
@@ -3351,6 +3508,12 @@ public:
                 }
             }
 
+            if (colliding(checkpoint)) {
+                if (checkpoint.activate(id + 1)) {
+                    audioHandler.play(4); // need to load + play activate sound - swap with playerdeath
+                }
+            }
+
             if (xVel > 0) {
                 lastDirection = 1;
             }
@@ -3442,6 +3605,10 @@ public:
         return (levelTrigger.x + SPRITE_SIZE > x && levelTrigger.x < x + SPRITE_SIZE && levelTrigger.y + SPRITE_SIZE > y && levelTrigger.y < y + SPRITE_SIZE);
     }
 
+    bool colliding(Checkpoint c) {
+        return (c.x + SPRITE_SIZE > x && c.x < x + SPRITE_SIZE && c.y + SPRITE_SIZE > y && c.y - SPRITE_SIZE < y + SPRITE_SIZE);
+    }
+
 protected:
     //enum EntityState {
     //    IDLE,
@@ -3527,9 +3694,11 @@ void render_tiles(std::vector<Tile> tiles) {
 }
 
 void render_parallax(std::vector<ParallaxTile> parallax) {
+    screen.alpha = 192;
     for (uint32_t i = 0; i < parallax.size(); i++) {
         parallax[i].render(camera);
     }
+    screen.alpha = 255;
 }
 
 void render_coins() {
@@ -3597,6 +3766,8 @@ void render_level() {
 void render_entities() {
     render_bosses();
     render_enemies();
+
+    checkpoint.render(camera);
 
     player.render(camera);
 
@@ -3696,10 +3867,12 @@ void load_level(uint8_t levelNumber) {
 
     // Variables for finding start and finish positions
     uint16_t finishX, finishY;
+    uint16_t checkpointX, checkpointY;
 
     playerStartX = playerStartY = 0;
     cameraStartX = cameraStartY = 0;
     finishX = finishY = 0;
+    checkpointX = checkpointY = 0;
 
 
     // Get a pointer to the map header
@@ -3771,6 +3944,12 @@ void load_level(uint8_t levelNumber) {
         else if (tmx->data[index] == TILE_ID_FINISH) {
             finishX = (i % levelWidth) * SPRITE_SIZE;
             finishY = (i / levelWidth) * SPRITE_SIZE;
+        }
+        else if (tmx->data[index] == TILE_ID_CHECKPOINT) {
+            if (gameSaveData.checkpoints) {
+                checkpointX = (i % levelWidth) * SPRITE_SIZE;
+                checkpointY = (i / levelWidth) * SPRITE_SIZE;
+            }
         }
         else if (tmx->data[index] == TILE_ID_LEVEL_TRIGGER) {
             levelTriggers.push_back(LevelTrigger((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, 0));
@@ -3884,6 +4063,8 @@ void load_level(uint8_t levelNumber) {
     player = Player(playerStartX, playerStartY, playerSelected);
 
     finish = Finish(finishX, finishY, finishFrames);
+
+    checkpoint = Checkpoint(checkpointX, checkpointY);
     
     // Reset camera position
     camera.x = cameraStartX;
@@ -4000,6 +4181,9 @@ void start_settings() {
     gameState = GameState::STATE_SETTINGS;
 
     settingsItem = 0;
+
+    // Load menu level
+    load_level(LEVEL_COUNT);
 
     open_transition();
 }
@@ -4182,12 +4366,24 @@ void render_menu() {
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.text(messageStrings[0][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text(messageStrings[4][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }
 }
 
 void render_settings() {
     render_background();
+
+    render_level();
+
+    render_entities();
+
+    /*screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));*/
+
+    screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b, hudBackground.a); // use hudBackground.a to make background semi transparent
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+    //screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)); // repeat to make darker
 
     background_rect(0);
 
@@ -4202,7 +4398,7 @@ void render_settings() {
     if (settingsItem == 0) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
     }
-    screen.text(settingsData.checkpoints ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_right);
+    screen.text(gameSaveData.checkpoints ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_right);
 
     if (settingsItem == 1) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
@@ -4210,7 +4406,7 @@ void render_settings() {
     else {
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     }
-    screen.text(settingsData.musicVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_right);
+    screen.text(gameSaveData.musicVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_right);
 
     if (settingsItem == 2) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
@@ -4218,10 +4414,19 @@ void render_settings() {
     else {
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     }
-    screen.text(settingsData.sfxVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_right);
+    screen.text(gameSaveData.sfxVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_right);
 
 
+    // Press <key> to go back
+    background_rect(1);
+
+    /*if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.text(messageStrings[4][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+    }*/
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text(messageStrings[5][gameSaveData.inputType], minimal_font, Point(SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_left);
+    screen.text(messageStrings[6][gameSaveData.inputType], minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_right);
 }
 
 void render_level_select() {
@@ -4376,6 +4581,10 @@ void update_level_triggers(float dt, ButtonStates buttonStates) {
     }
 
     levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger levelTrigger) { return (!levelTrigger.visible && levelTrigger.particles.size() == 0); }), levelTriggers.end());
+}
+
+void update_checkpoint(float dt) {
+    checkpoint.update(dt);
 }
 
 void update_coins(float dt) {
@@ -4559,6 +4768,7 @@ void update_character_select(float dt, ButtonStates buttonStates) {
 
 void update_menu(float dt, ButtonStates buttonStates) {
     update_coins(dt);
+    update_checkpoint(dt);
 
 
     if (splashColour.a > 0) {
@@ -4609,33 +4819,51 @@ void update_menu(float dt, ButtonStates buttonStates) {
 }
 
 void update_settings(float dt, ButtonStates buttonStates) {
+    update_checkpoint(dt);
+
     if (transition[0].is_ready_to_open()) {
         if (menuBack) {
             menuBack = false;
             start_menu();
         }
-        else {
+        /*else {
             if (menuItem == 0) {
                 start_character_select();
             }
             else {
                 start_settings();
             }
-        }
+        }*/
     }
     else if (transition[0].is_open()) {
         if (buttonStates.A == 2) {
             audioHandler.play(0);
 
-            close_transition();
+            if (settingsItem == 0) {
+                gameSaveData.checkpoints = !gameSaveData.checkpoints;
+            }
+            else if (settingsItem == 1) {
+                gameSaveData.musicVolume = !gameSaveData.musicVolume;
+                audioHandler.set_volume(7, gameSaveData.musicVolume ? DEFAULT_VOLUME : 0);
+            }
+            else if (settingsItem == 2) {
+                gameSaveData.sfxVolume = !gameSaveData.sfxVolume;
+                for (uint8_t i = 0; i < 7; i++) {
+                    audioHandler.set_volume(i, gameSaveData.sfxVolume ? DEFAULT_VOLUME : 0);
+                }
+            }
         }
         else if (buttonStates.Y == 2) {
+            // Exit settings
             audioHandler.play(0);
+
+            // Save settings data
+            save_game_data();
 
             menuBack = true;
             close_transition();
         }
-        else if (buttonStates.UP == 2 && settingsItem) {
+        else if (buttonStates.UP == 2 && settingsItem > 0) {
             settingsItem--;
             audioHandler.play(0);
         }
@@ -4746,6 +4974,8 @@ void update_game(float dt, ButtonStates buttonStates) {
         update_enemies(dt, buttonStates);
 
         update_bosses(dt, buttonStates);
+
+        update_checkpoint(dt);
 
         update_coins(dt);
 
@@ -4972,12 +5202,20 @@ void init_game() {
         // Load menu level
         load_level(LEVEL_COUNT);
 
+        // Setup audio
+        audioHandler.set_volume(gameSaveData.sfxVolume ? DEFAULT_VOLUME : 0);
+        audioHandler.set_volume(7, gameSaveData.musicVolume ? DEFAULT_VOLUME : 0);
+
     }
     else {
         // No save file or it failed to load, set up some defaults.
         gameSaveData.version = get_version(gameVersion);
 
         gameSaveData.inputType = InputType::CONTROLLER;
+
+        gameSaveData.checkpoints = false;
+        gameSaveData.musicVolume = true;
+        gameSaveData.sfxVolume = true;
 
         // gameState is by default set to STATE_INPUT_SELECT
 
@@ -4998,7 +5236,7 @@ void load_audio() {
     // NOTE: CURRENTLY ISSUE WITH LEAVING PAUSE MENU, blip AUDIO IS PLAYED, BUT THEN NEW SOUND IS LOADED IN, STOPPING PLAYBACK.
 
     // Set volume to a default
-    audioHandler.set_volume(0x5000);
+    audioHandler.set_volume(DEFAULT_VOLUME);
     // Sfx
     audioHandler.load(0, asset_sound_select, asset_sound_select_length);
     audioHandler.load(1, asset_sound_jump, asset_sound_jump_length);
@@ -5028,8 +5266,6 @@ void init() {
 
     screen.sprites = Surface::load(asset_sprites);
 
-    load_audio();
-
     // Load metadata
     metadata = get_metadata();
     gameVersion = parse_version(metadata.version);
@@ -5053,6 +5289,9 @@ void init() {
     for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
         allLevelSaveData[1][i] = load_level_data(1, i);
     }
+
+
+    load_audio();
 }
 
 ///////////////////////////////////////////////////////////////////////////
