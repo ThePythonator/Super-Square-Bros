@@ -10,7 +10,7 @@ using namespace blit;
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
 #define RESET_SAVE_DATA_IF_MINOR_DIFF
-#define TESTING_MODE
+//#define TESTING_MODE
 
 void init_game();
 
