@@ -2,11 +2,12 @@
 
 # Super Square Bros.
 
-It's a platformer.
+A platformer for 32blit.
 
 ## Controls
 
 Left/Right to Walk, A to Jump
+Up/Down to navigate menus, A to select, Y to go back.
 
 ## Dependencies
 
