@@ -72,6 +72,8 @@ const uint16_t TILE_ID_HUD_COINS = 424;
 const uint16_t TILE_ID_HUD_ENEMIES_KILLED = 425;
 const uint16_t TILE_ID_HUD_TIME_TAKEN = 426;
 
+const uint16_t TILE_ID_GOLD_BADGE = 428;
+
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
 const float CAMERA_PAN_TIME = 7.0f;
@@ -334,6 +336,202 @@ const std::string messageStrings[MESSAGE_STRINGS_COUNT][INPUT_TYPE_COUNT] = {
     {
         "A - Toggle",
         "U - Toggle"
+    }
+};
+
+const uint8_t levelTargets[LEVEL_COUNT][2][2] = {
+    {
+        // Level 1
+        {
+            // Score
+            25, // Gold
+            20 // Silver
+        },
+        {
+            // Enemies killed
+            4, // Gold
+            3 // Silver
+        }
+    },
+    {
+        // Level 2
+        {
+            // Score
+            22, // Gold
+            18 // Silver
+        },
+        {
+            // Enemies killed
+            5, // Gold
+            4 // Silver
+        }
+    },
+    {
+        // Level 3
+        {
+            // Score
+            22, // Gold
+            18 // Silver
+        },
+        {
+            // Enemies killed
+            7, // Gold
+            5 // Silver
+        }
+    },
+    {
+        // Level 4
+        {
+            // Score
+            10, // Gold
+            8 // Silver
+        },
+        {
+            // Enemies killed
+            14, // Gold
+            10 // Silver
+        }
+    },
+    {
+        // Level 5
+        {
+            // Score
+            23, // Gold
+            19 // Silver
+        },
+        {
+            // Enemies killed
+            9, // Gold
+            7 // Silver
+        }
+    },
+    {
+        // Level 6
+        {
+            // Score
+            25, // Gold
+            20 // Silver
+        },
+        {
+            // Enemies killed
+            10, // Gold
+            7 // Silver
+        }
+    },
+    {
+        // Level 7
+        {
+            // Score
+            21, // Gold
+            17 // Silver
+        },
+        {
+            // Enemies killed
+            8, // Gold
+            6 // Silver
+        }
+    },
+    {
+        // Level 8
+        {
+            // Score
+            20, // Gold
+            16 // Silver
+        },
+        {
+            // Enemies killed
+            10, // Gold
+            8 // Silver
+        }
+    },
+    {
+        // Level 9
+        {
+            // Score
+            32, // Gold
+            26 // Silver
+        },
+        {
+            // Enemies killed
+            21, // Gold
+            16 // Silver
+        }
+    },
+    {
+        // Level 10
+        {
+            // Score
+            16, // Gold
+            13 // Silver
+        },
+        {
+            // Enemies killed
+            0, // Gold
+            0 // Silver
+        }
+    }
+};
+
+const float levelTargetTimes[LEVEL_COUNT][2] = {
+    // Level 1
+    {
+        // Time
+        12.5f, // Gold
+        14.0f // Silver
+    },
+    // Level 2
+    {
+        // Time
+        12.5f, // Gold
+        14.5f // Silver
+    },
+    // Level 3
+    {
+        // Time
+        12.5f, // Gold
+        14.5f // Silver
+    },
+    // Level 4
+    {
+        // Time
+        38.0f, // Gold
+        47.0f // Silver
+    },
+    // Level 5
+    {
+        // Time
+        13.0f, // Gold
+        15.5f // Silver
+    },
+    // Level 6
+    {
+        // Time
+        13.0f, // Gold
+        16.0f // Silver
+    },
+    // Level 7
+    {
+        // Time
+        13.0f, // Gold
+        16.5f // Silver
+    },
+    // Level 8
+    {
+        // Time
+        44.0f, // Gold
+        55.0f // Silver
+    },
+    // Level 9
+    {
+        // Time
+        120.0f, // Gold
+        180.0f // Silver
+    },
+    // Level 10
+    {
+        // Time
+        4.2f, // Gold
+        4.5f // Silver
     }
 };
 
@@ -842,7 +1040,7 @@ public:
     }
 
     void render(Camera camera) {
-        screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
+        render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
     }
 
     void update(float dt) {
@@ -3637,7 +3835,7 @@ void background_rect(uint8_t position) {
     }
 }
 
-void display_stats() {
+void display_stats(bool showBadges) {
     screen.text("Coins collected:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE * 2), true, TextAlign::center_left);
     screen.text("Enemies defeated:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT), true, TextAlign::center_left);
     screen.text("Time taken:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_left);
@@ -3653,9 +3851,23 @@ void display_stats() {
     screen.text(levelTimerString, minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
 
 
-    render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF * 5));
+    uint8_t i, j, k;
+    i = player.score >= levelTargets[currentLevelNumber][0][0] ? 0 : player.score >= levelTargets[currentLevelNumber][0][1] ? 1 : 2;
+    j = player.enemiesKilled >= levelTargets[currentLevelNumber][1][0] ? 0 : player.enemiesKilled >= levelTargets[currentLevelNumber][1][1] ? 1 : 2;
+    k = player.levelTimer <= levelTargetTimes[currentLevelNumber][0] ? 0 : player.levelTimer <= levelTargetTimes[currentLevelNumber][1] ? 1 : 2;
+
+    /*screen.text("Rank:", minimal_font, Point(SPRITE_SIZE, SPRITE_HALF * 7), true, TextAlign::center_left);
+    render_sprite(TILE_ID_GOLD_BADGE + i, Point(SCREEN_MID_WIDTH - SPRITE_HALF, SPRITE_SIZE * 3));*/
+
+
+    render_sprite(TILE_ID_GOLD_BADGE + i, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF * 5));
+    render_sprite(TILE_ID_GOLD_BADGE + j + 12, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF));
+    render_sprite(TILE_ID_GOLD_BADGE + k + 16, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT + SPRITE_HALF * 3));
+
+
+    /*render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF * 5));
     render_sprite(TILE_ID_HUD_ENEMIES_KILLED, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF));
-    render_sprite(TILE_ID_HUD_TIME_TAKEN, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT + SPRITE_HALF * 3));
+    render_sprite(TILE_ID_HUD_TIME_TAKEN, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT + SPRITE_HALF * 3));*/
 }
 
 
@@ -3850,10 +4062,18 @@ void render_nearby_level_info() {
                     timeString = timeString.substr(0, timeString.find('.') + 3);
                     screen.text(timeString, minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 4, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
 
+                    uint8_t a, b, c;
+                    a = allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].score >= levelTargets[levelTriggers[i].levelNumber][0][0] ? 0 : allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].score >= levelTargets[levelTriggers[i].levelNumber][0][1] ? 1 : 2;
+                    b = allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].enemiesKilled >= levelTargets[levelTriggers[i].levelNumber][1][0] ? 0 : allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].enemiesKilled >= levelTargets[levelTriggers[i].levelNumber][1][1] ? 1 : 2;
+                    c = allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time <= levelTargetTimes[levelTriggers[i].levelNumber][0] ? 0 : allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time <= levelTargetTimes[levelTriggers[i].levelNumber][1] ? 1 : 2;
 
-                    render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_HALF * 24, SCREEN_HEIGHT - 9));
-                    render_sprite(TILE_ID_HUD_ENEMIES_KILLED, Point(SCREEN_WIDTH - SPRITE_HALF * 15, SCREEN_HEIGHT - 9));
-                    render_sprite(TILE_ID_HUD_TIME_TAKEN, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_HEIGHT - 9));
+                    render_sprite(TILE_ID_GOLD_BADGE + a + 24, Point(SCREEN_WIDTH - SPRITE_HALF * 24, SCREEN_HEIGHT - 9));
+                    render_sprite(TILE_ID_GOLD_BADGE + b + 28, Point(SCREEN_WIDTH - SPRITE_HALF * 15, SCREEN_HEIGHT - 9));
+                    render_sprite(TILE_ID_GOLD_BADGE + c + 32, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_HEIGHT - 9));
+
+                    /*render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_HALF * 28, SCREEN_HEIGHT - 9));
+                    render_sprite(TILE_ID_HUD_ENEMIES_KILLED, Point(SCREEN_WIDTH - SPRITE_HALF * 18, SCREEN_HEIGHT - 9));
+                    render_sprite(TILE_ID_HUD_TIME_TAKEN, Point(SCREEN_WIDTH - SPRITE_HALF * 5, SCREEN_HEIGHT - 9));*/
                 }
             }
 
@@ -4480,7 +4700,7 @@ void render_game() {
         //screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
 
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-        display_stats();
+        display_stats(false);
         screen.text("Game Paused", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
         if (pauseMenuItem == 0) {
@@ -4530,7 +4750,7 @@ void render_game_lost() {
 
     screen.text("Level failed.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
-    display_stats();
+    display_stats(false);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
         screen.text(messageStrings[2][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
@@ -4548,7 +4768,7 @@ void render_game_won() {
 
     screen.text("Level complete!", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
-    display_stats();
+    display_stats(true);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
         screen.text(messageStrings[2][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
@@ -4819,6 +5039,7 @@ void update_menu(float dt, ButtonStates buttonStates) {
 }
 
 void update_settings(float dt, ButtonStates buttonStates) {
+    update_coins(dt);
     update_checkpoint(dt);
 
     if (transition[0].is_ready_to_open()) {
