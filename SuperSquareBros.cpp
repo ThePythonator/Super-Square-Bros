@@ -4743,6 +4743,21 @@ void render_game() {
 void render_game_lost() {
     render_background();
 
+    render_level();
+
+    if (bosses.size() == 0) {
+        render_finish();
+    }
+
+    render_entities();
+
+    render_particles();
+
+    screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b, hudBackground.a); // use hudBackground.a to make background semi transparent
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)); // repeat to make darker
+
     background_rect(0);
     background_rect(1);
 
@@ -4760,6 +4775,21 @@ void render_game_lost() {
 
 void render_game_won() {
     render_background();
+
+    render_level();
+
+    if (bosses.size() == 0) {
+        render_finish();
+    }
+
+    render_entities();
+
+    render_particles();
+
+    screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b, hudBackground.a); // use hudBackground.a to make background semi transparent
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)); // repeat to make darker
 
     background_rect(0);
     background_rect(1);
@@ -4857,7 +4887,7 @@ void update_particles(float dt) {
             float x = (rand() % (endX - startX)) + startX;
             if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
                 // At edges, only make a half as many particles
-                imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
+                imageParticles.push_back(ImageParticle(x, -SPRITE_SIZE * 8, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
             }
         }
     }
@@ -4870,11 +4900,11 @@ void update_particles(float dt) {
             float xVel = rand() % 3 - 1;
             float yVel = rand() % 5 + 8;
             float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
-            imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
+            imageParticles.push_back(ImageParticle(x, -SPRITE_SIZE * 8, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
         }
     }
 
-    imageParticles.erase(std::remove_if(imageParticles.begin(), imageParticles.end(), [](ImageParticle particle) { return particle.y > levelDeathBoundary; }), imageParticles.end());
+    imageParticles.erase(std::remove_if(imageParticles.begin(), imageParticles.end(), [](ImageParticle particle) { return particle.y > levelDeathBoundary * 1.3f; }), imageParticles.end());
 }
 
 void update_sg_icon(float dt, ButtonStates buttonStates) {
@@ -5173,21 +5203,7 @@ void update_level_select(float dt, ButtonStates buttonStates) {
 }
 
 void update_game(float dt, ButtonStates buttonStates) {
-    if (gamePaused) {
-        if (pauseMenuItem == 0) {
-            if (buttonStates.RIGHT == 2) {
-                pauseMenuItem = 1;
-                audioHandler.play(0);
-            }
-        }
-        else if (pauseMenuItem == 1) {
-            if (buttonStates.LEFT == 2) {
-                pauseMenuItem = 0;
-                audioHandler.play(0);
-            }
-        }
-    }
-    else {
+    if (!gamePaused) {
         // Game isn't paused, update it.
 
         player.update(dt, buttonStates);
@@ -5217,7 +5233,7 @@ void update_game(float dt, ButtonStates buttonStates) {
 
                 if (std::abs(player.x - finish.x) < SPRITE_HALF) {
                     player.x = finish.x;
-                    player.y = finish.y;
+                    player.y = finish.y - 1;
                 }
                 else {
                     if (player.x < finish.x) {
@@ -5257,6 +5273,19 @@ void update_game(float dt, ButtonStates buttonStates) {
     }
     else if (transition[0].is_open()) {
         if (gamePaused) {
+            if (pauseMenuItem == 0) {
+                if (buttonStates.RIGHT == 2) {
+                    pauseMenuItem = 1;
+                    audioHandler.play(0);
+                }
+            }
+            else if (pauseMenuItem == 1) {
+                if (buttonStates.LEFT == 2) {
+                    pauseMenuItem = 0;
+                    audioHandler.play(0);
+                }
+            }
+
             if (buttonStates.A == 2) {
                 audioHandler.play(0);
 
@@ -5359,6 +5388,12 @@ void update_game(float dt, ButtonStates buttonStates) {
 }
 
 void update_game_lost(float dt, ButtonStates buttonStates) {
+    update_checkpoint(dt);
+    update_coins(dt);
+    finish.update(dt, buttonStates);
+    update_projectiles(dt);
+    update_particles(dt);
+
     if (transition[0].is_ready_to_open()) {
         start_level_select();
     }
@@ -5373,6 +5408,12 @@ void update_game_lost(float dt, ButtonStates buttonStates) {
 
 
 void update_game_won(float dt, ButtonStates buttonStates) {
+    update_checkpoint(dt);
+    update_coins(dt);
+    finish.update(dt, buttonStates);
+    update_projectiles(dt);
+    update_particles(dt);
+
     if (transition[0].is_ready_to_open()) {
         start_level_select();
     }
