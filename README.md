@@ -2,7 +2,7 @@
 
 # Super Square Bros.
 
-A platformer for 32blit.
+A platformer for 32blit (the code isn't neat!).
 
 ## Controls
 
