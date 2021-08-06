@@ -590,7 +590,9 @@ GameMetadata metadata;
 #pragma pack(push,1)
 struct TMX16 {
     char head[4];
-    uint8_t empty_tile;
+    uint16_t header_length;
+    uint16_t flags;
+    uint16_t empty_tile;
     uint16_t width;
     uint16_t height;
     uint16_t layers;
