@@ -15,7 +15,7 @@ on:
 
 env:
   BUILD_TYPE: Release
-  EM_VERSION: 2.0.4 # Emscripten version
+  EM_VERSION: 2.0.18 # Emscripten version
   EM_CACHE_FOLDER: 'emsdk-cache' # Cache for Emscripten libs
 
 jobs:
