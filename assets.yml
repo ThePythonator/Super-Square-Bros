@@ -104,17 +104,17 @@ assets.cpp:
   assets/music_splash.mp3:
     name: asset_music_splash
 
-  assets/music_menu.mp3:
-    name: asset_music_menu
+#  assets/music_menu.mp3:
+#    name: asset_music_menu
     
-  assets/music_grass.mp3:
-    name: asset_music_grass
+#  assets/music_grass.mp3:
+#    name: asset_music_grass
     
-  assets/music_snow.mp3:
-    name: asset_music_snow
+#  assets/music_snow.mp3:
+#    name: asset_music_snow
     
-  assets/music_end.mp3:
-    name: asset_music_end
+#  assets/music_end.mp3:
+#    name: asset_music_end
     
-  assets/music_boss.mp3:
-    name: asset_music_boss
+#  assets/music_boss.mp3:
+#    name: asset_music_boss
