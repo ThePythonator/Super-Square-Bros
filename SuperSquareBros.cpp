@@ -77,6 +77,7 @@ const uint16_t TILE_ID_GOLD_BADGE = 428;
 const float CAMERA_SCALE_X = 10.0f;
 const float CAMERA_SCALE_Y = 5.0f;
 const float CAMERA_PAN_TIME = 7.0f;
+const float CAMERA_PAN_TIME_FINAL_LEVEL = 2.0f;
 const float CAMERA_NEW_WORLD_TIME = 3.0f;
 const float NEW_WORLD_DELAY_TIME = 2.0f;
 const float CAMERA_RESPAWN_LOCK_MIN = 1.0f;
@@ -241,6 +242,10 @@ const uint8_t NO_LEVEL_SELECTED = 255;
 const uint8_t CHECKPOINT_FRAMES = 4;
 const float CHECKPOINT_FRAME_LENGTH = 0.2f;
 
+const uint16_t CONFETTI_INIT_COUNT = 400;
+const float CONFETTI_GENERATE_DELAY = 0.05f;
+
+const float THANKYOU_SPEED = 0.3f;
 
 const uint8_t MESSAGE_STRINGS_COUNT = 7;
 const uint8_t INPUT_TYPE_COUNT = 2;
@@ -306,6 +311,17 @@ std::vector<uint16_t> snowParticleImages = {
     465
 };
 
+
+std::vector<uint16_t> confettiParticleImages = {
+    484,
+    485,
+    486,
+    487,
+    488,
+    489,
+    490,
+    491
+};
 
 
 const std::string messageStrings[MESSAGE_STRINGS_COUNT][INPUT_TYPE_COUNT] = {
@@ -566,11 +582,14 @@ uint8_t menuItem = 0;
 uint8_t settingsItem = 0;
 
 float snowGenTimer = 0.0f;
+float confettiGenTimer = 0.0f;
 
 bool slowPlayer = false;
 bool dropPlayer = false;
 bool repelPlayer = false;
 bool bossBattle = false;
+
+float thankyouValue = 0.0f;
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 uint8_t currentWorldNumber = 0;
@@ -3956,7 +3975,10 @@ void render_finish() {
 }
 
 void render_background() {
-    screen.blit(background_image, Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), Point(0, 0), false);
+    //screen.blit(background_image, Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), Point(0, 0), false);
+    screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b);
+
+    screen.clear();
 }
 
 void render_level() {
@@ -3975,6 +3997,12 @@ void render_level() {
     render_tiles(foreground);
 
     render_coins();
+}
+
+void render_thankyou(float value) {
+    screen.pen = blit::hsv_to_rgba(value, 1.0f, 1.0f);
+
+    blit::screen.text("Thanks for playing!", minimal_font, Rect(checkpoint.x - SPRITE_SIZE * 6 - camera.x + SCREEN_MID_WIDTH, checkpoint.y - SPRITE_SIZE * 7 - camera.y + SCREEN_MID_HEIGHT, SPRITE_SIZE * 12, SPRITE_SIZE * 2), true, blit::TextAlign::center_center);
 }
 
 void render_entities() {
@@ -4086,6 +4114,7 @@ void render_nearby_level_info() {
 
 void load_level(uint8_t levelNumber) {
     snowGenTimer = 0.0f;
+    confettiGenTimer = 0.0f;
 
     // Variables for finding start and finish positions
     uint16_t finishX, finishY;
@@ -4333,6 +4362,22 @@ void load_level(uint8_t levelNumber) {
             float x = (rand() % (levelData.levelWidth * SPRITE_SIZE + SCREEN_WIDTH)) - SCREEN_MID_WIDTH;
             float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
             imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
+        }
+    }
+    else if (currentLevelNumber == LEVEL_COUNT - 1) {
+        // Generate snow particles
+        for (uint16_t i = 0; i < CONFETTI_INIT_COUNT; i++) {
+            // Get random position
+            // Change vel later (use wind?)
+
+            float xVel = rand() % 3 - 1;
+            float yVel = rand() % 5 + 8;
+            uint16_t startX = 0;// SPRITE_SIZE * 5;
+            uint16_t endX = SPRITE_SIZE * 45;//SPRITE_SIZE * 40;
+            float x = (rand() % (endX - startX)) + startX;
+            float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
+
+            imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, confettiParticleImages[rand() % confettiParticleImages.size()]));
         }
     }
 }
@@ -4680,6 +4725,10 @@ void render_game() {
         render_finish();
     }
 
+    if (currentLevelNumber == LEVEL_COUNT - 1) {
+        render_thankyou(thankyouValue);
+    }
+
     render_entities();
 
     render_particles();
@@ -4907,6 +4956,26 @@ void update_particles(float dt) {
     }
 
     imageParticles.erase(std::remove_if(imageParticles.begin(), imageParticles.end(), [](ImageParticle particle) { return particle.y > levelDeathBoundary * 1.3f; }), imageParticles.end());
+}
+
+void create_confetti(float dt) {
+    confettiGenTimer += dt;
+    while (confettiGenTimer >= CONFETTI_GENERATE_DELAY) {
+        confettiGenTimer -= CONFETTI_GENERATE_DELAY;
+        // Generate snow particles
+        // Get random position
+        float xVel = rand() % 3 - 1;
+        float yVel = rand() % 5 + 8;
+        uint16_t startX = 0;// SPRITE_SIZE * 5;
+        uint16_t endX = SPRITE_SIZE * 45;//SPRITE_SIZE * 40;
+        float x = (rand() % (endX - startX)) + startX;
+
+        imageParticles.push_back(ImageParticle(x, 0, xVel, yVel, 0, 0, confettiParticleImages[rand() % confettiParticleImages.size()]));
+    }
+}
+
+void update_thankyou(float dt) {
+    thankyouValue += THANKYOU_SPEED * dt;
 }
 
 void update_sg_icon(float dt, ButtonStates buttonStates) {
@@ -5222,6 +5291,13 @@ void update_game(float dt, ButtonStates buttonStates) {
 
         update_particles(dt);
 
+        if (currentLevelNumber == LEVEL_COUNT - 1) {
+            update_thankyou(dt);
+
+            create_confetti(dt);
+        }
+
+
         if (bosses.size() == 0) {
             // Only show finish if there are no bosses
 
@@ -5307,11 +5383,12 @@ void update_game(float dt, ButtonStates buttonStates) {
         else {
             if (cameraIntro) {
                 //camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
-                camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, CAMERA_PAN_TIME);
+                camera.linear_to(dt, cameraStartX, cameraStartY, player.x, player.y, currentLevelNumber == LEVEL_COUNT - 1 ? CAMERA_PAN_TIME_FINAL_LEVEL : CAMERA_PAN_TIME);
 
                 //camera.ease_to(dt/5, player.x, player.y);
 
                 if (player.x == camera.x && player.y == camera.y) {
+                    // Completed
                     cameraIntro = false;
                     player.locked = false;
                     // Make player immune when spawning?
@@ -5319,6 +5396,7 @@ void update_game(float dt, ButtonStates buttonStates) {
                 }
 
                 if (buttonStates.A == 2) {
+                    // Skip intro
                     cameraIntro = false;
                     cameraRespawn = true; // goes to player faster
                 }
