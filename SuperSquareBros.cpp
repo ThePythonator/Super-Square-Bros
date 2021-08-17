@@ -4369,8 +4369,7 @@ void load_level(uint8_t levelNumber) {
         for (uint16_t i = 0; i < CONFETTI_INIT_COUNT; i++) {
             // Get random position
             // Change vel later (use wind?)
-
-            float xVel = rand() % 3 - 1;
+            float xVel = rand() % 5 - 2;
             float yVel = rand() % 5 + 8;
             uint16_t startX = 0;// SPRITE_SIZE * 5;
             uint16_t endX = SPRITE_SIZE * 45;//SPRITE_SIZE * 40;
@@ -4964,7 +4963,7 @@ void create_confetti(float dt) {
         confettiGenTimer -= CONFETTI_GENERATE_DELAY;
         // Generate snow particles
         // Get random position
-        float xVel = rand() % 3 - 1;
+        float xVel = rand() % 5 - 2;
         float yVel = rand() % 5 + 8;
         uint16_t startX = 0;// SPRITE_SIZE * 5;
         uint16_t endX = SPRITE_SIZE * 45;//SPRITE_SIZE * 40;
@@ -5474,6 +5473,12 @@ void update_game_lost(float dt, ButtonStates buttonStates) {
     update_projectiles(dt);
     update_particles(dt);
 
+    if (currentLevelNumber == LEVEL_COUNT - 1) {
+        update_thankyou(dt);
+
+        create_confetti(dt);
+    }
+
     if (transition[0].is_ready_to_open()) {
         start_level_select();
     }
@@ -5493,6 +5498,12 @@ void update_game_won(float dt, ButtonStates buttonStates) {
     finish.update(dt, buttonStates);
     update_projectiles(dt);
     update_particles(dt);
+
+    if (currentLevelNumber == LEVEL_COUNT - 1) {
+        update_thankyou(dt);
+
+        create_confetti(dt);
+    }
 
     if (transition[0].is_ready_to_open()) {
         start_level_select();
@@ -5700,6 +5711,11 @@ void update(uint32_t time) {
     // Get dt
     dt = (time - lastTime) / 1000.0;
     lastTime = time;
+
+    // Cap dt
+    if (dt > 0.05f) {
+        dt = 0.05f;
+    }
 
     textFlashTimer += dt;
     if (textFlashTimer >= TEXT_FLASH_TIME) {
