@@ -1765,40 +1765,45 @@ public:
             y += yVel * dt;
 
             // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
                     if (yVel > 0) {
                         // Collided from top
-                        y = foreground[i].y - SPRITE_SIZE;
+                        y = tile.y - SPRITE_SIZE;
                     }
                     else if (yVel < 0) {
                         // Collided from bottom
-                        y = foreground[i].y + SPRITE_SIZE;
+                        y = tile.y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                    break;
                 }
             }
 
             // Platforms may need work
-            for (uint16_t i = 0; i < platforms.size(); i++) {
-                handle_platform_collisions(platforms[i]);
+            for (Tile& platform : platforms) {
+                handle_platform_collisions(platform);
             }
+
+            if(xVel == 0.0f)
+                return;
 
             // Move entity x
             x += xVel * dt;
 
             // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
                     if (xVel > 0) {
                         // Collided from left
-                        x = foreground[i].x - SPRITE_SIZE + 1;
+                        x = tile.x - SPRITE_SIZE + 1;
                     }
                     else if (xVel < 0) {
                         // Collided from right
-                        x = foreground[i].x + SPRITE_SIZE - 1;
+                        x = tile.x + SPRITE_SIZE - 1;
                     }
                     xVel = 0;
+                    break;
                 }
             }
 
