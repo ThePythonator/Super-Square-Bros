@@ -14,7 +14,11 @@ using namespace blit;
 
 void init_game();
 
+#ifdef PICO_BUILD
+const uint16_t SCREEN_WIDTH = 120;
+#else
 const uint16_t SCREEN_WIDTH = 160;
+#endif
 const uint16_t SCREEN_HEIGHT = 120;
 
 const uint8_t LEVEL_COUNT = 10;
@@ -5591,6 +5595,7 @@ void load_audio() {
     // Set volume to a default
     audioHandler.set_volume(DEFAULT_VOLUME);
     // Sfx
+#ifndef PICO_BUILD
     audioHandler.load(0, asset_sound_select, asset_sound_select_length);
     audioHandler.load(1, asset_sound_jump, asset_sound_jump_length);
     audioHandler.load(2, asset_sound_coin, asset_sound_coin_length);
@@ -5600,6 +5605,7 @@ void load_audio() {
     audioHandler.load(6, asset_sound_enemythrow, asset_sound_enemythrow_length);
     // Music
     audioHandler.load(7, asset_music_splash, asset_music_splash_length);
+#endif
 
     // Start splash music playing
     audioHandler.play(7);

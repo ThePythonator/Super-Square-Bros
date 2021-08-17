@@ -6,10 +6,10 @@ assets.cpp:
 
   assets/spritesheet.png:
     name: asset_sprites
-    
+
   assets/background.png:
     name: asset_background
-      
+
   assets/scorpion_games.png:
     name: asset_scorpion_games
 
