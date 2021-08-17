@@ -3964,12 +3964,6 @@ void render_finish() {
     finish.render(camera);
 }
 
-void render_background() {
-    screen.pen = gameBackground;
-
-    screen.clear();
-}
-
 void render_level() {
     render_parallax(parallax);
 
@@ -4534,8 +4528,6 @@ void render_sg_icon() {
 }
 
 void render_input_select() {
-    render_background();
-
     background_rect(0);
     background_rect(1);
 
@@ -4558,8 +4550,6 @@ void render_input_select() {
 }
 
 void render_character_select() {
-    render_background();
-
     render_level();
 
     render_entities();
@@ -4592,8 +4582,6 @@ void render_character_select() {
 }
 
 void render_menu() {
-    render_background();
-
     render_level();
 
     render_entities();
@@ -4626,8 +4614,6 @@ void render_menu() {
 }
 
 void render_settings() {
-    render_background();
-
     render_level();
 
     render_entities();
@@ -4685,8 +4671,6 @@ void render_settings() {
 }
 
 void render_level_select() {
-    render_background();
-
     render_level();
 
     render_entities();
@@ -4705,8 +4689,6 @@ void render_level_select() {
 }
 
 void render_game() {
-    render_background();
-
     render_level();
 
     if (bosses.size() == 0) {
@@ -4780,8 +4762,6 @@ void render_game() {
 
 
 void render_game_lost() {
-    render_background();
-
     render_level();
 
     if (bosses.size() == 0) {
@@ -4813,8 +4793,6 @@ void render_game_lost() {
 
 
 void render_game_won() {
-    render_background();
-
     render_level();
 
     if (bosses.size() == 0) {
@@ -5647,7 +5625,7 @@ void init() {
 //
 void render(uint32_t time) {
     // clear the screen -- screen is a reference to the frame buffer and can be used to draw all things with the 32blit
-    screen.pen = splashColour;
+    screen.pen = gameState == GameState::STATE_SG_ICON ? splashColour : gameBackground;
     screen.clear();
 
     // draw some text at the top of the screen
