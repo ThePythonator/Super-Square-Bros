@@ -1,8 +1,15 @@
 # Basic parameters; check that these match your project / environment
 cmake_minimum_required(VERSION 3.8)
 
+# has to be before project
+if(PICO_SDK_PATH)
+    include(${32BLIT_DIR}/32blit-pico/pico_sdk_import.cmake)
+    include(${32BLIT_DIR}/32blit-pico/pico_extras_import.cmake)
+endif()
+
+
 project(Super-Square-Bros)
-set(PROJECT_SOURCE SuperSquareBros.cpp Audio.cpp)
+set(PROJECT_SOURCE SuperSquareBros.cpp)
 set(PROJECT_DISTRIBS LICENSE README.md)
 
 # Build configuration; approach this with caution!
@@ -13,9 +20,16 @@ else()
 endif()
 find_package (32BLIT CONFIG REQUIRED PATHS ../32blit-sdk)
 
+if(PICO_SDK_PATH)
+set(PROJECT_SOURCE ${PROJECT_SOURCE} PicoAudio.cpp)
+else()
+set(PROJECT_SOURCE ${PROJECT_SOURCE} Audio.cpp)
+endif()
+
 blit_executable (${PROJECT_NAME} ${PROJECT_SOURCE})
 blit_assets_yaml (${PROJECT_NAME} assets.yml)
 blit_metadata (${PROJECT_NAME} metadata.yml)
+target_compile_definitions(${PROJECT_NAME} PRIVATE ALLOW_HIRES=0)
 add_custom_target (flash DEPENDS ${PROJECT_NAME}.flash)
 
 # setup release packages
