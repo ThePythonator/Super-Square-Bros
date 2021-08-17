@@ -861,64 +861,41 @@ protected:
 };
 ScreenShake shaker(SCREEN_SHAKE_SHAKINESS);
 
-class Colour {
-public:
-    uint8_t r, g, b, a;
-
-    Colour() {
-        r = g = b = a = 255;
-    }
-
-    Colour(uint8_t r, uint8_t g, uint8_t b) {
-        this->r = r;
-        this->g = g;
-        this->b = b;
-        a = 255;
-    }
-
-    Colour(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        this->r = r;
-        this->g = g;
-        this->b = b;
-        this->a = a;
-    }
-};
-
 // Particle colours
-const std::vector<Colour> playerDeathParticleColours[2] = {
-    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(178, 53, 53) },
-    { Colour(255, 255, 242), Colour(178, 214, 96), Colour(37, 124, 73) }
+const std::vector<Pen> playerDeathParticleColours[2] = {
+    { Pen(255, 255, 242), Pen(255, 204, 181), Pen(178, 53, 53) },
+    { Pen(255, 255, 242), Pen(178, 214, 96), Pen(37, 124, 73) }
 };
-const std::vector<Colour> enemyDeathParticleColours[5] = {
-    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) },
-    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) },
-    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(229, 114, 57) },
-    { Colour(255, 255, 242), Colour(204, 137, 124), Colour(127, 24, 75) },
-    { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) }
+const std::vector<Pen> enemyDeathParticleColours[5] = {
+    { Pen(255, 255, 242), Pen(184, 197, 216), Pen(25, 40, 102) },
+    { Pen(255, 255, 242), Pen(255, 204, 181), Pen(165, 82, 139) },
+    { Pen(255, 255, 242), Pen(255, 204, 181), Pen(229, 114, 57) },
+    { Pen(255, 255, 242), Pen(204, 137, 124), Pen(127, 24, 75) },
+    { Pen(255, 255, 242), Pen(145, 224, 204), Pen(53, 130, 130) }
 };
-const std::vector<Colour> bossDeathParticleColours[3] = {
-    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) },
-    { Colour(255, 255, 242), Colour(255, 204, 181), Colour(165, 82, 139) },
-    { Colour(255, 255, 242), Colour(184, 197, 216), Colour(25, 40, 102) }
+const std::vector<Pen> bossDeathParticleColours[3] = {
+    { Pen(255, 255, 242), Pen(184, 197, 216), Pen(25, 40, 102) },
+    { Pen(255, 255, 242), Pen(255, 204, 181), Pen(165, 82, 139) },
+    { Pen(255, 255, 242), Pen(184, 197, 216), Pen(25, 40, 102) }
 };
-const std::vector<Colour> levelTriggerParticleColours = { Colour(255, 255, 242), Colour(145, 224, 204), Colour(53, 130, 130) };
+const std::vector<Pen> levelTriggerParticleColours = { Pen(255, 255, 242), Pen(145, 224, 204), Pen(53, 130, 130) };
 
-const std::vector<Colour> checkpointParticleColours[3] = {
-    { Colour(255, 255, 242), Colour(184, 197, 216) },
-    { Colour(178, 53, 53), Colour(127, 24, 75) },
-    { Colour(37, 124, 73), Colour(16, 84, 72) }
+const std::vector<Pen> checkpointParticleColours[3] = {
+    { Pen(255, 255, 242), Pen(184, 197, 216) },
+    { Pen(178, 53, 53), Pen(127, 24, 75) },
+    { Pen(37, 124, 73), Pen(16, 84, 72) }
 };
 
-const std::vector<Colour> finishParticleColours = { Colour(37, 124, 73), Colour(16, 84, 72), Colour(10, 57, 71) };
+const std::vector<Pen> finishParticleColours = { Pen(37, 124, 73), Pen(16, 84, 72), Pen(10, 57, 71) };
 
-const std::vector<Colour> slowPlayerParticleColours = { Colour(145, 224, 204), Colour(53, 130, 130) };//Colour(255, 255, 242), 
-const std::vector<Colour> repelPlayerParticleColours = { Colour(255, 235, 140), Colour(255, 199, 89) };
+const std::vector<Pen> slowPlayerParticleColours = { Pen(145, 224, 204), Pen(53, 130, 130) };//Pen(255, 255, 242), 
+const std::vector<Pen> repelPlayerParticleColours = { Pen(255, 235, 140), Pen(255, 199, 89) };
 
-const Colour inputSelectColour = Colour(255, 199, 89);
-const Colour hudBackground = Colour(7, 0, 14, 64);
-const Colour gameBackground = Colour(62, 106, 178);
-const Colour defaultWhite = Colour(255, 255, 242);
-Colour splashColour = Colour(7, 0, 14, 0);
+const Pen inputSelectColour = Pen(255, 199, 89);
+const Pen hudBackground = Pen(7, 0, 14, 64);
+const Pen gameBackground = Pen(62, 106, 178);
+const Pen defaultWhite = Pen(255, 255, 242);
+Pen splashColour = Pen(7, 0, 14, 0);
 
 class Camera {
 public:
@@ -992,7 +969,7 @@ public:
     float x, y;
     float xVel, yVel;
     float gravityX, gravityY;
-    Colour colour;
+    Pen colour;
     float age;
 
     Particle() {
@@ -1001,12 +978,12 @@ public:
 
         gravityX = 0;
         gravityY = 0;
-        colour = Colour(0, 0, 0);
+        colour = Pen(0, 0, 0);
 
         age = 0;
     }
 
-    Particle(float xPosition, float yPosition, float xVelocity, float yVelocity, float particleGravityX, float particleGravityY, Colour particleColour) {
+    Particle(float xPosition, float yPosition, float xVelocity, float yVelocity, float particleGravityX, float particleGravityY, Pen particleColour) {
         x = xPosition;
         y = yPosition;
         xVel = xVelocity;
@@ -1086,7 +1063,7 @@ public:
         speed = 0;
     }
 
-    BrownianParticle(float xPosition, float yPosition, uint16_t angle, float speed, float particleGravityX, float particleGravityY, Colour particleColour, uint8_t angleWiggle) : Particle(xPosition, yPosition, 0, 0, particleGravityX, particleGravityY, particleColour) {
+    BrownianParticle(float xPosition, float yPosition, uint16_t angle, float speed, float particleGravityX, float particleGravityY, Pen particleColour, uint8_t angleWiggle) : Particle(xPosition, yPosition, 0, 0, particleGravityX, particleGravityY, particleColour) {
         this->angleWiggle = angleWiggle;
         this->angle = angle;
         this->speed = speed;
@@ -1110,7 +1087,7 @@ protected:
 
 
 
-std::vector<Particle> generate_particles(float x, float y, float gravityX, float gravityY, std::vector<Colour> colours, float speed, uint8_t count) {
+std::vector<Particle> generate_particles(float x, float y, float gravityX, float gravityY, std::vector<Pen> colours, float speed, uint8_t count) {
     std::vector<Particle> particles;
 
     for (uint8_t i = 0; i < count; i++) {
@@ -1125,7 +1102,7 @@ std::vector<Particle> generate_particles(float x, float y, float gravityX, float
     return particles;
 }
 
-BrownianParticle generate_brownian_particle(float x, float y, float gravityX, float gravityY, float speed, std::vector<Colour> colours, uint8_t wiggle) {
+BrownianParticle generate_brownian_particle(float x, float y, float gravityX, float gravityY, float speed, std::vector<Pen> colours, uint8_t wiggle) {
     uint16_t angle = rand() % 360;
 
     return BrownianParticle(x, y, angle, speed, gravityX, gravityY, colours[rand() % colours.size()], wiggle);
