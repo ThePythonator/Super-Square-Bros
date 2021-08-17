@@ -891,11 +891,11 @@ const std::vector<Pen> finishParticleColours = { Pen(37, 124, 73), Pen(16, 84, 7
 const std::vector<Pen> slowPlayerParticleColours = { Pen(145, 224, 204), Pen(53, 130, 130) };//Pen(255, 255, 242), 
 const std::vector<Pen> repelPlayerParticleColours = { Pen(255, 235, 140), Pen(255, 199, 89) };
 
-const Pen inputSelectColour = Pen(255, 199, 89);
-const Pen hudBackground = Pen(7, 0, 14, 64);
-const Pen gameBackground = Pen(62, 106, 178);
-const Pen defaultWhite = Pen(255, 255, 242);
-Pen splashColour = Pen(7, 0, 14, 0);
+const Pen inputSelectColour(255, 199, 89);
+const Pen hudBackground(7, 0, 14, 64);
+const Pen gameBackground(62, 106, 178);
+const Pen defaultWhite(255, 255, 242);
+Pen splashColour(7, 0, 14, 0);
 
 class Camera {
 public:
@@ -997,7 +997,7 @@ public:
     }
 
     void render(Camera camera) {
-        screen.pen = Pen(colour.r, colour.g, colour.b, colour.a);
+        screen.pen = colour;
         screen.pixel(Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
     }
 
@@ -1640,7 +1640,7 @@ public:
 
     void render(Camera camera) {
         if (visible) {
-            screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b, levelTriggerParticleColours[1].a);
+            screen.pen = levelTriggerParticleColours[1];
             screen.text(std::to_string(levelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_HALF, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_HALF * 3 + textY), true, TextAlign::center_center);
             //screen.sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
             render_sprite(TILE_ID_LEVEL_TRIGGER, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
@@ -3965,7 +3965,7 @@ void render_finish() {
 }
 
 void render_background() {
-    screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b);
+    screen.pen = gameBackground;
 
     screen.clear();
 }
@@ -4014,7 +4014,7 @@ void render_hud() {
     screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SPRITE_HALF * 2 + 2));
 
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
 
     // Player health
     for (uint8_t i = 0; i < PLAYER_MAX_HEALTH; i++) {
@@ -4048,13 +4048,13 @@ void render_nearby_level_info() {
             background_rect(1);
 
 
-            screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b);
+            screen.pen = levelTriggerParticleColours[1];
 
             // Level number
             screen.text("Level " + std::to_string(levelTriggers[i].levelNumber + 1), minimal_font, Point(SPRITE_HALF, SCREEN_HEIGHT - 9 - SPRITE_HALF), true, TextAlign::center_left);
 
 
-            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+            screen.pen = defaultWhite;
 
             if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
                 // Level is locked
@@ -4540,17 +4540,17 @@ void render_input_select() {
     background_rect(1);
 
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
     screen.text("Select Input Method", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
-    screen.pen = gameSaveData.inputType == InputType::CONTROLLER ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = gameSaveData.inputType == InputType::CONTROLLER ? inputSelectColour : defaultWhite;
     screen.text("Controller/32Blit", minimal_font, Point(SCREEN_MID_WIDTH, 50), true, TextAlign::center_center);
 
-    screen.pen = gameSaveData.inputType == InputType::KEYBOARD ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = gameSaveData.inputType == InputType::KEYBOARD ? inputSelectColour : defaultWhite;
     screen.text("Keyboard", minimal_font, Point(SCREEN_MID_WIDTH, 70), true, TextAlign::center_center);
 
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
         screen.text(messageStrings[0][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
@@ -4580,10 +4580,10 @@ void render_character_select() {
     screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
     screen.rectangle(Rect(0, SCREEN_HEIGHT - (SPRITE_SIZE + 12 + 12), SCREEN_WIDTH, 12));
 
-    screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b);
+    screen.pen = levelTriggerParticleColours[1];
     screen.text("Player " + std::to_string(playerSelected + 1) + " (Save " + std::to_string(playerSelected + 1)  + ")", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 10 - 12), true, TextAlign::center_center);
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
     screen.text("Select Player", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
@@ -4602,23 +4602,23 @@ void render_menu() {
     background_rect(0);
     background_rect(1);
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
     screen.text("Super Square Bros.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     if (menuItem == 0) {
-        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+        screen.pen = inputSelectColour;
     }
     screen.text("Play", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT - 10), true, TextAlign::center_center);
 
     if (menuItem == 0) {
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.pen = defaultWhite;
     }
     else {
-        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+        screen.pen = inputSelectColour;
     }
     screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + 10), true, TextAlign::center_center);
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
 
     if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
         screen.text(messageStrings[4][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
@@ -4642,7 +4642,7 @@ void render_settings() {
 
     background_rect(0);
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
     screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     screen.text("Checkpoints:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_left);
@@ -4651,23 +4651,23 @@ void render_settings() {
 
 
     if (settingsItem == 0) {
-        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+        screen.pen = inputSelectColour;
     }
     screen.text(gameSaveData.checkpoints ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_right);
 
     if (settingsItem == 1) {
-        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+        screen.pen = inputSelectColour;
     }
     else {
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.pen = defaultWhite;
     }
     screen.text(gameSaveData.musicVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_right);
 
     if (settingsItem == 2) {
-        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+        screen.pen = inputSelectColour;
     }
     else {
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.pen = defaultWhite;
     }
     screen.text(gameSaveData.sfxVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_right);
 
@@ -4676,10 +4676,10 @@ void render_settings() {
     background_rect(1);
 
     /*if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.pen = defaultWhite;
         screen.text(messageStrings[4][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }*/
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
     screen.text(messageStrings[5][gameSaveData.inputType], minimal_font, Point(SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_left);
     screen.text(messageStrings[6][gameSaveData.inputType], minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_right);
 }
@@ -4698,7 +4698,7 @@ void render_level_select() {
 
     background_rect(0);
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
     screen.text("Select level", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     render_nearby_level_info();
@@ -4738,20 +4738,20 @@ void render_game() {
         //screen.pen = Pen(hudBackground.r, hudBackground.g, hudBackground.b, hudBackground.a);
         //screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
 
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.pen = defaultWhite;
         display_stats(false);
         screen.text("Game Paused", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
         if (pauseMenuItem == 0) {
-            screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+            screen.pen = inputSelectColour;
         }
         screen.text("Resume", minimal_font, Point(SCREEN_MID_WIDTH - SPRITE_SIZE * 4, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
 
         if (pauseMenuItem == 1) {
-            screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+            screen.pen = inputSelectColour;
         }
         else {
-            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+            screen.pen = defaultWhite;
         }
         screen.text("Exit", minimal_font, Point(SCREEN_MID_WIDTH + SPRITE_SIZE * 4, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
 
@@ -4762,13 +4762,13 @@ void render_game() {
     else if (cameraIntro) {
         // Level <num> message
         background_rect(0);
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+        screen.pen = defaultWhite;
         screen.text("Level " + std::to_string(currentLevelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
         // Press <key> to skip intro message
         background_rect(1);
         if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
-            screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+            screen.pen = defaultWhite;
             screen.text(messageStrings[1][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
         }
     }
@@ -4800,7 +4800,7 @@ void render_game_lost() {
     background_rect(0);
     background_rect(1);
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
 
     screen.text("Level failed.", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
@@ -4833,7 +4833,7 @@ void render_game_won() {
     background_rect(0);
     background_rect(1);
 
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
 
     screen.text("Level complete!", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
@@ -5647,13 +5647,13 @@ void init() {
 //
 void render(uint32_t time) {
     // clear the screen -- screen is a reference to the frame buffer and can be used to draw all things with the 32blit
-    screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b);
+    screen.pen = splashColour;
     screen.clear();
 
     // draw some text at the top of the screen
     screen.alpha = 255;
     screen.mask = nullptr;
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.pen = defaultWhite;
 
     if (gameState == GameState::STATE_SG_ICON) {
         render_sg_icon();
@@ -5686,7 +5686,7 @@ void render(uint32_t time) {
     render_transition();
 
     if (splashColour.a != 0) {
-        screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b, splashColour.a);
+        screen.pen = splashColour;
         screen.clear();
     }
 }
