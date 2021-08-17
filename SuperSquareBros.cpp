@@ -562,7 +562,6 @@ float dt;
 uint32_t lastTime = 0;
 
 Surface* sg_icon_image = Surface::load(asset_scorpion_games);
-Surface* background_image = Surface::load(asset_background);
 
 AudioHandler::AudioHandler audioHandler;
 
@@ -3979,7 +3978,6 @@ void render_finish() {
 }
 
 void render_background() {
-    //screen.blit(background_image, Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), Point(0, 0), false);
     screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b);
 
     screen.clear();
