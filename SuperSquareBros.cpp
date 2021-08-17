@@ -1955,6 +1955,11 @@ public:
 
     void update(float dt, ButtonStates buttonStates) {
         if (health > 0) {
+#ifdef PICO_BUILD
+            uint32_t dx = abs(*playerX - x);
+            if(dx > SCREEN_WIDTH) return; // TODO make this less hacky: Don't update enemies we can't see. Makes level ~7 playable on PicoSystem
+#endif
+
             if (reloadTimer) {
                 reloadTimer -= dt;
                 if (reloadTimer < 0) {
