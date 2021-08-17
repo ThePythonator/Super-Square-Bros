@@ -1762,6 +1762,7 @@ public:
                         y = foreground[i].y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                    break;
                 }
             }
 
@@ -1785,6 +1786,7 @@ public:
                         x = foreground[i].x + SPRITE_SIZE - 1;
                     }
                     xVel = 0;
+                    break;
                 }
             }
 
@@ -3108,6 +3110,7 @@ public:
                         y = foreground[i].y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                    break;
                 }
             }
 
@@ -3125,6 +3128,7 @@ public:
                             }
                             yVel = 0;
                         }
+                        break;
                     }
                 }
             }
@@ -3144,6 +3148,7 @@ public:
                         x = foreground[i].x + SPRITE_SIZE - 1;
                     }
                     xVel = 0;
+                    break;
                 }
             }
 
