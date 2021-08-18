@@ -20,7 +20,7 @@ const uint16_t SCREEN_HEIGHT = 120;
 #else
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
-#endif
+#endif // PICO_BUILD
 
 const uint8_t LEVEL_COUNT = 10;
 const uint8_t LEVEL_SELECT_NUMBER = LEVEL_COUNT + 2;
@@ -264,6 +264,12 @@ const uint16_t DEFAULT_VOLUME = 0x5000;
 
 // NOTE: issue with rendering (tiles on left are a pixel out sometimes) is due to integers being added to floats. Something along lines of (int)floorf(camera.x) etc is recommended, but when I tried it I got strange results.
 // If I implement that again, remember that all float calcs should be done, *then* casted, rather than casting each to int then adding etc
+#define PICO_BUILD
+#ifdef PICO_BUILD
+const uint8_t SETTINGS_COUNT = 3;
+#else
+const uint8_t SETTINGS_COUNT = 2;
+#endif // PICO_BUILD
 
 
 const uint16_t SCREEN_MID_WIDTH = SCREEN_WIDTH / 2;
@@ -596,6 +602,12 @@ bool repelPlayer = false;
 bool bossBattle = false;
 
 float thankyouValue = 0.0f;
+#define PICO_BUILD
+#ifdef PICO_BUILD
+const uint8_t MAX_HACKY_FAST_MODE = 4;
+uint8_t hackyFastMode = 0;
+#endif // PICO_BUILD
+
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
 uint8_t currentWorldNumber = 0;
@@ -4670,6 +4682,10 @@ void render_settings() {
     screen.text("Music:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_left);
     screen.text("SFX:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_left);
 
+#ifdef PICO_BUILD
+    screen.text("Hacky fast mode:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_left);
+#endif // PICO_BUILD
+
 
     if (settingsItem == 0) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
@@ -4691,6 +4707,16 @@ void render_settings() {
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     }
     screen.text(gameSaveData.sfxVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_right);
+
+#ifdef PICO_BUILD
+    if (settingsItem == 3) {
+        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+    }
+    else {
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    }
+    screen.text(std::to_string(hackyFastMode), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_right);
+#endif // PICO_BUILD
 
 
     // Press <key> to go back
@@ -5183,6 +5209,31 @@ void update_settings(float dt, ButtonStates buttonStates) {
                     audioHandler.set_volume(i, gameSaveData.sfxVolume ? DEFAULT_VOLUME : 0);
                 }
             }
+#ifdef PICO_BUILD
+            else if (settingsItem == 3) {
+                if (hackyFastMode < MAX_HACKY_FAST_MODE) {
+                    hackyFastMode++;
+                }
+                else {
+                    hackyFastMode = 0;
+                }
+            }
+
+        }
+        else if (buttonStates.LEFT == 2) {
+            if (settingsItem == 3) {
+                if (hackyFastMode > 0) {
+                    hackyFastMode--;
+                }
+            }
+        }
+        else if (buttonStates.RIGHT == 2) {
+            if (settingsItem == 3) {
+                if (hackyFastMode < MAX_HACKY_FAST_MODE) {
+                    hackyFastMode++;
+                }
+            }
+#endif // PICO_BUILD
         }
         else if (buttonStates.Y == 2) {
             // Exit settings
@@ -5198,7 +5249,7 @@ void update_settings(float dt, ButtonStates buttonStates) {
             settingsItem--;
             audioHandler.play(0);
         }
-        else if (buttonStates.DOWN == 2 && settingsItem < 2) {
+        else if (buttonStates.DOWN == 2 && settingsItem < SETTINGS_COUNT) {
             settingsItem++;
             audioHandler.play(0);
         }
