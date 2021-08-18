@@ -3457,12 +3457,12 @@ public:
 
 
             if (!is_immune()) {
-                for (uint8_t i = 0; i < spikes.size(); i++) {
-                    if (colliding(spikes[i])) {
-                        if ((spikes[i].get_id() == TILE_ID_SPIKE_BOTTOM && y + SPRITE_SIZE >= spikes[i].y + SPRITE_HALF) ||
-                            (spikes[i].get_id() == TILE_ID_SPIKE_TOP && y <= spikes[i].y + SPRITE_HALF) ||
-                            (spikes[i].get_id() == TILE_ID_SPIKE_LEFT && x <= spikes[i].x + SPRITE_HALF) ||
-                            (spikes[i].get_id() == TILE_ID_SPIKE_RIGHT && x + SPRITE_SIZE >= spikes[i].x + SPRITE_HALF)) {
+                for (Tile& spike : spikes) {
+                    if (colliding(spike)) {
+                        if ((spike.get_id() == TILE_ID_SPIKE_BOTTOM && y + SPRITE_SIZE >= spike.y + SPRITE_HALF) ||
+                            (spike.get_id() == TILE_ID_SPIKE_TOP && y <= spike.y + SPRITE_HALF) ||
+                            (spike.get_id() == TILE_ID_SPIKE_LEFT && x <= spike.x + SPRITE_HALF) ||
+                            (spike.get_id() == TILE_ID_SPIKE_RIGHT && x + SPRITE_SIZE >= spike.x + SPRITE_HALF)) {
 
                             health -= 1;
                             set_immune();
@@ -3489,8 +3489,8 @@ public:
             slowPlayerParticleTimer = 0.0f;
         }
 
-        for (uint16_t i = 0; i < slowParticles.size(); i++) {
-            slowParticles[i].update(dt);
+        for (BrownianParticle& slowParticle : slowParticles) {
+            slowParticle.update(dt);
         }
         // Remove any particles which are too old
         slowParticles.erase(std::remove_if(slowParticles.begin(), slowParticles.end(), [](BrownianParticle particle) { return (particle.age >= PLAYER_SLOW_PARTICLE_AGE); }), slowParticles.end());
@@ -3541,8 +3541,8 @@ public:
                     }
                 }
                 else {
-                    for (uint8_t i = 0; i < particles.size(); i++) {
-                        particles[i].update(dt);
+                    for (Particle& particle : particles) {
+                        particle.update(dt);
                     }
 
                     // Remove any particles which are too old
@@ -3574,28 +3574,28 @@ public:
             // Here check collisions...
 
             // Enemies first
-            for (uint16_t i = 0; i < enemies.size(); i++) {
-                if (enemies[i].health && colliding(enemies[i])) {
-                    if (y + SPRITE_SIZE < enemies[i].y + SPRITE_QUARTER) {
+            for (Enemy& enemy : enemies) {
+                if (enemy.health && colliding(enemy)) {
+                    if (y + SPRITE_SIZE < enemy.y + SPRITE_QUARTER) {
                         // Collided from top
-                        y = enemies[i].y - SPRITE_SIZE;
+                        y = enemy.y - SPRITE_SIZE;
 
-                        if (yVel > 0 || enemies[i].yVel < 0) { // && !enemies[i].is_immune()
+                        if (yVel > 0 || enemy.yVel < 0) { // && !enemies[i].is_immune()
                             //yVel = -PLAYER_ATTACK_JUMP;
                             yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
                             // Take health off enemy
-                            enemies[i].health--;
+                            enemy.health--;
 
                             // Play enemy injured sfx
-                            if (enemies[i].health) {
+                            if (enemy.health) {
                                 audioHandler.play(4);
                             }
 
-                            if (enemies[i].yVel < 0) {
+                            if (enemy.yVel < 0) {
                                 // Enemy is jumping
                                 // Stop enemy's jump
-                                enemies[i].yVel = 0;
+                                enemy.yVel = 0;
                             }
                         }
                     }
@@ -3603,47 +3603,47 @@ public:
             }
 
             if (!dropPlayer) {
-                for (uint16_t i = 0; i < bosses.size(); i++) {
-                    if (!bosses[i].is_dead() && colliding(bosses[i])) {
-                        if (y + SPRITE_SIZE < bosses[i].y + SPRITE_QUARTER) {
+                for (Boss& boss : bosses) {
+                    if (boss.is_dead() && colliding(boss)) {
+                        if (y + SPRITE_SIZE < boss.y + SPRITE_QUARTER) {
                             // Collided from top
-                            y = bosses[i].y - SPRITE_SIZE;
+                            y = boss.y - SPRITE_SIZE;
 
-                            if (yVel > 0 && !bosses[i].is_immune() && bosses[i].health) {
+                            if (yVel > 0 && !boss.is_immune() && boss.health) {
                                 //yVel = -PLAYER_ATTACK_JUMP;
                                 yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
                                 // Take health off enemy
-                                bosses[i].health--;
+                                boss.health--;
 
                                 // Play enemy injured sfx
-                                if (bosses[i].health) {
+                                if (boss.health) {
                                     audioHandler.play(4);
                                 }
 
-                                if (bosses[i].yVel < 0) {
+                                //if (boss.yVel < 0) {
                                     // Enemy is jumping
                                     // Stop enemy's jump
                                     //bosses[i].yVel = 0;
-                                }
+                                //}
 
-                                bosses[i].set_injured();
+                                boss.set_injured();
                             }
                         }
                     }
                 }
             }
 
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
-                    if (yVel > 0 && y + SPRITE_SIZE < foreground[i].y + SPRITE_HALF) {
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
+                    if (yVel > 0 && y + SPRITE_SIZE < tile.y + SPRITE_HALF) {
                         // Collided from top
-                        y = foreground[i].y - SPRITE_SIZE;
+                        y = tile.y - SPRITE_SIZE;
                         dropPlayer = false; // stop player falling through platforms (only used in boss #2 currently)
                     }
-                    else if (yVel < 0 && y + SPRITE_SIZE > foreground[i].y + SPRITE_HALF) {
+                    else if (yVel < 0 && y + SPRITE_SIZE > tile.y + SPRITE_HALF) {
                         // Collided from bottom
-                        y = foreground[i].y + SPRITE_SIZE;
+                        y = tile.y + SPRITE_SIZE;
                     }
                     yVel = 0;
                 }
@@ -3651,23 +3651,23 @@ public:
 
             // Platforms may need work
             if (!dropPlayer) {
-                for (uint16_t i = 0; i < platforms.size(); i++) {
-                    handle_platform_collisions(platforms[i]);
+                for (Tile& platform : platforms) {
+                    handle_platform_collisions(platform);
                 }
             }
 
-            for (uint16_t i = 0; i < levelTriggers.size(); i++) {
-                if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
-                    if (yVel > 0 && y + SPRITE_SIZE < levelTriggers[i].y + SPRITE_HALF) {
-                        if (allPlayerSaveData[playerSelected].levelReached >= levelTriggers[i].levelNumber) {
+            for (LevelTrigger& levelTrigger : levelTriggers) {
+                if (levelTrigger.visible && colliding(levelTrigger)) {
+                    if (yVel > 0 && y + SPRITE_SIZE < levelTrigger.y + SPRITE_HALF) {
+                        if (allPlayerSaveData[playerSelected].levelReached >= levelTrigger.levelNumber) {
                             // Level is unlocked
 
                             // Collided from top
-                            y = levelTriggers[i].y - SPRITE_SIZE;
+                            y = levelTrigger.y - SPRITE_SIZE;
                             //yVel = -PLAYER_ATTACK_JUMP;
                             yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
-                            levelTriggers[i].set_active();
+                            levelTrigger.set_active();
 
                             // Play sfx
                             audioHandler.play(4);
@@ -3676,7 +3676,7 @@ public:
                             // Level is locked, act as a solid object
 
                             // Collided from top
-                            y = levelTriggers[i].y - SPRITE_SIZE;
+                            y = levelTrigger.y - SPRITE_SIZE;
                             yVel = 0;
                         }
                     }
@@ -3687,29 +3687,29 @@ public:
             x += xVel * dt;
 
             // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
                     if (xVel > 0) {
                         // Collided from left
-                        x = foreground[i].x - SPRITE_SIZE + 1;
+                        x = tile.x - SPRITE_SIZE + 1;
                     }
                     else if (xVel < 0) {
                         // Collided from right
-                        x = foreground[i].x + SPRITE_SIZE - 1;
+                        x = tile.x + SPRITE_SIZE - 1;
                     }
                     xVel = 0;
                 }
             }
 
-            for (uint16_t i = 0; i < levelTriggers.size(); i++) {
-                if (levelTriggers[i].visible && colliding(levelTriggers[i])) {
+            for (LevelTrigger& levelTrigger : levelTriggers) {
+                if (levelTrigger.visible && colliding(levelTrigger)) {
                     if (xVel > 0) {
                         // Collided from left
-                        x = levelTriggers[i].x - SPRITE_SIZE;
+                        x = levelTrigger.x - SPRITE_SIZE;
                     }
                     else if (xVel < 0) {
                         // Collided from right
-                        x = levelTriggers[i].x + SPRITE_SIZE;
+                        x = levelTrigger.x + SPRITE_SIZE;
                     }
                     xVel = 0;
                 }
@@ -3730,15 +3730,15 @@ public:
             //}
 
             if (!immuneTimer && !dropPlayer) {
-                for (uint16_t i = 0; i < enemies.size(); i++) {
-                    if (colliding(enemies[i]) && enemies[i].health) {
+                for (Enemy& enemy : enemies) {
+                    if (colliding(enemy) && enemy.health) {
                         health--;
                         set_immune();
                     }
                 }
 
-                for (uint16_t i = 0; i < bosses.size(); i++) {
-                    if (colliding(bosses[i]) && bosses[i].health) {
+                for (Boss& boss : bosses) {
+                    if (colliding(boss) && boss.health) {
                         health--;
                         set_immune();
                     }
@@ -3769,8 +3769,8 @@ public:
 
     void render(Camera camera) {
         // Particles
-        for (uint8_t i = 0; i < slowParticles.size(); i++) {
-            slowParticles[i].render(camera);
+        for (BrownianParticle& slowParticle : slowParticles) {
+            slowParticle.render(camera);
         }
 
         if (health != 0) {
@@ -3813,8 +3813,8 @@ public:
         }
 
         // Particles
-        for (uint8_t i = 0; i < particles.size(); i++) {
-            particles[i].render(camera);
+        for (Particle& particle : particles) {
+            particle.render(camera);
         }
     }
 
@@ -3939,52 +3939,52 @@ void update_transition(float dt, ButtonStates buttonStates) {
 
 
 void render_tiles(std::vector<Tile> tiles) {
-    for (uint32_t i = 0; i < tiles.size(); i++) {
-        tiles[i].render(camera);
+    for (Tile& tile : tiles) {
+        tile.render(camera);
     }
 }
 
 void render_parallax(std::vector<ParallaxTile> parallax) {
     screen.alpha = 192;
-    for (uint32_t i = 0; i < parallax.size(); i++) {
-        parallax[i].render(camera);
+    for (ParallaxTile& tile : parallax) {
+        tile.render(camera);
     }
     screen.alpha = 255;
 }
 
 void render_coins() {
-    for (uint8_t i = 0; i < coins.size(); i++) {
-        coins[i].render(camera);
+    for (Coin& coin : coins) {
+        coin.render(camera);
     }
 }
 
 void render_enemies() {
-    for (uint8_t i = 0; i < enemies.size(); i++) {
-        enemies[i].render(camera);
+    for (Enemy& enemy : enemies) {
+        enemy.render(camera);
     }
 }
 
 void render_bosses() {
-    for (uint8_t i = 0; i < bosses.size(); i++) {
-        bosses[i].render(camera);
+    for (Boss& boss : bosses) {
+        boss.render(camera);
     }
 }
 
 void render_level_triggers() {
-    for (uint8_t i = 0; i < levelTriggers.size(); i++) {
-        levelTriggers[i].render(camera);
+    for (LevelTrigger& levelTrigger : levelTriggers) {
+        levelTrigger.render(camera);
     }
 }
 
 void render_projectiles() {
-    for (uint8_t i = 0; i < projectiles.size(); i++) {
-        projectiles[i].render(camera);
+    for (Projectile& projectile : projectiles) {
+        projectile.render(camera);
     }
 }
 
 void render_image_particles() {
-    for (uint16_t i = 0; i < imageParticles.size(); i++) {
-        imageParticles[i].render(camera);
+    for (ImageParticle& imageParticle : imageParticles) {
+        imageParticle.render(camera);
     }
 }
 
@@ -4072,48 +4072,48 @@ void render_hud() {
 }
 
 void render_nearby_level_info() {
-    for (uint8_t i = 0; i < levelTriggers.size(); i++) {
-        if (std::abs(player.x - levelTriggers[i].x) < LEVEL_INFO_MAX_RANGE && std::abs(player.y - levelTriggers[i].y) < LEVEL_INFO_MAX_RANGE) {
+    for (LevelTrigger& levelTrigger : levelTriggers) {
+        if (std::abs(player.x - levelTrigger.x) < LEVEL_INFO_MAX_RANGE && std::abs(player.y - levelTrigger.y) < LEVEL_INFO_MAX_RANGE) {
             background_rect(1);
 
 
             screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b);
 
             // Level number
-            screen.text("Level " + std::to_string(levelTriggers[i].levelNumber + 1), minimal_font, Point(SPRITE_HALF, SCREEN_HEIGHT - 9 - SPRITE_HALF), true, TextAlign::center_left);
+            screen.text("Level " + std::to_string(levelTrigger.levelNumber + 1), minimal_font, Point(SPRITE_HALF, SCREEN_HEIGHT - 9 - SPRITE_HALF), true, TextAlign::center_left);
 
 
             screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
-            if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
+            if (allPlayerSaveData[playerSelected].levelReached < levelTrigger.levelNumber) {
                 // Level is locked
                 screen.text("Level locked", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
             }
-            else if (allPlayerSaveData[playerSelected].levelReached == levelTriggers[i].levelNumber) {
+            else if (allPlayerSaveData[playerSelected].levelReached == levelTrigger.levelNumber) {
                 // Level is unlocked and has not been completed
                 screen.text("No highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
             }
             else {
                 // Level is unlocked and has been completed
 
-                if (allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time == 0.0f) {
+                if (allLevelSaveData[playerSelected][levelTrigger.levelNumber].time == 0.0f) {
                     // If time == 0.0f, something's probably wrong (like no save slot for that level, but still save slot for saveData worked)
 
                     screen.text("Error loading highscores", minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
                 }
                 else {
-                    screen.text(std::to_string(allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].score), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 25, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
-                    screen.text(std::to_string(allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].enemiesKilled), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 16, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+                    screen.text(std::to_string(allLevelSaveData[playerSelected][levelTrigger.levelNumber].score), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 25, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
+                    screen.text(std::to_string(allLevelSaveData[playerSelected][levelTrigger.levelNumber].enemiesKilled), minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 16, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
 
                     // Trim time to 2dp
-                    std::string timeString = std::to_string(allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time);
+                    std::string timeString = std::to_string(allLevelSaveData[playerSelected][levelTrigger.levelNumber].time);
                     timeString = timeString.substr(0, timeString.find('.') + 3);
                     screen.text(timeString, minimal_font, Point(SCREEN_WIDTH - SPRITE_HALF * 4, SCREEN_HEIGHT - 9 + SPRITE_HALF), true, TextAlign::center_right);
 
                     uint8_t a, b, c;
-                    a = allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].score >= levelTargets[levelTriggers[i].levelNumber][0][0] ? 0 : allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].score >= levelTargets[levelTriggers[i].levelNumber][0][1] ? 1 : 2;
-                    b = allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].enemiesKilled >= levelTargets[levelTriggers[i].levelNumber][1][0] ? 0 : allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].enemiesKilled >= levelTargets[levelTriggers[i].levelNumber][1][1] ? 1 : 2;
-                    c = allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time <= levelTargetTimes[levelTriggers[i].levelNumber][0] ? 0 : allLevelSaveData[playerSelected][levelTriggers[i].levelNumber].time <= levelTargetTimes[levelTriggers[i].levelNumber][1] ? 1 : 2;
+                    a = allLevelSaveData[playerSelected][levelTrigger.levelNumber].score >= levelTargets[levelTrigger.levelNumber][0][0] ? 0 : allLevelSaveData[playerSelected][levelTrigger.levelNumber].score >= levelTargets[levelTrigger.levelNumber][0][1] ? 1 : 2;
+                    b = allLevelSaveData[playerSelected][levelTrigger.levelNumber].enemiesKilled >= levelTargets[levelTrigger.levelNumber][1][0] ? 0 : allLevelSaveData[playerSelected][levelTrigger.levelNumber].enemiesKilled >= levelTargets[levelTrigger.levelNumber][1][1] ? 1 : 2;
+                    c = allLevelSaveData[playerSelected][levelTrigger.levelNumber].time <= levelTargetTimes[levelTrigger.levelNumber][0] ? 0 : allLevelSaveData[playerSelected][levelTrigger.levelNumber].time <= levelTargetTimes[levelTrigger.levelNumber][1] ? 1 : 2;
 
                     render_sprite(TILE_ID_GOLD_BADGE + a + 24, Point(SCREEN_WIDTH - SPRITE_HALF * 24, SCREEN_HEIGHT - 9));
                     render_sprite(TILE_ID_GOLD_BADGE + b + 28, Point(SCREEN_WIDTH - SPRITE_HALF * 15, SCREEN_HEIGHT - 9));
@@ -4178,7 +4178,34 @@ void load_level(uint8_t levelNumber) {
             coins.push_back(Coin((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, coinFrames));
         }
         else {
-            foreground.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[i]));
+            // Move tiles surrounded on all sides to the background (thanks to Daft Freak)
+
+            uint16_t x = i % levelWidth;
+            uint16_t y = i / levelWidth;
+
+#ifdef PICO_BUILD
+            if (hackyFastMode >= 1) {
+
+                if (x > 0 && y > 0 && x < levelWidth - 1 && y < levelHeight - 1) {
+                    bool all_solid = true;
+
+                    for (uint16_t y2 = y - 1; y2 <= y + 1 && all_solid; y2++) {
+                        for (uint16_t x2 = x - 1; x2 <= x + 1 && all_solid; x2++) {
+                            if (tmx->data[x2 + y2 * levelWidth] == TILE_ID_EMPTY || tmx->data[x2 + y2 * levelWidth] == TILE_ID_COIN) {
+                                all_solid = false;
+                            }
+                        }
+                    }
+
+                    if (all_solid) {
+                        background.push_back(Tile(x * SPRITE_SIZE, y * SPRITE_SIZE, tmx->data[i]));
+                        continue;
+                    }
+                }
+            }
+#endif // PICO_BUILD
+            
+            foreground.push_back(Tile(x * SPRITE_SIZE, y * SPRITE_SIZE, tmx->data[i]));
         }
     }
 

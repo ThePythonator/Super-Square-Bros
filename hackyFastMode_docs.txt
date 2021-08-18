@@ -1,0 +1,11 @@
+hackyFastMode:
+
+0 - Nothing
+
+1 - Moves tiles surrounded on all sides to the background, reducing the number of tiles needing to be checked for collisions
+
+2 -
+
+3 -
+
+4 -
