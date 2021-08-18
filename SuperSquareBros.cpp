@@ -1911,7 +1911,17 @@ public:
 
     bool colliding(Tile tile) {
         // Replace use of this with actual code?
-        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+        //return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+
+        // 24.8 fixed-point
+        const int scale = 256;
+        int ix = int(x * scale);
+        int iy = int(y * scale);
+
+        return ((tile.x + SPRITE_SIZE) * scale > ix + scale
+            && tile.x * scale < ix + (SPRITE_SIZE - 1) * scale
+            && (tile.y + SPRITE_SIZE) * scale > iy
+            && tile.y * scale < iy + SPRITE_SIZE * scale);
     }
 
     void set_immune() {
