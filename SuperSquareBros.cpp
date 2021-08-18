@@ -3844,10 +3844,7 @@ public:
         }
     }
 
-    bool colliding(Tile tile) {
-        // Replace use of this with actual code?
-        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
-    }
+    using Entity::colliding;
 
     bool colliding(Enemy enemy) {
         // Replace use of this with actual code?
