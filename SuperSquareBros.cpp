@@ -3453,7 +3453,7 @@ public:
             uint8_t coinCount = coins.size();
 
             // Remove coins if player jumps on them
-            coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
+            coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin &coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
 
             // Add points to player score (1 point per coin which has been deleted)
             score += coinCount - coins.size();
@@ -3469,8 +3469,8 @@ public:
             uint8_t enemyCount = enemies.size();// + bosses.size();
 
             // Remove enemies if no health left
-            enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
-            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
+            enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy &enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
+            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss &boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
 
             enemiesKilled += enemyCount - enemies.size();// - bosses.size();
 
