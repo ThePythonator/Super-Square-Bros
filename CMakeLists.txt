@@ -1,7 +1,10 @@
 # Basic parameters; check that these match your project / environment
 cmake_minimum_required(VERSION 3.8)
 
+include(${32BLIT_DIR}/32blit-pico/sdk_import.cmake)
+
 project(Super-Square-Bros)
+
 set(PROJECT_SOURCE SuperSquareBros.cpp Audio.cpp)
 set(PROJECT_DISTRIBS LICENSE README.md)
 

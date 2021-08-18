@@ -1,6 +1,7 @@
 build/
 build.em/
 build.stm32/
+build.pico/
 .vs/
 out/
 *.zip
