@@ -5732,8 +5732,9 @@ void init() {
     for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
         allLevelSaveData[1][i] = load_level_data(1, i);
     }
-
+#ifndef PICO_BUILD
     load_audio();
+#endif // PICO_BUILD
 }
 
 ///////////////////////////////////////////////////////////////////////////
