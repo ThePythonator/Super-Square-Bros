@@ -1781,8 +1781,12 @@ public:
             }
 
             // Platforms may need work
-            for (Tile& platform : platforms) {
-                handle_platform_collisions(platform);
+            if(yVel != 0.0f) {
+                for (Tile& platform : platforms) {
+                    if(handle_platform_collisions(platform)) {
+                        break;
+                    }
+                }
             }
 
             if(xVel == 0.0f)
@@ -1854,14 +1858,17 @@ public:
         return false;
     }
 
-    void handle_platform_collisions(Tile platform) {
+    bool handle_platform_collisions(Tile platform) {
         if (colliding(platform)) {
             if (yVel > 0 && y + SPRITE_SIZE < platform.y + SPRITE_QUARTER) {
                 // Collided from top
                 y = platform.y - SPRITE_SIZE;
                 yVel = 0;
+                return true;
             }
         }
+
+        return false;
     }
     
     void render(Camera camera) {
