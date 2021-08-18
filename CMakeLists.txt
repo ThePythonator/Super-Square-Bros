@@ -2,9 +2,7 @@
 cmake_minimum_required(VERSION 3.8)
 
 
-if(32BLIT_PICO)
-	include(${32BLIT_DIR}/32blit-pico/sdk_import.cmake)
-endif()
+include(${32BLIT_DIR}/32blit-pico/sdk_import.cmake)
 
 project(Super-Square-Bros)
 
