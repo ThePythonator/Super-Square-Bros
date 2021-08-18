@@ -14,8 +14,13 @@ using namespace blit;
 
 void init_game();
 
+#ifdef PICO_BUILD
+const uint16_t SCREEN_WIDTH = 120;
+const uint16_t SCREEN_HEIGHT = 120;
+#else
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
+#endif
 
 const uint8_t LEVEL_COUNT = 10;
 const uint8_t LEVEL_SELECT_NUMBER = LEVEL_COUNT + 2;
@@ -5650,7 +5655,6 @@ void init() {
     for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
         allLevelSaveData[1][i] = load_level_data(1, i);
     }
-
 
     load_audio();
 }

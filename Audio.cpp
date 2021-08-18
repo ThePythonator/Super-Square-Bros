@@ -3,7 +3,9 @@
 // Todo: rework to pick a free channel rather than always using same one.
 
 namespace AudioHandler {
-	AudioHandler::AudioHandler() { }
+	AudioHandler::AudioHandler() {
+		
+	}
 
 	void AudioHandler::set_volume(uint32_t volume) {
 		for (uint8_t i = 0; i < 8; i++) {
