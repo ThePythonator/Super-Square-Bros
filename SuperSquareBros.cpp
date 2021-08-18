@@ -558,7 +558,7 @@ float dt;
 uint32_t lastTime = 0;
 
 Surface* sg_icon_image = Surface::load(asset_scorpion_games);
-Surface* background_image = Surface::load(asset_background);
+//Surface* background_image = Surface::load(asset_background);
 
 AudioHandler::AudioHandler audioHandler;
 
@@ -4541,6 +4541,10 @@ void start_game_won() {
 
 
 void render_sg_icon() {
+    // Render splash screen background instead of normal blue background
+    screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b);
+    screen.clear();
+
     screen.stretch_blit(sg_icon_image, Rect(0, 0, SG_ICON_SIZE, SG_ICON_SIZE), Rect(SCREEN_MID_WIDTH - SG_ICON_SIZE, SCREEN_MID_HEIGHT - SG_ICON_SIZE, SG_ICON_SIZE * 2, SG_ICON_SIZE * 2));
 }
 
@@ -5619,6 +5623,9 @@ void init() {
 
     screen.sprites = Surface::load(asset_sprites);
 
+    screen.alpha = 255;
+    screen.mask = nullptr;
+
     // Load metadata
     metadata = get_metadata();
     gameVersion = parse_version(metadata.version);
@@ -5655,14 +5662,6 @@ void init() {
 // amount if milliseconds elapsed since the start of your game
 //
 void render(uint32_t time) {
-    // clear the screen -- screen is a reference to the frame buffer and can be used to draw all things with the 32blit
-    screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b);
-    screen.clear();
-
-    // draw some text at the top of the screen
-    screen.alpha = 255;
-    screen.mask = nullptr;
-    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
     if (gameState == GameState::STATE_SG_ICON) {
         render_sg_icon();
