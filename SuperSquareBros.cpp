@@ -4715,7 +4715,7 @@ void render_settings() {
     else {
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     }
-    screen.text(std::to_string(hackyFastMode), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_right);
+    screen.text(hackyFastMode ? std::to_string(hackyFastMode) : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_right);
 #endif // PICO_BUILD
 
 
