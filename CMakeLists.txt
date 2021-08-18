@@ -2,14 +2,20 @@
 cmake_minimum_required(VERSION 3.8)
 
 # Temporary check to stop it breaking if building normally with master branch of sdk
-if (EXISTS ${32BLIT_DIR}/32blit-pico/sdk_import.cmake)
+if(EXISTS ${32BLIT_DIR}/32blit-pico/sdk_import.cmake)
 	include(${32BLIT_DIR}/32blit-pico/sdk_import.cmake)
 endif()
 
 project(Super-Square-Bros)
 
-set(PROJECT_SOURCE SuperSquareBros.cpp Audio.cpp)
+set(PROJECT_SOURCE SuperSquareBros.cpp)
 set(PROJECT_DISTRIBS LICENSE README.md)
+
+if(PICO_SDK_PATH)
+	set(PROJECT_SOURCE ${PROJECT_SOURCE} PicoAudio.cpp)
+else()
+	set(PROJECT_SOURCE ${PROJECT_SOURCE} Audio.cpp)
+endif()
 
 # Build configuration; approach this with caution!
 if(MSVC)

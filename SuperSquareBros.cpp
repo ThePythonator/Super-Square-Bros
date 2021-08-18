@@ -1,5 +1,4 @@
 #include "SuperSquareBros.hpp"
-#include "assets.hpp"
 
 using namespace blit;
 
@@ -264,7 +263,7 @@ const uint16_t DEFAULT_VOLUME = 0x5000;
 
 // NOTE: issue with rendering (tiles on left are a pixel out sometimes) is due to integers being added to floats. Something along lines of (int)floorf(camera.x) etc is recommended, but when I tried it I got strange results.
 // If I implement that again, remember that all float calcs should be done, *then* casted, rather than casting each to int then adding etc
-#define PICO_BUILD
+
 #ifdef PICO_BUILD
 const uint8_t SETTINGS_COUNT = 3;
 #else
