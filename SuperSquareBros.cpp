@@ -3650,6 +3650,7 @@ public:
                         y = tile.y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                    break;
                 }
             }
 
@@ -3688,34 +3689,38 @@ public:
             }
 
             // Move entity x
-            x += xVel * dt;
+            if(xVel != 0.0f) {
+                x += xVel * dt;
 
-            // Here check collisions...
-            for (Tile& tile : foreground) {
-                if (colliding(tile)) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = tile.x - SPRITE_SIZE + 1;
+                // Here check collisions...
+                for (Tile& tile : foreground) {
+                    if (colliding(tile)) {
+                        if (xVel > 0) {
+                            // Collided from left
+                            x = tile.x - SPRITE_SIZE + 1;
+                        }
+                        else if (xVel < 0) {
+                            // Collided from right
+                            x = tile.x + SPRITE_SIZE - 1;
+                        }
+                        xVel = 0;
+                        break;
                     }
-                    else if (xVel < 0) {
-                        // Collided from right
-                        x = tile.x + SPRITE_SIZE - 1;
-                    }
-                    xVel = 0;
                 }
-            }
 
-            for (LevelTrigger& levelTrigger : levelTriggers) {
-                if (levelTrigger.visible && colliding(levelTrigger)) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = levelTrigger.x - SPRITE_SIZE;
+                for (LevelTrigger& levelTrigger : levelTriggers) {
+                    if (levelTrigger.visible && colliding(levelTrigger)) {
+                        if (xVel > 0) {
+                            // Collided from left
+                            x = levelTrigger.x - SPRITE_SIZE;
+                        }
+                        else if (xVel < 0) {
+                            // Collided from right
+                            x = levelTrigger.x + SPRITE_SIZE;
+                        }
+                        xVel = 0;
+                        break;
                     }
-                    else if (xVel < 0) {
-                        // Collided from right
-                        x = levelTrigger.x + SPRITE_SIZE;
-                    }
-                    xVel = 0;
                 }
             }
 
