@@ -86,6 +86,7 @@ const float LEVEL_DEATH_BOUNDARY_SCALE = 1.5f;
 
 const uint8_t SPRITE_SIZE = 8;
 
+const uint16_t SG_ICON_INDEX = 128;
 const uint8_t SG_ICON_SIZE = SPRITE_SIZE * 4;
 
 const float SNOW_LEVEL_GENERATE_DELAY = 0.1f;
@@ -557,7 +558,7 @@ uint16_t levelDeathBoundary;
 float dt;
 uint32_t lastTime = 0;
 
-Surface* sg_icon_image = Surface::load(asset_scorpion_games);
+//Surface* sg_icon_image = Surface::load(asset_scorpion_games);
 //Surface* background_image = Surface::load(asset_background);
 
 AudioHandler::AudioHandler audioHandler;
@@ -4545,7 +4546,7 @@ void render_sg_icon() {
     screen.pen = Pen(splashColour.r, splashColour.g, splashColour.b);
     screen.clear();
 
-    screen.stretch_blit(sg_icon_image, Rect(0, 0, SG_ICON_SIZE, SG_ICON_SIZE), Rect(SCREEN_MID_WIDTH - SG_ICON_SIZE, SCREEN_MID_HEIGHT - SG_ICON_SIZE, SG_ICON_SIZE * 2, SG_ICON_SIZE * 2));
+    screen.stretch_blit(screen.sprites, Rect((SG_ICON_INDEX % 16) * SPRITE_SIZE, (SG_ICON_INDEX / 16) * SPRITE_SIZE, SG_ICON_SIZE, SG_ICON_SIZE), Rect(SCREEN_MID_WIDTH - SG_ICON_SIZE, SCREEN_MID_HEIGHT - SG_ICON_SIZE, SG_ICON_SIZE * 2, SG_ICON_SIZE * 2));
 }
 
 void render_input_select() {
