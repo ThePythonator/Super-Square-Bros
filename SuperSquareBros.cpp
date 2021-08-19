@@ -1765,40 +1765,49 @@ public:
             y += yVel * dt;
 
             // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
                     if (yVel > 0) {
                         // Collided from top
-                        y = foreground[i].y - SPRITE_SIZE;
+                        y = tile.y - SPRITE_SIZE;
                     }
                     else if (yVel < 0) {
                         // Collided from bottom
-                        y = foreground[i].y + SPRITE_SIZE;
+                        y = tile.y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                    break;
                 }
             }
 
             // Platforms may need work
-            for (uint16_t i = 0; i < platforms.size(); i++) {
-                handle_platform_collisions(platforms[i]);
+            if(yVel != 0.0f) {
+                for (Tile& platform : platforms) {
+                    if(handle_platform_collisions(platform)) {
+                        break;
+                    }
+                }
             }
+
+            if(xVel == 0.0f)
+                return;
 
             // Move entity x
             x += xVel * dt;
 
             // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
                     if (xVel > 0) {
                         // Collided from left
-                        x = foreground[i].x - SPRITE_SIZE + 1;
+                        x = tile.x - SPRITE_SIZE + 1;
                     }
                     else if (xVel < 0) {
                         // Collided from right
-                        x = foreground[i].x + SPRITE_SIZE - 1;
+                        x = tile.x + SPRITE_SIZE - 1;
                     }
                     xVel = 0;
+                    break;
                 }
             }
 
@@ -1849,14 +1858,17 @@ public:
         return false;
     }
 
-    void handle_platform_collisions(Tile platform) {
+    bool handle_platform_collisions(Tile platform) {
         if (colliding(platform)) {
             if (yVel > 0 && y + SPRITE_SIZE < platform.y + SPRITE_QUARTER) {
                 // Collided from top
                 y = platform.y - SPRITE_SIZE;
                 yVel = 0;
+                return true;
             }
         }
+
+        return false;
     }
     
     void render(Camera camera) {
@@ -1906,7 +1918,17 @@ public:
 
     bool colliding(Tile tile) {
         // Replace use of this with actual code?
-        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+        //return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+
+        // 24.8 fixed-point
+        const int scale = 256;
+        int ix = int(x * scale);
+        int iy = int(y * scale);
+
+        return ((tile.x + SPRITE_SIZE) * scale > ix + scale
+            && tile.x * scale < ix + (SPRITE_SIZE - 1) * scale
+            && (tile.y + SPRITE_SIZE) * scale > iy
+            && tile.y * scale < iy + SPRITE_SIZE * scale);
     }
 
     void set_immune() {
@@ -3431,7 +3453,7 @@ public:
             uint8_t coinCount = coins.size();
 
             // Remove coins if player jumps on them
-            coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
+            coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin &coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
 
             // Add points to player score (1 point per coin which has been deleted)
             score += coinCount - coins.size();
@@ -3447,8 +3469,8 @@ public:
             uint8_t enemyCount = enemies.size();// + bosses.size();
 
             // Remove enemies if no health left
-            enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
-            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
+            enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy &enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
+            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss &boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
 
             enemiesKilled += enemyCount - enemies.size();// - bosses.size();
 
@@ -3645,6 +3667,7 @@ public:
                         y = tile.y + SPRITE_SIZE;
                     }
                     yVel = 0;
+                    break;
                 }
             }
 
@@ -3683,34 +3706,38 @@ public:
             }
 
             // Move entity x
-            x += xVel * dt;
+            if(xVel != 0.0f) {
+                x += xVel * dt;
 
-            // Here check collisions...
-            for (Tile& tile : foreground) {
-                if (colliding(tile)) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = tile.x - SPRITE_SIZE + 1;
+                // Here check collisions...
+                for (Tile& tile : foreground) {
+                    if (colliding(tile)) {
+                        if (xVel > 0) {
+                            // Collided from left
+                            x = tile.x - SPRITE_SIZE + 1;
+                        }
+                        else if (xVel < 0) {
+                            // Collided from right
+                            x = tile.x + SPRITE_SIZE - 1;
+                        }
+                        xVel = 0;
+                        break;
                     }
-                    else if (xVel < 0) {
-                        // Collided from right
-                        x = tile.x + SPRITE_SIZE - 1;
-                    }
-                    xVel = 0;
                 }
-            }
 
-            for (LevelTrigger& levelTrigger : levelTriggers) {
-                if (levelTrigger.visible && colliding(levelTrigger)) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = levelTrigger.x - SPRITE_SIZE;
+                for (LevelTrigger& levelTrigger : levelTriggers) {
+                    if (levelTrigger.visible && colliding(levelTrigger)) {
+                        if (xVel > 0) {
+                            // Collided from left
+                            x = levelTrigger.x - SPRITE_SIZE;
+                        }
+                        else if (xVel < 0) {
+                            // Collided from right
+                            x = levelTrigger.x + SPRITE_SIZE;
+                        }
+                        xVel = 0;
+                        break;
                     }
-                    else if (xVel < 0) {
-                        // Collided from right
-                        x = levelTrigger.x + SPRITE_SIZE;
-                    }
-                    xVel = 0;
                 }
             }
 
@@ -3817,10 +3844,7 @@ public:
         }
     }
 
-    bool colliding(Tile tile) {
-        // Replace use of this with actual code?
-        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
-    }
+    using Entity::colliding;
 
     bool colliding(Enemy enemy) {
         // Replace use of this with actual code?
