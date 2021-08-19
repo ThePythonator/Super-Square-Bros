@@ -601,11 +601,12 @@ bool repelPlayer = false;
 bool bossBattle = false;
 
 float thankyouValue = 0.0f;
-#define PICO_BUILD
+
 #ifdef PICO_BUILD
 const uint8_t MAX_HACKY_FAST_MODE = 4;
-uint8_t hackyFastMode = 0;
 #endif // PICO_BUILD
+
+uint8_t hackyFastMode = 0;
 
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
@@ -1033,7 +1034,7 @@ public:
         age = 0;
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         screen.pen = Pen(colour.r, colour.g, colour.b, colour.a);
         screen.pixel(Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
     }
@@ -1077,7 +1078,7 @@ public:
         id = tileID;
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
     }
 
@@ -1174,7 +1175,7 @@ public:
         width = rectWidth;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         if (gravity) {
             // Update gravity
             yVel += PROJECTILE_GRAVITY * dt;
@@ -1188,7 +1189,7 @@ public:
         x += xVel * dt;
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
         //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x - SPRITE_QUARTER, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_QUARTER));
         //screen.rectangle(Rect(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y, 4, 4));
@@ -1218,9 +1219,9 @@ public:
         y = yPosition;
     }
 
-    virtual void update(float dt, ButtonStates buttonStates) = 0;
+    virtual void update(float dt, ButtonStates& buttonStates) = 0;
 
-    virtual void render(Camera camera) = 0; 
+    virtual void render(Camera& camera) = 0; 
 
 protected:
 };
@@ -1235,11 +1236,11 @@ public:
         id = tileID;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
 
     }
 
-    void render(Camera camera)
+    void render(Camera& camera)
     {
         //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
         render_sprite(id, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
@@ -1271,11 +1272,11 @@ public:
         layer = parallaxLayer;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         
     }
 
-    void render(Camera camera)
+    void render(Camera& camera)
     {
         //screen.sprite(id, Point(SCREEN_MID_WIDTH + x - (camera.x * parallaxFactorLayersX[layer]), SCREEN_MID_HEIGHT + y - (camera.y * parallaxFactorLayersY[layer])));
         // Not shifting sprite to center seems to give better coverage of parallax
@@ -1302,9 +1303,9 @@ public:
         collected = false;
     }
 
-    virtual void update(float dt, ButtonStates buttonStates) = 0;
+    virtual void update(float dt, ButtonStates& buttonStates) = 0;
 
-    virtual void render(Camera camera) = 0;
+    virtual void render(Camera& camera) = 0;
 
 protected:
 
@@ -1324,7 +1325,7 @@ public:
         frames = animationFrames;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         animationTimer += dt;
 
         if (animationTimer >= FRAME_LENGTH) {
@@ -1334,7 +1335,7 @@ public:
         }
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         if (!collected) {
             //screen.sprite(frames[currentFrame], Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
             render_sprite(frames[currentFrame], Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y));
@@ -1357,11 +1358,11 @@ public:
 
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         AnimatedPickup::update(dt, buttonStates);
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         AnimatedPickup::render(camera);
     }
 
@@ -1383,7 +1384,7 @@ public:
         particleTimer = 0.0f;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         AnimatedPickup::update(dt, buttonStates);
 
         /*particleTimer += dt;
@@ -1392,20 +1393,20 @@ public:
             particles.push_back(generate_brownian_particle(x + SPRITE_HALF, y + SPRITE_SIZE, 0, -0.5f, 50.0f, finishParticleColours, 1));
         }*/
 
-        for (uint8_t i = 0; i < particles.size(); i++) {
-            particles[i].update(dt);
+        for (Particle& particle : particles) {
+            particle.update(dt);
         }
 
         // Remove any particles which are too old
-        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= PLAYER_SLOW_PARTICLE_AGE); }), particles.end());
+        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= PLAYER_SLOW_PARTICLE_AGE); }), particles.end());
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         AnimatedPickup::render(camera);
 
         // Particles
-        for (uint8_t i = 0; i < particles.size(); i++) {
-            particles[i].render(camera);
+        for (Particle& particle : particles) {
+            particle.render(camera);
         }
     }
 };
@@ -1438,7 +1439,7 @@ public:
         closedTimer = 0;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         if (state == TransitionState::CLOSING || state == TransitionState::OPENING) {
             animationTimer += dt;
 
@@ -1467,7 +1468,7 @@ public:
         }
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         if (state == TransitionState::CLOSING) {
             //screen.sprite(closingFrames[currentFrame], Point(x, y));
             render_sprite(closingFrames[currentFrame], Point(x, y));
@@ -1566,17 +1567,17 @@ public:
                 generateParticles = false;
             }
             else {
-                for (uint8_t i = 0; i < particles.size(); i++) {
-                    particles[i].update(dt);
+                for (Particle& particle : particles) {
+                    particle.update(dt);
                 }
 
                 // Remove any particles which are too old
-                particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+                particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
             }
         }
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         if (x && y) {
             // Only render if not in default position
 
@@ -1584,8 +1585,8 @@ public:
             render_sprite(TILE_ID_CHECKPOINT - 16 + (colour * CHECKPOINT_FRAMES) + currentFrame, Point(SCREEN_MID_WIDTH + x - camera.x, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_SIZE));
 
             // Particles
-            for (uint8_t i = 0; i < particles.size(); i++) {
-                particles[i].render(camera);
+            for (Particle& particle : particles) {
+                particle.render(camera);
             }
         }
     }
@@ -1642,7 +1643,7 @@ public:
         textY = textVelY = 0;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         textVelY += TEXT_GRAVITY * dt;
         if (textY > SPRITE_SIZE) {
             textY = SPRITE_SIZE;
@@ -1658,12 +1659,12 @@ public:
                     generateParticles = false;
                 }
                 else {
-                    for (uint8_t i = 0; i < particles.size(); i++) {
-                        particles[i].update(dt);
+                    for (Particle& particle : particles) {
+                        particle.update(dt);
                     }
 
                     // Remove any particles which are too old
-                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
                 }
             }
             else {
@@ -1675,7 +1676,7 @@ public:
         }
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         if (visible) {
             screen.pen = Pen(levelTriggerParticleColours[1].r, levelTriggerParticleColours[1].g, levelTriggerParticleColours[1].b, levelTriggerParticleColours[1].a);
             screen.text(std::to_string(levelNumber + 1), minimal_font, Point(SCREEN_MID_WIDTH + x - camera.x + SPRITE_HALF, SCREEN_MID_HEIGHT + y - camera.y - SPRITE_HALF * 3 + textY), true, TextAlign::center_center);
@@ -1684,8 +1685,8 @@ public:
         }
 
         // Particles
-        for (uint8_t i = 0; i < particles.size(); i++) {
-            particles[i].render(camera);
+        for (Particle& particle : particles) {
+            particle.render(camera);
         }
     }
 
@@ -1751,7 +1752,7 @@ public:
         jumpCooldown = 0;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
 
     }
 
@@ -1761,61 +1762,60 @@ public:
             yVel += GRAVITY * dt;
             yVel = std::min(yVel, (float)GRAVITY_MAX);
 
-            // Move entity y
-            y += yVel * dt;
+            if (yVel != 0.0f) {
+                // Move entity y
+                y += yVel * dt;
 
-            // Here check collisions...
-            for (Tile& tile : foreground) {
-                if (colliding(tile)) {
-                    if (yVel > 0) {
-                        // Collided from top
-                        y = tile.y - SPRITE_SIZE;
+                // Here check collisions...
+                for (Tile& tile : foreground) {
+                    if (colliding(tile)) {
+                        if (yVel > 0) {
+                            // Collided from top
+                            y = tile.y - SPRITE_SIZE;
+                        }
+                        else if (yVel < 0) {
+                            // Collided from bottom
+                            y = tile.y + SPRITE_SIZE;
+                        }
+                        yVel = 0;
+                        break;
                     }
-                    else if (yVel < 0) {
-                        // Collided from bottom
-                        y = tile.y + SPRITE_SIZE;
-                    }
-                    yVel = 0;
-                    break;
                 }
-            }
 
-            // Platforms may need work
-            if(yVel != 0.0f) {
+                // Platforms may need work
                 for (Tile& platform : platforms) {
-                    if(handle_platform_collisions(platform)) {
+                    if (handle_platform_collisions(platform)) {
                         break;
                     }
                 }
             }
 
-            if(xVel == 0.0f)
-                return;
+            if (xVel != 0.0f) {
+                // Move entity x
+                x += xVel * dt;
 
-            // Move entity x
-            x += xVel * dt;
-
-            // Here check collisions...
-            for (Tile& tile : foreground) {
-                if (colliding(tile)) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = tile.x - SPRITE_SIZE + 1;
+                // Here check collisions...
+                for (Tile& tile : foreground) {
+                    if (colliding(tile)) {
+                        if (xVel > 0) {
+                            // Collided from left
+                            x = tile.x - SPRITE_SIZE + 1;
+                        }
+                        else if (xVel < 0) {
+                            // Collided from right
+                            x = tile.x + SPRITE_SIZE - 1;
+                        }
+                        xVel = 0;
+                        break;
                     }
-                    else if (xVel < 0) {
-                        // Collided from right
-                        x = tile.x + SPRITE_SIZE - 1;
-                    }
-                    xVel = 0;
-                    break;
                 }
-            }
 
-            if (xVel > 0) {
-                lastDirection = 1;
-            }
-            else if (xVel < 0) {
-                lastDirection = 0;
+                if (xVel > 0) {
+                    lastDirection = 1;
+                }
+                else if (xVel < 0) {
+                    lastDirection = 0;
+                }
             }
         }
     }
@@ -1828,26 +1828,26 @@ public:
 
     bool is_on_block() {
         // Is entity on a tile?
-        for (uint16_t i = 0; i < foreground.size(); i++) {
-            if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE) {
+        for (Tile& tile : foreground) {
+            if (y + SPRITE_SIZE == tile.y && tile.x + SPRITE_SIZE - 1 > x && tile.x + 1 < x + SPRITE_SIZE) {
                 // On top of block
                 return true;
             }
         }
 
         // Is entity on a platform?
-        for (uint16_t i = 0; i < platforms.size(); i++) {
-            if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE) {
+        for (Tile& platform : platforms) {
+            if (y + SPRITE_SIZE == platform.y && platform.x + SPRITE_SIZE - 1 > x && platform.x + 1 < x + SPRITE_SIZE) {
                 // On top of block
                 return true;
             }
         }
 
         // Is entity on a locked LevelTrigger?
-        for (uint16_t i = 0; i < levelTriggers.size(); i++) {
-            if (y + SPRITE_SIZE == levelTriggers[i].y && levelTriggers[i].x + SPRITE_SIZE - 1 > x && levelTriggers[i].x + 1 < x + SPRITE_SIZE) {
+        for (LevelTrigger& levelTrigger : levelTriggers) {
+            if (y + SPRITE_SIZE == levelTrigger.y && levelTrigger.x + SPRITE_SIZE - 1 > x && levelTrigger.x + 1 < x + SPRITE_SIZE) {
                 // On top of block
-                if (allPlayerSaveData[playerSelected].levelReached < levelTriggers[i].levelNumber) {
+                if (allPlayerSaveData[playerSelected].levelReached < levelTrigger.levelNumber) {
                     // LevelTrigger is locked
                     return true;
                 }
@@ -1858,7 +1858,7 @@ public:
         return false;
     }
 
-    bool handle_platform_collisions(Tile platform) {
+    bool handle_platform_collisions(Tile& platform) {
         if (colliding(platform)) {
             if (yVel > 0 && y + SPRITE_SIZE < platform.y + SPRITE_QUARTER) {
                 // Collided from top
@@ -1871,7 +1871,7 @@ public:
         return false;
     }
     
-    void render(Camera camera) {
+    void render(Camera& camera) {
         if (health != 0) {
             bool visible = false;
 
@@ -1911,24 +1911,26 @@ public:
         }
 
         // Particles
-        for (uint8_t i = 0; i < particles.size(); i++) {
-            particles[i].render(camera);
+        for (Particle& particle : particles) {
+            particle.render(camera);
         }
     }
 
-    bool colliding(Tile tile) {
-        // Replace use of this with actual code?
-        //return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+    bool colliding(Tile& tile) {
+        if (hackyFastMode >= 1) {
+            // 24.8 fixed-point, thanks to Daft Freak
+            const int scale = 256;
+            int ix = int(x * scale);
+            int iy = int(y * scale);
 
-        // 24.8 fixed-point
-        const int scale = 256;
-        int ix = int(x * scale);
-        int iy = int(y * scale);
-
-        return ((tile.x + SPRITE_SIZE) * scale > ix + scale
-            && tile.x * scale < ix + (SPRITE_SIZE - 1) * scale
-            && (tile.y + SPRITE_SIZE) * scale > iy
-            && tile.y * scale < iy + SPRITE_SIZE * scale);
+            return ((tile.x + SPRITE_SIZE) * scale > ix + scale
+                && tile.x * scale < ix + (SPRITE_SIZE - 1) * scale
+                && (tile.y + SPRITE_SIZE) * scale > iy
+                && tile.y * scale < iy + SPRITE_SIZE * scale);
+        }
+        else {
+            return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+        }
     }
 
     void set_immune() {
@@ -1987,7 +1989,7 @@ public:
         }
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         if (health > 0) {
             if (reloadTimer) {
                 reloadTimer -= dt;
@@ -2026,19 +2028,19 @@ public:
 
                 float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
 
-                for (uint16_t i = 0; i < platforms.size(); i++) {
-                    if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE > tempX + 1 && platforms[i].x < tempX + SPRITE_SIZE - 1) {
+                for (Tile& platform : platforms) {
+                    if (y + SPRITE_SIZE == platform.y && platform.x + SPRITE_SIZE > tempX + 1 && platform.x < tempX + SPRITE_SIZE - 1) {
                         // About to be on block
                         reverseDirection = false;
                     }
                 }
 
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
+                for (Tile& tile : foreground) {
+                    if (y + SPRITE_SIZE == tile.y && tile.x + SPRITE_SIZE > tempX + 1 && tile.x < tempX + SPRITE_SIZE - 1) {
                         // About to be on block
                         reverseDirection = false;
                     }
-                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                    if (tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == tile.x) {
                         // Walked into side of block
                         reverseDirection = true;
                         // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
@@ -2112,19 +2114,19 @@ public:
 
                     float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
 
-                    for (uint16_t i = 0; i < platforms.size(); i++) {
-                        if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE > tempX + 1 && platforms[i].x < tempX + SPRITE_SIZE - 1) {
+                    for (Tile& platform : platforms) {
+                        if (y + SPRITE_SIZE == platform.y && platform.x + SPRITE_SIZE > tempX + 1 && platform.x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
                             reverseDirection = false;
                         }
                     }
 
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
+                    for (Tile& tile : foreground) {
+                        if (y + SPRITE_SIZE == tile.y && tile.x + SPRITE_SIZE > tempX + 1 && tile.x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
                             reverseDirection = false;
                         }
-                        if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                        if (tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == tile.x) {
                             // Walked into side of block
                             reverseDirection = true;
                             // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
@@ -2146,27 +2148,32 @@ public:
 
                     float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
 
-                    for (uint16_t i = 0; i < platforms.size(); i++) {
-                        if (y + SPRITE_SIZE == platforms[i].y && platforms[i].x + SPRITE_SIZE > tempX + 1 && platforms[i].x < tempX + SPRITE_SIZE - 1) {
+                    for (Tile& platform : platforms) {
+                        if (y + SPRITE_SIZE == platform.y && platform.x + SPRITE_SIZE > tempX + 1 && platform.x < tempX + SPRITE_SIZE - 1) {
                             // About to be on block
                             shouldJump = false;
                             break;
                         }
                     }
 
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE - 1) {
-                            // About to be on block
-                            shouldJump = false;
-                            break;
+                    if (shouldJump) {
+                        for (Tile& tile : foreground) {
+                            if (y + SPRITE_SIZE == tile.y && tile.x + SPRITE_SIZE > tempX + 1 && tile.x < tempX + SPRITE_SIZE - 1) {
+                                // About to be on block
+                                shouldJump = false;
+                                break;
+                            }
                         }
                     }
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if ((lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                            // Walked into side of block
-                            shouldJump = true;
-                            // Break because we definitely need to jump
-                            break;
+
+                    if (!shouldJump) {
+                        for (Tile& tile : foreground) {
+                            if ((lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == tile.x) {
+                                // Walked into side of block
+                                shouldJump = true;
+                                // Break because we definitely need to jump
+                                break;
+                            }
                         }
                     }
 
@@ -2198,8 +2205,8 @@ public:
 
                 bool reverseDirection = false;
                 float tempX = lastDirection ? x + SPRITE_SIZE : x - SPRITE_SIZE;
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                for (Tile& tile : foreground) {
+                    if (tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE && (lastDirection ? x + SPRITE_SIZE - 1 : x - SPRITE_SIZE + 1) == tile.x) {
                         // Walked into side of block
                         reverseDirection = true;
                         // Break because we definitely need to change direction, and don't want any other blocks resetting this to false
@@ -2274,12 +2281,12 @@ public:
                     //deathParticles = false;
                 }
                 else {
-                    for (uint8_t i = 0; i < particles.size(); i++) {
-                        particles[i].update(dt);
+                    for (Particle& particle : particles) {
+                        particle.update(dt);
                     }
 
                     // Remove any particles which are too old
-                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
                 }
             }
             else {
@@ -2292,7 +2299,7 @@ public:
         }
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         Entity::render(camera);
     }
 
@@ -2377,7 +2384,7 @@ public:
         shakeOnLanding = 0;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         if (jumpCooldown) {
             jumpCooldown -= dt;
             if (jumpCooldown < 0) {
@@ -2441,19 +2448,22 @@ public:
                     bool shouldJump = true;
 
                     float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                    for (Tile& tile : foreground) {
+                        if (y + SPRITE_SIZE * 2 == tile.y && tile.x + SPRITE_SIZE > tempX + 1 && tile.x < tempX + SPRITE_SIZE * 2 - 1) {
                             // About to be on block
                             shouldJump = false;
                             break;
                         }
                     }
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                            // Walked into side of block
-                            shouldJump = true;
-                            // Break because we definitely need to jump
-                            break;
+
+                    if (!shouldJump) {
+                        for (Tile& tile : foreground) {
+                            if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == tile.x) {
+                                // Walked into side of block
+                                shouldJump = true;
+                                // Break because we definitely need to jump
+                                break;
+                            }
                         }
                     }
 
@@ -2485,8 +2495,8 @@ public:
                 // PURSUE
 
                 // Only go fast once on ground
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+                for (Tile& tile : foreground) {
+                    if (y + SPRITE_SIZE * 2 == tile.y && tile.x + SPRITE_SIZE - 1 > x && tile.x + 1 < x + SPRITE_SIZE * 2) {
                         // On block
                         currentSpeed = BOSS_1_PURSUIT_SPEED;
                     }
@@ -2497,19 +2507,22 @@ public:
                 bool shouldJump = true;
 
                 float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 2 - 1) {
+                for (Tile& tile : foreground) {
+                    if (y + SPRITE_SIZE * 2 == tile.y && tile.x + SPRITE_SIZE > tempX + 1 && tile.x < tempX + SPRITE_SIZE * 2 - 1) {
                         // About to be on block
                         shouldJump = false;
                         break;
                     }
                 }
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
-                        // Walked into side of block
-                        shouldJump = true;
-                        // Break because we definitely need to jump
-                        break;
+
+                if (!shouldJump) {
+                    for (Tile& tile : foreground) {
+                        if ((lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == tile.x) {
+                            // Walked into side of block
+                            shouldJump = true;
+                            // Break because we definitely need to jump
+                            break;
+                        }
                     }
                 }
 
@@ -2544,8 +2557,8 @@ public:
                 lastDirection = *playerX + SPRITE_HALF < x + SPRITE_SIZE ? 1 : 0;
 
                 bool hitWall = false;
-                for (uint16_t i = 0; i < foreground.size(); i++) {
-                    if (foreground[i].y + SPRITE_SIZE > y && foreground[i].y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == foreground[i].x) {
+                for (Tile& tile : foreground) {
+                    if (tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE * 2 && (lastDirection ? x + SPRITE_SIZE * 2 - 1 : x - SPRITE_SIZE + 1) == tile.x) {
                         // Walked into side of block
                         hitWall = true;
                         // Break because we definitely have hit wall
@@ -2627,12 +2640,12 @@ public:
                         slowPlayer = false;
                     }
                     else {
-                        for (uint8_t i = 0; i < particles.size(); i++) {
-                            particles[i].update(dt);
+                        for (Particle& particle : particles) {
+                            particle.update(dt);
                         }
 
                         // Remove any particles which are too old
-                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
+                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
                     }
                 }
             }
@@ -2785,12 +2798,12 @@ public:
                         slowPlayer = false;
                     }
                     else {
-                        for (uint8_t i = 0; i < particles.size(); i++) {
-                            particles[i].update(dt);
+                        for (Particle& particle : particles) {
+                            particle.update(dt);
                         }
 
                         // Remove any particles which are too old
-                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
+                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
                     }
                 }
             }
@@ -2885,8 +2898,8 @@ public:
                     bool shouldStop = true;
 
                     float tempX = lastDirection ? x + SPRITE_SIZE * 2 : x - SPRITE_SIZE * 2;
-                    for (uint16_t i = 0; i < foreground.size(); i++) {
-                        if (y + SPRITE_SIZE * 4 == foreground[i].y && foreground[i].x + SPRITE_SIZE > tempX + 1 && foreground[i].x < tempX + SPRITE_SIZE * 4 - 1) {
+                    for (Tile& tile : foreground) {
+                        if (y + SPRITE_SIZE * 4 == tile.y && tile.x + SPRITE_SIZE > tempX + 1 && tile.x < tempX + SPRITE_SIZE * 4 - 1) {
                             // About to be on block
                             shouldStop = false;
                             break;
@@ -2997,12 +3010,12 @@ public:
                         slowPlayer = false;
                     }
                     else {
-                        for (uint8_t i = 0; i < particles.size(); i++) {
-                            particles[i].update(dt);
+                        for (Particle& particle : particles) {
+                            particle.update(dt);
                         }
 
                         // Remove any particles which are too old
-                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
+                        particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= BOSS_DEATH_PARTICLE_AGE); }), particles.end());
                     }
                 }
             }
@@ -3017,16 +3030,16 @@ public:
     bool is_on_block() {
         if (is_big()) {
             // Allow boss to jump on tiles
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (y + SPRITE_SIZE * 4 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 4) {
+            for (Tile& tile : foreground) {
+                if (y + SPRITE_SIZE * 4 == tile.y && tile.x + SPRITE_SIZE - 1 > x && tile.x + 1 < x + SPRITE_SIZE * 4) {
                     // On top of block
                     return true;
                 }
             }
 
             // Allow boss to jump on platforms
-            for (uint16_t i = 0; i < platforms.size(); i++) {
-                if (y + SPRITE_SIZE * 4 == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE * 4) {
+            for (Tile& platform : platforms) {
+                if (y + SPRITE_SIZE * 4 == platform.y && platform.x + SPRITE_SIZE - 1 > x && platform.x + 1 < x + SPRITE_SIZE * 4) {
                     // On top of block
                     return true;
                 }
@@ -3034,16 +3047,16 @@ public:
         }
         else {
             // Allow boss to jump on tiles
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (y + SPRITE_SIZE * 2 == foreground[i].y && foreground[i].x + SPRITE_SIZE - 1 > x && foreground[i].x + 1 < x + SPRITE_SIZE * 2) {
+            for (Tile& tile : foreground) {
+                if (y + SPRITE_SIZE * 2 == tile.y && tile.x + SPRITE_SIZE - 1 > x && tile.x + 1 < x + SPRITE_SIZE * 2) {
                     // On top of block
                     return true;
                 }
             }
 
             // Allow boss to jump on platforms
-            for (uint16_t i = 0; i < platforms.size(); i++) {
-                if (y + SPRITE_SIZE * 2 == platforms[i].y && platforms[i].x + SPRITE_SIZE - 1 > x && platforms[i].x + 1 < x + SPRITE_SIZE * 2) {
+            for (Tile& platform : platforms) {
+                if (y + SPRITE_SIZE * 2 == platform.y && platform.x + SPRITE_SIZE - 1 > x && platform.x + 1 < x + SPRITE_SIZE * 2) {
                     // On top of block
                     return true;
                 }
@@ -3124,75 +3137,79 @@ public:
             yVel += GRAVITY * dt;
             yVel = std::min(yVel, (float)GRAVITY_MAX);
 
-            // Move entity y
-            y += yVel * dt;
+            if (yVel != 0.0f) {
+                // Move entity y
+                y += yVel * dt;
 
-            // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
-                    if (yVel > 0) {
-                        // Collided from top
-                        y = foreground[i].y - SPRITE_SIZE * (is_big() ? 4 : 2);
-                        if (shakeOnLanding) {
-                            shaker.set_shake(shakeOnLanding);
-                            shakeOnLanding = 0;
-                            audioHandler.play(4);
-                        }
-                    }
-                    else if (yVel < 0) {
-                        // Collided from bottom
-                        y = foreground[i].y + SPRITE_SIZE;
-                    }
-                    yVel = 0;
-                }
-            }
-
-            // Platforms may need work
-            if (!is_big()) {
-                for (uint16_t i = 0; i < platforms.size(); i++) {
-                    if (colliding(platforms[i])) {
-                        if (yVel > 0 && y + SPRITE_SIZE * 2 < platforms[i].y + SPRITE_QUARTER) {
+                // Here check collisions...
+                for (Tile& tile : foreground) {
+                    if (colliding(tile)) {
+                        if (yVel > 0) {
                             // Collided from top
-                            y = platforms[i].y - SPRITE_SIZE * 2;
+                            y = tile.y - SPRITE_SIZE * (is_big() ? 4 : 2);
                             if (shakeOnLanding) {
                                 shaker.set_shake(shakeOnLanding);
                                 shakeOnLanding = 0;
                                 audioHandler.play(4);
                             }
-                            yVel = 0;
+                        }
+                        else if (yVel < 0) {
+                            // Collided from bottom
+                            y = tile.y + SPRITE_SIZE;
+                        }
+                        yVel = 0;
+                    }
+                }
+
+                // Platforms may need work
+                if (!is_big()) {
+                    for (Tile& platform : platforms) {
+                        if (colliding(platform)) {
+                            if (yVel > 0 && y + SPRITE_SIZE * 2 < platform.y + SPRITE_QUARTER) {
+                                // Collided from top
+                                y = platform.y - SPRITE_SIZE * 2;
+                                if (shakeOnLanding) {
+                                    shaker.set_shake(shakeOnLanding);
+                                    shakeOnLanding = 0;
+                                    audioHandler.play(4);
+                                }
+                                yVel = 0;
+                            }
                         }
                     }
                 }
             }
 
-            // Move entity x
-            x += xVel * dt;
+            if (xVel != 0.0f) {
+                // Move entity x
+                x += xVel * dt;
 
-            // Here check collisions...
-            for (uint16_t i = 0; i < foreground.size(); i++) {
-                if (colliding(foreground[i])) {
-                    if (xVel > 0) {
-                        // Collided from left
-                        x = foreground[i].x - SPRITE_SIZE * (is_big() ? 4 : 2) + 1;
+                // Here check collisions...
+                for (Tile& tile : foreground) {
+                    if (colliding(tile)) {
+                        if (xVel > 0) {
+                            // Collided from left
+                            x = tile.x - SPRITE_SIZE * (is_big() ? 4 : 2) + 1;
+                        }
+                        else if (xVel < 0) {
+                            // Collided from right
+                            x = tile.x + SPRITE_SIZE - 1;
+                        }
+                        xVel = 0;
                     }
-                    else if (xVel < 0) {
-                        // Collided from right
-                        x = foreground[i].x + SPRITE_SIZE - 1;
-                    }
-                    xVel = 0;
                 }
-            }
 
-            if (xVel > 0) {
-                lastDirection = 1;
-            }
-            else if (xVel < 0) {
-                lastDirection = 0;
+                if (xVel > 0) {
+                    lastDirection = 1;
+                }
+                else if (xVel < 0) {
+                    lastDirection = 0;
+                }
             }
         }
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         if (!dead) {
             if (is_big()) {
                 uint16_t frame = anchorFrame;
@@ -3259,12 +3276,12 @@ public:
         }
 
         // Particles
-        for (uint8_t i = 0; i < particles.size(); i++) {
-            particles[i].render(camera);
+        for (Particle& particle : particles) {
+            particle.render(camera);
         }
     }
 
-    bool colliding(Tile tile) {
+    bool colliding(Tile& tile) {
         if (is_big()) {
             return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE * 4 - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE * 4);
         }
@@ -3308,8 +3325,8 @@ protected:
 std::vector<Boss> bosses; // used for levels where there is a boss.
 
 void reset_bosses() {
-    for (uint8_t i = 0; i < bosses.size(); i++) {
-        bosses[i].reset();
+    for (Boss& boss : bosses) {
+        boss.reset();
     }
 }
 
@@ -3347,7 +3364,7 @@ public:
         airTime = 0.0f;
     }
 
-    void update(float dt, ButtonStates buttonStates) {
+    void update(float dt, ButtonStates& buttonStates) {
         if (immuneTimer) {
             immuneTimer -= dt;
             if (immuneTimer < 0) {
@@ -3453,7 +3470,7 @@ public:
             uint8_t coinCount = coins.size();
 
             // Remove coins if player jumps on them
-            coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin &coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
+            coins.erase(std::remove_if(coins.begin(), coins.end(), [this](Coin& coin) { return (coin.x + SPRITE_SIZE > x && coin.x < x + SPRITE_SIZE && coin.y + SPRITE_SIZE > y && coin.y < y + SPRITE_SIZE); }), coins.end());
 
             // Add points to player score (1 point per coin which has been deleted)
             score += coinCount - coins.size();
@@ -3469,8 +3486,8 @@ public:
             uint8_t enemyCount = enemies.size();// + bosses.size();
 
             // Remove enemies if no health left
-            enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy &enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
-            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss &boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
+            enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy& enemy) { return (enemy.health == 0 && enemy.particles.size() == 0); }), enemies.end());
+            bosses.erase(std::remove_if(bosses.begin(), bosses.end(), [](Boss& boss) { return (boss.is_dead() && !boss.particles_left()); }), bosses.end());
 
             enemiesKilled += enemyCount - enemies.size();// - bosses.size();
 
@@ -3479,7 +3496,7 @@ public:
 
             if (!is_immune()) {
                 for (Tile& spike : spikes) {
-                    if (colliding(spike)) {
+                    if (Entity::colliding(spike)) {
                         if ((spike.get_id() == TILE_ID_SPIKE_BOTTOM && y + SPRITE_SIZE >= spike.y + SPRITE_HALF) ||
                             (spike.get_id() == TILE_ID_SPIKE_TOP && y <= spike.y + SPRITE_HALF) ||
                             (spike.get_id() == TILE_ID_SPIKE_LEFT && x <= spike.x + SPRITE_HALF) ||
@@ -3514,7 +3531,7 @@ public:
             slowParticle.update(dt);
         }
         // Remove any particles which are too old
-        slowParticles.erase(std::remove_if(slowParticles.begin(), slowParticles.end(), [](BrownianParticle particle) { return (particle.age >= PLAYER_SLOW_PARTICLE_AGE); }), slowParticles.end());
+        slowParticles.erase(std::remove_if(slowParticles.begin(), slowParticles.end(), [](BrownianParticle& particle) { return (particle.age >= PLAYER_SLOW_PARTICLE_AGE); }), slowParticles.end());
 
 
 
@@ -3567,7 +3584,7 @@ public:
                     }
 
                     // Remove any particles which are too old
-                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
+                    particles.erase(std::remove_if(particles.begin(), particles.end(), [](Particle& particle) { return (particle.age >= ENTITY_DEATH_PARTICLE_AGE); }), particles.end());
                 }
             }
             else if (lives) {
@@ -3589,117 +3606,119 @@ public:
             yVel += GRAVITY * dt;
             yVel = std::min(yVel, GRAVITY_MAX);
 
-            // Move entity y
-            y += yVel * dt;
+            if (yVel != 0.0f) {
+                // Move entity y
+                y += yVel * dt;
 
-            // Here check collisions...
+                // Here check collisions...
 
-            // Enemies first
-            for (Enemy& enemy : enemies) {
-                if (enemy.health && colliding(enemy)) {
-                    if (y + SPRITE_SIZE < enemy.y + SPRITE_QUARTER) {
-                        // Collided from top
-                        y = enemy.y - SPRITE_SIZE;
-
-                        if (yVel > 0 || enemy.yVel < 0) { // && !enemies[i].is_immune()
-                            //yVel = -PLAYER_ATTACK_JUMP;
-                            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
-
-                            // Take health off enemy
-                            enemy.health--;
-
-                            // Play enemy injured sfx
-                            if (enemy.health) {
-                                audioHandler.play(4);
-                            }
-
-                            if (enemy.yVel < 0) {
-                                // Enemy is jumping
-                                // Stop enemy's jump
-                                enemy.yVel = 0;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!dropPlayer) {
-                for (Boss& boss : bosses) {
-                    if (boss.is_dead() && colliding(boss)) {
-                        if (y + SPRITE_SIZE < boss.y + SPRITE_QUARTER) {
+                // Enemies first
+                for (Enemy& enemy : enemies) {
+                    if (enemy.health && colliding(enemy)) {
+                        if (y + SPRITE_SIZE < enemy.y + SPRITE_QUARTER) {
                             // Collided from top
-                            y = boss.y - SPRITE_SIZE;
+                            y = enemy.y - SPRITE_SIZE;
 
-                            if (yVel > 0 && !boss.is_immune() && boss.health) {
+                            if (yVel > 0 || enemy.yVel < 0) { // && !enemies[i].is_immune()
                                 //yVel = -PLAYER_ATTACK_JUMP;
                                 yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
                                 // Take health off enemy
-                                boss.health--;
+                                enemy.health--;
 
                                 // Play enemy injured sfx
-                                if (boss.health) {
+                                if (enemy.health) {
                                     audioHandler.play(4);
                                 }
 
-                                //if (boss.yVel < 0) {
+                                if (enemy.yVel < 0) {
                                     // Enemy is jumping
                                     // Stop enemy's jump
-                                    //bosses[i].yVel = 0;
-                                //}
-
-                                boss.set_injured();
+                                    enemy.yVel = 0;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            for (Tile& tile : foreground) {
-                if (colliding(tile)) {
-                    if (yVel > 0 && y + SPRITE_SIZE < tile.y + SPRITE_HALF) {
-                        // Collided from top
-                        y = tile.y - SPRITE_SIZE;
-                        dropPlayer = false; // stop player falling through platforms (only used in boss #2 currently)
-                    }
-                    else if (yVel < 0 && y + SPRITE_SIZE > tile.y + SPRITE_HALF) {
-                        // Collided from bottom
-                        y = tile.y + SPRITE_SIZE;
-                    }
-                    yVel = 0;
-                    break;
-                }
-            }
+                if (!dropPlayer) {
+                    for (Boss& boss : bosses) {
+                        if (!boss.is_dead() && colliding(boss)) {
+                            if (y + SPRITE_SIZE < boss.y + SPRITE_QUARTER) {
+                                // Collided from top
+                                y = boss.y - SPRITE_SIZE;
 
-            // Platforms may need work
-            if (!dropPlayer) {
-                for (Tile& platform : platforms) {
-                    handle_platform_collisions(platform);
-                }
-            }
+                                if (yVel > 0 && !boss.is_immune() && boss.health) {
+                                    //yVel = -PLAYER_ATTACK_JUMP;
+                                    yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
-            for (LevelTrigger& levelTrigger : levelTriggers) {
-                if (levelTrigger.visible && colliding(levelTrigger)) {
-                    if (yVel > 0 && y + SPRITE_SIZE < levelTrigger.y + SPRITE_HALF) {
-                        if (allPlayerSaveData[playerSelected].levelReached >= levelTrigger.levelNumber) {
-                            // Level is unlocked
+                                    // Take health off enemy
+                                    boss.health--;
 
-                            // Collided from top
-                            y = levelTrigger.y - SPRITE_SIZE;
-                            //yVel = -PLAYER_ATTACK_JUMP;
-                            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+                                    // Play enemy injured sfx
+                                    if (boss.health) {
+                                        audioHandler.play(4);
+                                    }
 
-                            levelTrigger.set_active();
+                                    //if (boss.yVel < 0) {
+                                        // Enemy is jumping
+                                        // Stop enemy's jump
+                                        //bosses[i].yVel = 0;
+                                    //}
 
-                            // Play sfx
-                            audioHandler.play(4);
+                                    boss.set_injured();
+                                }
+                            }
                         }
-                        else {
-                            // Level is locked, act as a solid object
+                    }
+                }
 
+                for (Tile& tile : foreground) {
+                    if (Entity::colliding(tile)) {
+                        if (yVel > 0 && y + SPRITE_SIZE < tile.y + SPRITE_HALF) {
                             // Collided from top
-                            y = levelTrigger.y - SPRITE_SIZE;
-                            yVel = 0;
+                            y = tile.y - SPRITE_SIZE;
+                            dropPlayer = false; // stop player falling through platforms (only used in boss #2 currently)
+                        }
+                        else if (yVel < 0 && y + SPRITE_SIZE > tile.y + SPRITE_HALF) {
+                            // Collided from bottom
+                            y = tile.y + SPRITE_SIZE;
+                        }
+                        yVel = 0;
+                        break;
+                    }
+                }
+
+                // Platforms may need work
+                if (!dropPlayer) {
+                    for (Tile& platform : platforms) {
+                        handle_platform_collisions(platform);
+                    }
+                }
+
+                for (LevelTrigger& levelTrigger : levelTriggers) {
+                    if (levelTrigger.visible && colliding(levelTrigger)) {
+                        if (yVel > 0 && y + SPRITE_SIZE < levelTrigger.y + SPRITE_HALF) {
+                            if (allPlayerSaveData[playerSelected].levelReached >= levelTrigger.levelNumber) {
+                                // Level is unlocked
+
+                                // Collided from top
+                                y = levelTrigger.y - SPRITE_SIZE;
+                                //yVel = -PLAYER_ATTACK_JUMP;
+                                yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+
+                                levelTrigger.set_active();
+
+                                // Play sfx
+                                audioHandler.play(4);
+                            }
+                            else {
+                                // Level is locked, act as a solid object
+
+                                // Collided from top
+                                y = levelTrigger.y - SPRITE_SIZE;
+                                yVel = 0;
+                            }
                         }
                     }
                 }
@@ -3711,7 +3730,7 @@ public:
 
                 // Here check collisions...
                 for (Tile& tile : foreground) {
-                    if (colliding(tile)) {
+                    if (Entity::colliding(tile)) {
                         if (xVel > 0) {
                             // Collided from left
                             x = tile.x - SPRITE_SIZE + 1;
@@ -3739,21 +3758,16 @@ public:
                         break;
                     }
                 }
-            }
 
-            //for (uint16_t i = 0; i < enemies.size(); i++) {
-            //    if (colliding(enemies[i]) && enemies[i].health) {
-            //        if (xVel > 0) {
-            //            // Collided from left
-            //            x = enemies[i].x - SPRITE_SIZE;
-            //        }
-            //        else {
-            //            // Collided from right
-            //            x = enemies[i].x + SPRITE_SIZE;
-            //        }
-            //        xVel = 0;
-            //    }
-            //}
+
+
+                if (xVel > 0) {
+                    lastDirection = 1;
+                }
+                else if (xVel < 0) {
+                    lastDirection = 0;
+                }
+            }
 
             if (!immuneTimer && !dropPlayer) {
                 for (Enemy& enemy : enemies) {
@@ -3777,13 +3791,6 @@ public:
                 }
             }
 
-            if (xVel > 0) {
-                lastDirection = 1;
-            }
-            else if (xVel < 0) {
-                lastDirection = 0;
-            }
-
             if (x < -SCREEN_MID_WIDTH) {
                 x = -SCREEN_MID_WIDTH;
             }
@@ -3793,7 +3800,7 @@ public:
         }
     }
 
-    void render(Camera camera) {
+    void render(Camera& camera) {
         // Particles
         for (BrownianParticle& slowParticle : slowParticles) {
             slowParticle.render(camera);
@@ -3844,14 +3851,14 @@ public:
         }
     }
 
-    using Entity::colliding;
+    //using Entity::colliding;
 
-    bool colliding(Enemy enemy) {
+    bool colliding(Enemy& enemy) {
         // Replace use of this with actual code?
         return (enemy.x + SPRITE_SIZE > x && enemy.x < x + SPRITE_SIZE && enemy.y + SPRITE_SIZE > y && enemy.y < y + SPRITE_SIZE);
     }
 
-    bool colliding(Boss boss) {
+    bool colliding(Boss& boss) {
         if (boss.is_big()) {
             return (boss.x + SPRITE_SIZE * 4 > x && boss.x < x + SPRITE_SIZE && boss.y + SPRITE_SIZE * 4 > y && boss.y < y + SPRITE_SIZE);
         }
@@ -3860,12 +3867,12 @@ public:
         }
     }
 
-    bool colliding(LevelTrigger levelTrigger) {
+    bool colliding(LevelTrigger& levelTrigger) {
         // Replace use of this with actual code?
         return (levelTrigger.x + SPRITE_SIZE > x && levelTrigger.x < x + SPRITE_SIZE && levelTrigger.y + SPRITE_SIZE > y && levelTrigger.y < y + SPRITE_SIZE);
     }
 
-    bool colliding(Checkpoint c) {
+    bool colliding(Checkpoint& c) {
         return (c.x + SPRITE_SIZE > x && c.x < x + SPRITE_SIZE && c.y + SPRITE_SIZE > y && c.y - SPRITE_SIZE < y + SPRITE_SIZE);
     }
 
@@ -3954,20 +3961,20 @@ void render_transition() {
     }
 }
 
-void update_transition(float dt, ButtonStates buttonStates) {
+void update_transition(float dt, ButtonStates& buttonStates) {
     for (uint16_t i = 0; i < SCREEN_TILE_SIZE; i++) {
         transition[i].update(dt, buttonStates);
     }
 }
 
 
-void render_tiles(std::vector<Tile> tiles) {
+void render_tiles(std::vector<Tile>& tiles) {
     for (Tile& tile : tiles) {
         tile.render(camera);
     }
 }
 
-void render_parallax(std::vector<ParallaxTile> parallax) {
+void render_parallax(std::vector<ParallaxTile>& parallax) {
     screen.alpha = 192;
     for (ParallaxTile& tile : parallax) {
         tile.render(camera);
@@ -4206,8 +4213,7 @@ void load_level(uint8_t levelNumber) {
             uint16_t x = i % levelWidth;
             uint16_t y = i / levelWidth;
 
-#ifdef PICO_BUILD
-            if (hackyFastMode >= 1) {
+            if (hackyFastMode >= 2) {
 
                 if (x > 0 && y > 0 && x < levelWidth - 1 && y < levelHeight - 1) {
                     bool all_solid = true;
@@ -4226,7 +4232,6 @@ void load_level(uint8_t levelNumber) {
                     }
                 }
             }
-#endif // PICO_BUILD
             
             foreground.push_back(Tile(x * SPRITE_SIZE, y * SPRITE_SIZE, tmx->data[i]));
         }
@@ -4399,7 +4404,7 @@ void load_level(uint8_t levelNumber) {
 
 
     // Check there aren't any levelTriggers which have levelNumber >= LEVEL_COUNT
-    levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger levelTrigger) { return levelTrigger.levelNumber >= LEVEL_COUNT; }), levelTriggers.end());
+    levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger& levelTrigger) { return levelTrigger.levelNumber >= LEVEL_COUNT; }), levelTriggers.end());
 
     // Prep snow particles (create some so that it isn't empty to start with)
     if (gameState == GameState::STATE_LEVEL_SELECT) {
@@ -4534,10 +4539,10 @@ void start_level_select() {
     if (currentLevelNumber != NO_LEVEL_SELECTED) {
         // Must have just attempted a level
         // Place player next to finished level, on right if just finished, on left if failed.
-        for (uint8_t i = 0; i < levelTriggers.size(); i++) {
-            if (levelTriggers[i].levelNumber == currentLevelNumber) {
-                playerStartX = wonLevel ? levelTriggers[i].x + SPRITE_HALF * 3 : levelTriggers[i].x - SPRITE_HALF * 3;
-                playerStartY = levelTriggers[i].y;
+        for (LevelTrigger& levelTrigger : levelTriggers) {
+            if (levelTrigger.levelNumber == currentLevelNumber) {
+                playerStartX = wonLevel ? levelTrigger.x + SPRITE_HALF * 3 : levelTrigger.x - SPRITE_HALF * 3;
+                playerStartY = levelTrigger.y;
                 player.x = playerStartX;
                 player.y = playerStartY;
                 camera.x = player.x;
@@ -4547,10 +4552,10 @@ void start_level_select() {
     }
     else {
         // Must have just come from title/menu screen
-        for (uint8_t i = 0; i < levelTriggers.size(); i++) {
-            if (levelTriggers[i].levelNumber == allPlayerSaveData[playerSelected].levelReached - 1) {
-                playerStartX = levelTriggers[i].x + SPRITE_HALF * 3;
-                playerStartY = levelTriggers[i].y;
+        for (LevelTrigger& levelTrigger : levelTriggers) {
+            if (levelTrigger.levelNumber == allPlayerSaveData[playerSelected].levelReached - 1) {
+                playerStartX = levelTrigger.x + SPRITE_HALF * 3;
+                playerStartY = levelTrigger.y;
                 player.x = playerStartX;
                 player.y = playerStartY;
                 camera.x = player.x;
@@ -4941,13 +4946,13 @@ void render_game_won() {
     }
 }
 
-void update_enemies(float dt, ButtonStates buttonStates) {
+void update_enemies(float dt, ButtonStates& buttonStates) {
     for (int i = 0; i < enemies.size(); i++) {
         enemies[i].update(dt, buttonStates);
     }
 }
 
-void update_bosses(float dt, ButtonStates buttonStates) {
+void update_bosses(float dt, ButtonStates& buttonStates) {
     for (int i = 0; i < bosses.size(); i++) {
         bosses[i].update(dt, buttonStates);
     }
@@ -4957,7 +4962,7 @@ void update_bosses(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_level_triggers(float dt, ButtonStates buttonStates) {
+void update_level_triggers(float dt, ButtonStates& buttonStates) {
     for (int i = 0; i < levelTriggers.size(); i++) {
         levelTriggers[i].update(dt, buttonStates);
         if (!levelTriggers[i].visible && levelTriggers[i].particles.size() == 0) {
@@ -4966,7 +4971,7 @@ void update_level_triggers(float dt, ButtonStates buttonStates) {
         }
     }
 
-    levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger levelTrigger) { return (!levelTrigger.visible && levelTrigger.particles.size() == 0); }), levelTriggers.end());
+    levelTriggers.erase(std::remove_if(levelTriggers.begin(), levelTriggers.end(), [](LevelTrigger& levelTrigger) { return (!levelTrigger.visible && levelTrigger.particles.size() == 0); }), levelTriggers.end());
 }
 
 void update_checkpoint(float dt) {
@@ -4992,7 +4997,7 @@ void update_projectiles(float dt) {
 
     if (!player.is_immune()) {
         uint8_t projectileCount = projectiles.size();
-        projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile projectile) { return projectile.is_colliding(player.x, player.y); }), projectiles.end());
+        projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile& projectile) { return projectile.is_colliding(player.x, player.y); }), projectiles.end());
         if (projectileCount - projectiles.size() > 0) {
             player.health -= 1;
             player.set_immune();
@@ -5000,13 +5005,13 @@ void update_projectiles(float dt) {
     }
     
 
-    projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile projectile) { return (std::abs(projectile.x - player.x) > SCREEN_TILE_SIZE || std::abs(projectile.y - player.y) > SCREEN_HEIGHT); }), projectiles.end());
+    projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](Projectile& projectile) { return (std::abs(projectile.x - player.x) > SCREEN_TILE_SIZE || std::abs(projectile.y - player.y) > SCREEN_HEIGHT); }), projectiles.end());
 
 }
 
 void update_particles(float dt) {
-    for (uint16_t i = 0; i < imageParticles.size(); i++) {
-        imageParticles[i].update(dt);
+    for (ImageParticle& imageParticle : imageParticles) {
+        imageParticle.update(dt);
     }
 
     if (gameState == GameState::STATE_LEVEL_SELECT) {
@@ -5040,7 +5045,7 @@ void update_particles(float dt) {
         }
     }
 
-    imageParticles.erase(std::remove_if(imageParticles.begin(), imageParticles.end(), [](ImageParticle particle) { return particle.y > levelDeathBoundary * 1.3f; }), imageParticles.end());
+    imageParticles.erase(std::remove_if(imageParticles.begin(), imageParticles.end(), [](ImageParticle& particle) { return particle.y > levelDeathBoundary * 1.3f; }), imageParticles.end());
 }
 
 void create_confetti(float dt) {
@@ -5063,7 +5068,7 @@ void update_thankyou(float dt) {
     thankyouValue += THANKYOU_SPEED * dt;
 }
 
-void update_sg_icon(float dt, ButtonStates buttonStates) {
+void update_sg_icon(float dt, ButtonStates& buttonStates) {
     if (splashColour.a == 255) {
         // Init game
         gameState = GameState::STATE_INPUT_SELECT;
@@ -5084,7 +5089,7 @@ void update_sg_icon(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_input_select(float dt, ButtonStates buttonStates) {
+void update_input_select(float dt, ButtonStates& buttonStates) {
     if (splashColour.a > 0) {
         if (splashColour.a >= FADE_STEP) {
             splashColour.a -= FADE_STEP;
@@ -5126,7 +5131,7 @@ void update_input_select(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_character_select(float dt, ButtonStates buttonStates) {
+void update_character_select(float dt, ButtonStates& buttonStates) {
     // Dummy states is used to make selected player continually jump (sending A key pressed).
     ButtonStates dummyStates = { 0 };
     dummyStates.A = 2;
@@ -5172,7 +5177,7 @@ void update_character_select(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_menu(float dt, ButtonStates buttonStates) {
+void update_menu(float dt, ButtonStates& buttonStates) {
     update_coins(dt);
     update_checkpoint(dt);
 
@@ -5224,7 +5229,7 @@ void update_menu(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_settings(float dt, ButtonStates buttonStates) {
+void update_settings(float dt, ButtonStates& buttonStates) {
     update_coins(dt);
     update_checkpoint(dt);
 
@@ -5306,7 +5311,7 @@ void update_settings(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_level_select(float dt, ButtonStates buttonStates) {
+void update_level_select(float dt, ButtonStates& buttonStates) {
     player.update(dt, buttonStates);
 
     update_enemies(dt, buttonStates);
@@ -5383,7 +5388,7 @@ void update_level_select(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_game(float dt, ButtonStates buttonStates) {
+void update_game(float dt, ButtonStates& buttonStates) {
     if (!gamePaused) {
         // Game isn't paused, update it.
 
@@ -5577,7 +5582,7 @@ void update_game(float dt, ButtonStates buttonStates) {
     }
 }
 
-void update_game_lost(float dt, ButtonStates buttonStates) {
+void update_game_lost(float dt, ButtonStates& buttonStates) {
     update_checkpoint(dt);
     update_coins(dt);
     finish.update(dt, buttonStates);
@@ -5603,7 +5608,7 @@ void update_game_lost(float dt, ButtonStates buttonStates) {
 }
 
 
-void update_game_won(float dt, ButtonStates buttonStates) {
+void update_game_won(float dt, ButtonStates& buttonStates) {
     update_checkpoint(dt);
     update_coins(dt);
     finish.update(dt, buttonStates);

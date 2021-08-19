@@ -2,9 +2,9 @@ hackyFastMode:
 
 0 - Nothing
 
-1 - Moves tiles surrounded on all sides to the background, reducing the number of tiles needing to be checked for collisions
+1 - Uses Daft Freak's fixed point collision code.
 
-2 -
+2 - Moves tiles surrounded on all sides to the background, reducing the number of tiles needing to be checked for collisions.
 
 3 -
 
