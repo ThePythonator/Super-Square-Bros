@@ -16,10 +16,12 @@ void init_game();
 #ifdef PICO_BUILD
 const uint16_t SCREEN_WIDTH = 120;
 const uint16_t SCREEN_HEIGHT = 120;
+
 #else
 const uint16_t SCREEN_WIDTH = 160;
 const uint16_t SCREEN_HEIGHT = 120;
 #endif // PICO_BUILD
+
 
 const uint8_t LEVEL_COUNT = 10;
 const uint8_t LEVEL_SELECT_NUMBER = LEVEL_COUNT + 2;
@@ -176,7 +178,7 @@ const float BOSS_1_MINION_SPEED = 25.0f;
 const float BOSS_1_MINION_SPEED_REDUCTION = 4.0f;
 const float BOSS_1_JUMP_TRIGGER_MAX_RANGE = SPRITE_SIZE * 8;
 const float BOSS_1_IGNORE_MIN_RANGE = SPRITE_SIZE * 9;
-const float BOSS_1_INJURED_MAX_RANGE = SPRITE_SIZE * 12;
+const float BOSS_1_INJURED_MAX_RANGE = SPRITE_SIZE * 12; //todo: is this right? reduce for pico - so doesn't go off screen
 const float BOSS_1_DEATH_MAX_RANGE = SPRITE_SIZE * 16;
 const float BOSS_1_RETURN_TO_SPAWN_RANGE = SPRITE_SIZE * 4;
 const float BOSS_1_JUMP_SHAKE_TIME = 0.3f;
@@ -259,6 +261,14 @@ const uint16_t BYTE_SIZE = 256;
 
 const uint16_t DEFAULT_VOLUME = 0x5000;
 
+
+#ifdef PICO_BUILD
+const uint16_t TEXT_BORDER = SPRITE_SIZE;
+
+#else
+const uint16_t TEXT_BORDER = SPRITE_SIZE * 2;
+#endif // PICO_BUILD
+
 // NOTE: all positions (x,y) mark TOP LEFT corner of sprites
 
 // NOTE: issue with rendering (tiles on left are a pixel out sometimes) is due to integers being added to floats. Something along lines of (int)floorf(camera.x) etc is recommended, but when I tried it I got strange results.
@@ -266,8 +276,16 @@ const uint16_t DEFAULT_VOLUME = 0x5000;
 
 #ifdef PICO_BUILD
 const uint8_t SETTINGS_COUNT = 3;
+
+const std::string COINS_COLLECTED = "Coins:";
+const std::string ENEMIES_KILLED = "Enemies:";
+const std::string TIME_TAKEN = "Time:";
 #else
 const uint8_t SETTINGS_COUNT = 2;
+
+const std::string COINS_COLLECTED = "Coins collected:";
+const std::string ENEMIES_KILLED = "Enemies killed:";
+const std::string TIME_TAKEN = "Time taken:";
 #endif // PICO_BUILD
 
 
@@ -606,7 +624,7 @@ float thankyouValue = 0.0f;
 const uint8_t MAX_HACKY_FAST_MODE = 4;
 #endif // PICO_BUILD
 
-uint8_t hackyFastMode = 0;
+//uint8_t hackyFastMode = 0;
 
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
@@ -676,6 +694,7 @@ struct GameSaveData {
     bool checkpoints;
     bool musicVolume;
     bool sfxVolume;
+    uint8_t hackyFastMode;
 } gameSaveData;
 
 struct PlayerSaveData {
@@ -791,6 +810,7 @@ void reset_save() {
     gameSaveData.checkpoints = false;
     gameSaveData.musicVolume = true;
     gameSaveData.sfxVolume = true;
+    gameSaveData.hackyFastMode = 0;
     save_game_data();
 
     allPlayerSaveData[0].levelReached = 0;
@@ -1762,26 +1782,27 @@ public:
             yVel += GRAVITY * dt;
             yVel = std::min(yVel, (float)GRAVITY_MAX);
 
-            if (yVel != 0.0f) {
-                // Move entity y
-                y += yVel * dt;
+            // Move entity y
+            y += yVel * dt;
 
-                // Here check collisions...
-                for (Tile& tile : foreground) {
-                    if (colliding(tile)) {
-                        if (yVel > 0) {
-                            // Collided from top
-                            y = tile.y - SPRITE_SIZE;
-                        }
-                        else if (yVel < 0) {
-                            // Collided from bottom
-                            y = tile.y + SPRITE_SIZE;
-                        }
-                        yVel = 0;
-                        break;
+            // Here check collisions...
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = tile.y - SPRITE_SIZE;
                     }
+                    else if (yVel < 0) {
+                        // Collided from bottom
+                        y = tile.y + SPRITE_SIZE;
+                    }
+                    yVel = 0;
+                    break;
                 }
+            }
 
+
+            if (yVel != 0.0f) {
                 // Platforms may need work
                 for (Tile& platform : platforms) {
                     if (handle_platform_collisions(platform)) {
@@ -1917,7 +1938,7 @@ public:
     }
 
     bool colliding(Tile& tile) {
-        if (hackyFastMode >= 1) {
+        if (gameSaveData.hackyFastMode >= 1) {
             // 24.8 fixed-point, thanks to Daft Freak
             const int scale = 256;
             int ix = int(x * scale);
@@ -3137,30 +3158,30 @@ public:
             yVel += GRAVITY * dt;
             yVel = std::min(yVel, (float)GRAVITY_MAX);
 
-            if (yVel != 0.0f) {
-                // Move entity y
-                y += yVel * dt;
+            // Move entity y
+            y += yVel * dt;
 
-                // Here check collisions...
-                for (Tile& tile : foreground) {
-                    if (colliding(tile)) {
-                        if (yVel > 0) {
-                            // Collided from top
-                            y = tile.y - SPRITE_SIZE * (is_big() ? 4 : 2);
-                            if (shakeOnLanding) {
-                                shaker.set_shake(shakeOnLanding);
-                                shakeOnLanding = 0;
-                                audioHandler.play(4);
-                            }
+            // Here check collisions...
+            for (Tile& tile : foreground) {
+                if (colliding(tile)) {
+                    if (yVel > 0) {
+                        // Collided from top
+                        y = tile.y - SPRITE_SIZE * (is_big() ? 4 : 2);
+                        if (shakeOnLanding) {
+                            shaker.set_shake(shakeOnLanding);
+                            shakeOnLanding = 0;
+                            audioHandler.play(4);
                         }
-                        else if (yVel < 0) {
-                            // Collided from bottom
-                            y = tile.y + SPRITE_SIZE;
-                        }
-                        yVel = 0;
                     }
+                    else if (yVel < 0) {
+                        // Collided from bottom
+                        y = tile.y + SPRITE_SIZE;
+                    }
+                    yVel = 0;
                 }
+            }
 
+            if (yVel != 0.0f) {
                 // Platforms may need work
                 if (!is_big()) {
                     for (Tile& platform : platforms) {
@@ -3606,41 +3627,41 @@ public:
             yVel += GRAVITY * dt;
             yVel = std::min(yVel, GRAVITY_MAX);
 
-            if (yVel != 0.0f) {
-                // Move entity y
-                y += yVel * dt;
+            // Move entity y
+            y += yVel * dt;
 
-                // Here check collisions...
+            // Here check collisions...
 
-                // Enemies first
-                for (Enemy& enemy : enemies) {
-                    if (enemy.health && colliding(enemy)) {
-                        if (y + SPRITE_SIZE < enemy.y + SPRITE_QUARTER) {
-                            // Collided from top
-                            y = enemy.y - SPRITE_SIZE;
+            // Enemies first
+            for (Enemy& enemy : enemies) {
+                if (enemy.health && colliding(enemy)) {
+                    if (y + SPRITE_SIZE < enemy.y + SPRITE_QUARTER) {
+                        // Collided from top
+                        y = enemy.y - SPRITE_SIZE;
 
-                            if (yVel > 0 || enemy.yVel < 0) { // && !enemies[i].is_immune()
-                                //yVel = -PLAYER_ATTACK_JUMP;
-                                yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
+                        if (yVel > 0.0f || enemy.yVel < 0) { // && !enemies[i].is_immune()
+                            //yVel = -PLAYER_ATTACK_JUMP;
+                            yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
-                                // Take health off enemy
-                                enemy.health--;
+                            // Take health off enemy
+                            enemy.health--;
 
-                                // Play enemy injured sfx
-                                if (enemy.health) {
-                                    audioHandler.play(4);
-                                }
+                            // Play enemy injured sfx
+                            if (enemy.health) {
+                                audioHandler.play(4);
+                            }
 
-                                if (enemy.yVel < 0) {
-                                    // Enemy is jumping
-                                    // Stop enemy's jump
-                                    enemy.yVel = 0;
-                                }
+                            if (enemy.yVel < 0) {
+                                // Enemy is jumping
+                                // Stop enemy's jump
+                                enemy.yVel = 0;
                             }
                         }
                     }
                 }
+            }
 
+            if (yVel > 0.0f) {
                 if (!dropPlayer) {
                     for (Boss& boss : bosses) {
                         if (!boss.is_dead() && colliding(boss)) {
@@ -3648,7 +3669,7 @@ public:
                                 // Collided from top
                                 y = boss.y - SPRITE_SIZE;
 
-                                if (yVel > 0 && !boss.is_immune() && boss.health) {
+                                if (!boss.is_immune() && boss.health) {
                                     //yVel = -PLAYER_ATTACK_JUMP;
                                     yVel = -std::max(yVel * PLAYER_ATTACK_JUMP_SCALE, PLAYER_ATTACK_JUMP_MIN);
 
@@ -3672,23 +3693,26 @@ public:
                         }
                     }
                 }
+            }
 
-                for (Tile& tile : foreground) {
-                    if (Entity::colliding(tile)) {
-                        if (yVel > 0 && y + SPRITE_SIZE < tile.y + SPRITE_HALF) {
-                            // Collided from top
-                            y = tile.y - SPRITE_SIZE;
-                            dropPlayer = false; // stop player falling through platforms (only used in boss #2 currently)
-                        }
-                        else if (yVel < 0 && y + SPRITE_SIZE > tile.y + SPRITE_HALF) {
-                            // Collided from bottom
-                            y = tile.y + SPRITE_SIZE;
-                        }
-                        yVel = 0;
-                        break;
+            for (Tile& tile : foreground) {
+                if (Entity::colliding(tile)) {
+                    if (yVel > 0 && y + SPRITE_SIZE < tile.y + SPRITE_HALF) {
+                        // Collided from top
+                        y = tile.y - SPRITE_SIZE;
+                        dropPlayer = false; // stop player falling through platforms (only used in boss #2 currently)
                     }
+                    else if (yVel < 0 && y + SPRITE_SIZE > tile.y + SPRITE_HALF) {
+                        // Collided from bottom
+                        y = tile.y + SPRITE_SIZE;
+                    }
+                    yVel = 0;
+                    break;
                 }
+            }
 
+
+            if (yVel != 0.0f) {
                 // Platforms may need work
                 if (!dropPlayer) {
                     for (Tile& platform : platforms) {
@@ -3905,19 +3929,19 @@ void background_rect(uint8_t position) {
 }
 
 void display_stats(bool showBadges) {
-    screen.text("Coins collected:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE * 2), true, TextAlign::center_left);
-    screen.text("Enemies defeated:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT), true, TextAlign::center_left);
-    screen.text("Time taken:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_left);
+    screen.text(COINS_COLLECTED, minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE * 2), true, TextAlign::center_left);
+    screen.text(ENEMIES_KILLED, minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT), true, TextAlign::center_left);
+    screen.text(TIME_TAKEN, minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_left);
 
 
-    screen.text(std::to_string(player.score), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE * 2), true, TextAlign::center_right);
-    screen.text(std::to_string(player.enemiesKilled), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT), true, TextAlign::center_right);
-    //screen.text(std::to_string((int)player.levelTimer), minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
+    screen.text(std::to_string(player.score), minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE * 2), true, TextAlign::center_right);
+    screen.text(std::to_string(player.enemiesKilled), minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_SIZE, SCREEN_MID_HEIGHT), true, TextAlign::center_right);
+    //screen.text(std::to_string((int)player.levelTimer), minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
 
     // Trim player.levelTimer to 2dp
     std::string levelTimerString = std::to_string(player.levelTimer);
     levelTimerString = levelTimerString.substr(0, levelTimerString.find('.') + 3);
-    screen.text(levelTimerString, minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
+    screen.text(levelTimerString, minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE * 2), true, TextAlign::center_right);
 
 
     uint8_t i, j, k;
@@ -3929,9 +3953,9 @@ void display_stats(bool showBadges) {
     render_sprite(TILE_ID_GOLD_BADGE + i, Point(SCREEN_MID_WIDTH - SPRITE_HALF, SPRITE_SIZE * 3));*/
 
 
-    render_sprite(TILE_ID_GOLD_BADGE + i, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF * 5));
-    render_sprite(TILE_ID_GOLD_BADGE + j + 12, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF));
-    render_sprite(TILE_ID_GOLD_BADGE + k + 16, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT + SPRITE_HALF * 3));
+    render_sprite(TILE_ID_GOLD_BADGE + i, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_HALF, SCREEN_MID_HEIGHT - SPRITE_HALF * 5));
+    render_sprite(TILE_ID_GOLD_BADGE + j + 12, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_HALF, SCREEN_MID_HEIGHT - SPRITE_HALF));
+    render_sprite(TILE_ID_GOLD_BADGE + k + 16, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_HALF, SCREEN_MID_HEIGHT + SPRITE_HALF * 3));
 
 
     /*render_sprite(TILE_ID_HUD_COINS, Point(SCREEN_WIDTH - SPRITE_HALF * 3, SCREEN_MID_HEIGHT - SPRITE_HALF * 5));
@@ -4213,7 +4237,7 @@ void load_level(uint8_t levelNumber) {
             uint16_t x = i % levelWidth;
             uint16_t y = i / levelWidth;
 
-            if (hackyFastMode >= 2) {
+            if (gameSaveData.hackyFastMode >= 2) {
 
                 if (x > 0 && y > 0 && x < levelWidth - 1 && y < levelHeight - 1) {
                     bool all_solid = true;
@@ -4733,19 +4757,19 @@ void render_settings() {
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
-    screen.text("Checkpoints:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_left);
-    screen.text("Music:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_left);
-    screen.text("SFX:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_left);
+    screen.text("Checkpoints:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_left);
+    screen.text("Music:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_left);
+    screen.text("SFX:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_left);
 
 #ifdef PICO_BUILD
-    screen.text("Hacky fast mode:", minimal_font, Point(SPRITE_SIZE, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_left);
+    screen.text("Hacky fast mode:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_left);
 #endif // PICO_BUILD
 
 
     if (settingsItem == 0) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
     }
-    screen.text(gameSaveData.checkpoints ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_right);
+    screen.text(gameSaveData.checkpoints ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_right);
 
     if (settingsItem == 1) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
@@ -4753,7 +4777,7 @@ void render_settings() {
     else {
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     }
-    screen.text(gameSaveData.musicVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_right);
+    screen.text(gameSaveData.musicVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_right);
 
     if (settingsItem == 2) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
@@ -4761,7 +4785,7 @@ void render_settings() {
     else {
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     }
-    screen.text(gameSaveData.sfxVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_right);
+    screen.text(gameSaveData.sfxVolume ? "On" : "Off", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_right);
 
 #ifdef PICO_BUILD
     if (settingsItem == 3) {
@@ -4770,7 +4794,7 @@ void render_settings() {
     else {
         screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     }
-    screen.text(hackyFastMode ? std::to_string(hackyFastMode) : "Off", minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_right);
+    screen.text(gameSaveData.hackyFastMode ? std::to_string(gameSaveData.hackyFastMode) : "Off", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_right);
 #endif // PICO_BUILD
 
 
@@ -4782,8 +4806,8 @@ void render_settings() {
         screen.text(messageStrings[4][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
     }*/
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-    screen.text(messageStrings[5][gameSaveData.inputType], minimal_font, Point(SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_left);
-    screen.text(messageStrings[6][gameSaveData.inputType], minimal_font, Point(SCREEN_WIDTH - SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_right);
+    screen.text(messageStrings[5][gameSaveData.inputType], minimal_font, Point(TEXT_BORDER, SCREEN_HEIGHT - 9), true, TextAlign::center_left);
+    screen.text(messageStrings[6][gameSaveData.inputType], minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_HEIGHT - 9), true, TextAlign::center_right);
 }
 
 void render_level_select() {
@@ -4847,7 +4871,7 @@ void render_game() {
         if (pauseMenuItem == 0) {
             screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
         }
-        screen.text("Resume", minimal_font, Point(SCREEN_MID_WIDTH - SPRITE_SIZE * 4, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text("Resume", minimal_font, Point(TEXT_BORDER + SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_left);
 
         if (pauseMenuItem == 1) {
             screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
@@ -4855,7 +4879,7 @@ void render_game() {
         else {
             screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
         }
-        screen.text("Exit", minimal_font, Point(SCREEN_MID_WIDTH + SPRITE_SIZE * 4, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
+        screen.text("Exit", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER - SPRITE_SIZE * 2, SCREEN_HEIGHT - 9), true, TextAlign::center_right);
 
         /*if (textFlashTimer < TEXT_FLASH_TIME * 0.6f) {
             screen.text(messageStrings[3][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
@@ -5266,26 +5290,26 @@ void update_settings(float dt, ButtonStates& buttonStates) {
             }
 #ifdef PICO_BUILD
             else if (settingsItem == 3) {
-                if (hackyFastMode < MAX_HACKY_FAST_MODE) {
-                    hackyFastMode++;
+                if (gameSaveData.hackyFastMode < MAX_HACKY_FAST_MODE) {
+                    gameSaveData.hackyFastMode++;
                 }
                 else {
-                    hackyFastMode = 0;
+                    gameSaveData.hackyFastMode = 0;
                 }
             }
 
         }
         else if (buttonStates.LEFT == 2) {
             if (settingsItem == 3) {
-                if (hackyFastMode > 0) {
-                    hackyFastMode--;
+                if (gameSaveData.hackyFastMode > 0) {
+                    gameSaveData.hackyFastMode--;
                 }
             }
         }
         else if (buttonStates.RIGHT == 2) {
             if (settingsItem == 3) {
-                if (hackyFastMode < MAX_HACKY_FAST_MODE) {
-                    hackyFastMode++;
+                if (gameSaveData.hackyFastMode < MAX_HACKY_FAST_MODE) {
+                    gameSaveData.hackyFastMode++;
                 }
             }
 #endif // PICO_BUILD
@@ -5688,7 +5712,7 @@ void init_game() {
 
         // gameState is by default set to STATE_INPUT_SELECT
 
-#ifdef TARGET_32BLIT_HW
+#ifdef TARGET_32BLIT_HW || PICO_BUILD
         // If it's a 32blit, don't bother asking
         gameState = GameState::STATE_MENU;
 
@@ -5697,7 +5721,7 @@ void init_game() {
 
         // Save inputType
         save_game_data();
-#endif
+#endif // TARGET_32BLIT_HW || PICO_BUILD
     }
 }
 
