@@ -280,14 +280,21 @@ const uint8_t SETTINGS_COUNT = 3;
 const std::string COINS_COLLECTED = "Coins:";
 const std::string ENEMIES_KILLED = "Enemies:";
 const std::string TIME_TAKEN = "Time:";
+
+const std::string CONTROLLER_TEXT = "Pico";
 #else
 const uint8_t SETTINGS_COUNT = 2;
 
 const std::string COINS_COLLECTED = "Coins collected:";
 const std::string ENEMIES_KILLED = "Enemies killed:";
 const std::string TIME_TAKEN = "Time taken:";
-#endif // PICO_BUILD
 
+#ifdef TARGET_32BLIT_HW
+const std::string CONTROLLER_TEXT = "32Blit";
+#else
+const std::string CONTROLLER_TEXT = "Controller";
+#endif // TARGET_32BLIT_HW
+#endif // PICO_BUILD
 
 const uint16_t SCREEN_MID_WIDTH = SCREEN_WIDTH / 2;
 const uint16_t SCREEN_MID_HEIGHT = SCREEN_HEIGHT / 2;
@@ -4656,7 +4663,7 @@ void render_input_select() {
     screen.text("Select Input Method", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
 
     screen.pen = gameSaveData.inputType == InputType::CONTROLLER ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-    screen.text("Controller/32Blit", minimal_font, Point(SCREEN_MID_WIDTH, 50), true, TextAlign::center_center);
+    screen.text(CONTROLLER_TEXT, minimal_font, Point(SCREEN_MID_WIDTH, 50), true, TextAlign::center_center);
 
     screen.pen = gameSaveData.inputType == InputType::KEYBOARD ? Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b) : Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Keyboard", minimal_font, Point(SCREEN_MID_WIDTH, 70), true, TextAlign::center_center);
