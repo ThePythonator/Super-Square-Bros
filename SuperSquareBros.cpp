@@ -4239,12 +4239,12 @@ void load_level(uint8_t levelNumber) {
             coins.push_back(Coin((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, coinFrames));
         }
         else {
-            // Move tiles surrounded on all sides to the background (thanks to Daft Freak)
 
             uint16_t x = i % levelWidth;
             uint16_t y = i / levelWidth;
 
-            if (gameSaveData.hackyFastMode >= 2) {
+            // Move tiles surrounded on all sides to the background (thanks to Daft Freak)
+            /*if (gameSaveData.hackyFastMode >= 2) {
 
                 if (x > 0 && y > 0 && x < levelWidth - 1 && y < levelHeight - 1) {
                     bool all_solid = true;
@@ -4262,7 +4262,7 @@ void load_level(uint8_t levelNumber) {
                         continue;
                     }
                 }
-            }
+            }*/
             
             foreground.push_back(Tile(x * SPRITE_SIZE, y * SPRITE_SIZE, tmx->data[i]));
         }
