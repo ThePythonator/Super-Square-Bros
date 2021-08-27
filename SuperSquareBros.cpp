@@ -5719,7 +5719,7 @@ void init_game() {
 
         // gameState is by default set to STATE_INPUT_SELECT
 
-#ifdef TARGET_32BLIT_HW || PICO_BUILD
+#if defined(TARGET_32BLIT_HW) || defined(PICO_BUILD)
         // If it's a 32blit, don't bother asking
         gameState = GameState::STATE_MENU;
 
