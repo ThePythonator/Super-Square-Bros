@@ -37,6 +37,14 @@ jobs:
             release-suffix: STM32
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/32blit-sdk/32blit.toolchain
             apt-packages: gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib python3-setuptools
+            
+          - os: ubuntu-20.04
+            name: PicoSystem
+            release-suffix: PicoSystem
+            pico-sdk: true
+            cache-key: picosystem
+            cmake-args: -D32BLIT_DIR=$GITHUB_WORKSPACE/32blit-sdk -DPICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk -DPICO_BOARD=pimoroni_picosystem
+            apt-packages: gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib python3-setuptools
 
           - os: ubuntu-20.04
             name: Emscripten
@@ -74,6 +82,22 @@ jobs:
       with:
         repository: 32blit/32blit-sdk
         path: 32blit-sdk
+        
+    # pico sdk/extras for some builds
+    - name: Checkout Pico SDK
+      if: matrix.pico-sdk
+      uses: actions/checkout@v2
+      with:
+        repository: raspberrypi/pico-sdk
+        path: pico-sdk
+        submodules: true
+
+    - name: Checkout Pico Extras
+      if: matrix.pico-sdk
+      uses: actions/checkout@v2
+      with:
+        repository: raspberrypi/pico-extras
+        path: pico-extras
 
     # Linux dependencies
     - name: Install Linux deps
