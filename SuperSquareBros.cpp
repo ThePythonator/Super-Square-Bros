@@ -12,7 +12,7 @@ using namespace blit;
 //#define TESTING_MODE
 
 void init_game();
-
+#define PICO_BUILD
 #ifdef PICO_BUILD
 const uint16_t SCREEN_WIDTH = 120;
 const uint16_t SCREEN_HEIGHT = 120;
@@ -4650,6 +4650,14 @@ void render_sg_icon() {
     screen.clear();
 
     screen.stretch_blit(screen.sprites, Rect((SG_ICON_INDEX % 16) * SPRITE_SIZE, (SG_ICON_INDEX / 16) * SPRITE_SIZE, SG_ICON_SIZE, SG_ICON_SIZE), Rect(SCREEN_MID_WIDTH - SG_ICON_SIZE, SCREEN_MID_HEIGHT - SG_ICON_SIZE, SG_ICON_SIZE * 2, SG_ICON_SIZE * 2));
+
+#ifdef PICO_BUILD
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text("Scorpion Games", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE * 2.5f), true, TextAlign::center_center);
+    screen.text("scorpion-games-uk.itch.io", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE), true, TextAlign::center_center);
+#endif // PICO_BUILD
+
+
 }
 
 void render_input_select() {
