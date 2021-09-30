@@ -1,7 +1,5 @@
 #include "Audio.hpp"
 
-// Todo: rework to pick a free channel rather than always using same one.
-
 namespace AudioHandler {
 	AudioHandler::AudioHandler() {
 		
@@ -33,6 +31,8 @@ namespace AudioHandler {
 		/*mp3_channels[channel].pause();
 		mp3_channels[channel].restart();
 		mp3_channels[channel].play(channel, flags);*/
+
+		// TODO: make a boop sound instead
 	}
 
 	bool AudioHandler::is_playing(uint8_t channel) {

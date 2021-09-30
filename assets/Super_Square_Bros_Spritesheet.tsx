@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.4" tiledversion="2021.01.13" name="Super_Square_Bros_Spritesheet" tilewidth="8" tileheight="8" tilecount="512" columns="16">
- <image source="../../Aseprite Projects/Super Square Bros/spritesheet.png" width="128" height="256"/>
+ <image source="spritesheet.png" width="128" height="256"/>
  <tile id="384">
   <animation>
    <frame tileid="384" duration="150"/>

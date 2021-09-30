@@ -4653,11 +4653,9 @@ void render_sg_icon() {
 
 #ifdef PICO_BUILD
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-    screen.text("Scorpion Games", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE * 2.5f), true, TextAlign::center_center);
-    screen.text("scorpion-games-uk.itch.io", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE), true, TextAlign::center_center);
+    screen.text("itch.io:", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE * 2.5f), true, TextAlign::center_center);
+    screen.text("Scorpion Games UK", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE), true, TextAlign::center_center);
 #endif // PICO_BUILD
-
-
 }
 
 void render_input_select() {
