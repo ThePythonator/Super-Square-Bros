@@ -505,6 +505,34 @@ const uint8_t levelTargets[LEVEL_COUNT][2][2] = {
             8 // Silver
         }
     },
+#ifdef PICO_BUILD
+    {
+        // Level 9
+        {
+            // Score
+            24, // Gold
+            19 // Silver
+        },
+        {
+            // Enemies killed
+            10, // Gold
+            8 // Silver
+        }
+    },
+    {
+        // Level 10
+        {
+            // Score
+            22, // Gold
+            18 // Silver
+        },
+        {
+            // Enemies killed
+            16, // Gold
+            13 // Silver
+        }
+    },
+#else
     {
         // Level 9
         {
@@ -518,8 +546,9 @@ const uint8_t levelTargets[LEVEL_COUNT][2][2] = {
             16 // Silver
         }
     },
+#endif // PICO_BUILD
     {
-        // Level 10
+        // End Level
         {
             // Score
             16, // Gold
@@ -582,13 +611,28 @@ const float levelTargetTimes[LEVEL_COUNT][2] = {
         44.0f, // Gold
         55.0f // Silver
     },
+#ifdef PICO_BUILD
+    // Level 9
+    {
+        // Time
+        40.0f, // Gold TO CHECK + CHANGE IF NECESSARY
+        52.0f // Silver TO CHECK + CHANGE IF NECESSARY
+    },
+    // Level 10
+    {
+        // Time
+        90.0f, // Gold TO CHECK + CHANGE IF NECESSARY
+        110.0f // Silver TO CHECK + CHANGE IF NECESSARY
+    },
+#else
     // Level 9
     {
         // Time
         120.0f, // Gold
         180.0f // Silver
     },
-    // Level 10
+#endif
+    // End level
     {
         // Time
         4.2f, // Gold
@@ -2114,7 +2158,7 @@ public:
                     if (!reloadTimer) {
                         // Fire!
                         // Maybe make these values constants?
-                        projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_ENEMY_PROJECTILE_SNOWBALL : TILE_ID_ENEMY_PROJECTILE_ROCK));
+                        projectiles.push_back(Projectile(x, y, RANGED_PROJECTILE_X_VEL_SCALE * (*playerX - x), -std::abs(x - *playerX) * RANGED_PROJECTILE_Y_VEL_SCALE + (*playerY - y) * RANGED_PROJECTILE_Y_VEL_SCALE, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 || currentLevelNumber == 9 ? TILE_ID_ENEMY_PROJECTILE_SNOWBALL : TILE_ID_ENEMY_PROJECTILE_ROCK));
                         reloadTimer = RANGED_RELOAD_TIME;
 
                         audioHandler.play(6);
@@ -2723,7 +2767,7 @@ public:
                     float yV = ((*playerY - y) / BOSS_2_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_PROJECTILE_FLIGHT_TIME;
 
                     //x,y should be offset to center
-                    projectiles.push_back(Projectile(x + SPRITE_SIZE, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                    projectiles.push_back(Projectile(x + SPRITE_SIZE, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 || currentLevelNumber == 9 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
                     reloadTimer = BOSS_2_RELOAD_TIME;
 
                     audioHandler.play(6);
@@ -2775,7 +2819,7 @@ public:
                         float yV = ((*playerY - y) / BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_RAPID_PROJECTILE_FLIGHT_TIME;
 
                         //x,y should be offset to center
-                        projectiles.push_back(Projectile(x + SPRITE_SIZE, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                        projectiles.push_back(Projectile(x + SPRITE_SIZE, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 || currentLevelNumber == 9 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
                         reloadTimer = BOSS_2_RAPID_RELOAD_TIME;
 
                         audioHandler.play(6);
@@ -2806,7 +2850,7 @@ public:
                         float yV = ((*playerY - y) / BOSS_2_SUPER_RAPID_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BOSS_2_SUPER_RAPID_PROJECTILE_FLIGHT_TIME;
 
                         //x,y should be offset to center
-                        projectiles.push_back(Projectile(x, y, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                        projectiles.push_back(Projectile(x, y, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 || currentLevelNumber == 9 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
                         reloadTimer = BOSS_2_SUPER_RAPID_RELOAD_TIME;
 
                         audioHandler.play(6);
@@ -2914,7 +2958,7 @@ public:
                             float yV = ((*playerY - y - SPRITE_HALF * 3) / BIG_BOSS_PROJECTILE_FLIGHT_TIME) - 0.5f * PROJECTILE_GRAVITY * BIG_BOSS_PROJECTILE_FLIGHT_TIME;
 
                             // x,y are offset to center
-                            projectiles.push_back(Projectile(x + SPRITE_SIZE * 2, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
+                            projectiles.push_back(Projectile(x + SPRITE_SIZE * 2, y + SPRITE_SIZE, xV, yV, currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 || currentLevelNumber == 9 ? TILE_ID_BOSS_PROJECTILE_SNOWBALL : TILE_ID_BOSS_PROJECTILE_ROCK, true, SPRITE_SIZE));
                             
                             rapidfireTimer = BIG_BOSS_RAPID_RELOAD_TIME;
                             shotsLeft--;
@@ -4645,7 +4689,11 @@ void start_game_won() {
         // Just completed level for first time
         allPlayerSaveData[playerSelected].levelReached = currentLevelNumber + 1;
 
-        if (currentLevelNumber % LEVELS_PER_WORLD == LEVELS_PER_WORLD - 1 || currentLevelNumber == 8) {
+        if (currentLevelNumber % LEVELS_PER_WORLD == LEVELS_PER_WORLD - 1 || currentLevelNumber == 8
+#ifdef PICO_BUILD
+            + 1
+#endif // PICO_BUILD
+            ) {
             // Level was last level in world or was level 9
             cameraNewWorld = true;
             player.locked = true;
@@ -5147,15 +5195,16 @@ void update_particles(float dt) {
             float yVel = rand() % 5 + 8;
             uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
             //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
-            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
+            //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
+            uint16_t endX = levelData.levelWidth; // check is ok
             float x = (rand() % (endX - startX)) + startX;
-            if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
+            if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) || rand() % 2 == 0) { // && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x
                 // At edges, only make a half as many particles
                 imageParticles.push_back(ImageParticle(x, -SPRITE_SIZE * 8, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
             }
         }
     }
-    else if (currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8) {
+    else if (currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 || currentLevelNumber == 9) {
         snowGenTimer += dt;
         while (snowGenTimer >= SNOW_LEVEL_GENERATE_DELAY) {
             snowGenTimer -= SNOW_LEVEL_GENERATE_DELAY;
