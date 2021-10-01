@@ -4824,7 +4824,7 @@ void render_credits() {
     background_rect(1);
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-    screen.text(messageStrings[5][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_left);
+    screen.text(messageStrings[5][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_center);
 }
 
 void render_settings() {
