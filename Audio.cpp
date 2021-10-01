@@ -39,7 +39,7 @@ namespace AudioHandler {
 		return blit::channels[channel].adsr_phase != blit::ADSRPhase::OFF;
 	}
 
-	void AudioHandler::update() {
+	void AudioHandler::update(float dt) {
 		for (uint8_t i = 0; i < 8; i++) {
 			mp3_channels[i].update();
 		}

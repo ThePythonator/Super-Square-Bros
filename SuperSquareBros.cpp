@@ -6147,5 +6147,5 @@ void update(uint32_t time) {
     camera.x += shaker.time_to_shake(dt);
     camera.y += shaker.time_to_shake(dt);
 
-    audioHandler.update();
+    audioHandler.update(dt);
 }
