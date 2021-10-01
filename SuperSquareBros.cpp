@@ -4267,17 +4267,19 @@ void load_level(uint8_t levelNumber) {
             foreground.push_back(Tile(x * SPRITE_SIZE, y * SPRITE_SIZE, tmx->data[i]));
         }
     }
+    
+    if (gameSaveData.hackyFastMode >= 4) {
+        // Background Layer
+        for (uint32_t i = 0; i < levelSize; i++) {
+            uint32_t index = i + levelSize * 3;
 
-    // Background Layer
-    for (uint32_t i = 0; i < levelSize; i++) {
-        uint32_t index = i + levelSize * 3;
-
-        if (tmx->data[index] == TILE_ID_EMPTY) {
-            // Is a blank tile, don't do anything
-        }
-        else {
-            // Background tiles are non-solid. If semi-solidity (can jump up but not fall through) is required, use platforms (will be a separate layer).
-            background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
+            if (tmx->data[index] == TILE_ID_EMPTY) {
+                // Is a blank tile, don't do anything
+            }
+            else {
+                // Background tiles are non-solid. If semi-solidity (can jump up but not fall through) is required, use platforms (will be a separate layer).
+                background.push_back(Tile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index]));
+            }
         }
     }
 
@@ -4389,27 +4391,29 @@ void load_level(uint8_t levelNumber) {
 
     // go backwards through parallax layers so that rendering is correct
 
-    // Parallax Background Layer
-    for (uint32_t i = 0; i < levelSize; i++) {
-        uint32_t index = i + levelSize * 5;
+    if (gameSaveData.hackyFastMode >= 3) {
+        // Parallax Background Layer
+        for (uint32_t i = 0; i < levelSize; i++) {
+            uint32_t index = i + levelSize * 5;
 
-        if (tmx->data[index] == TILE_ID_EMPTY) {
-            // Is a blank tile, don't do anything
+            if (tmx->data[index] == TILE_ID_EMPTY) {
+                // Is a blank tile, don't do anything
+            }
+            else {
+                parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index], 1));
+            }
         }
-        else {
-            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index], 1));
-        }
-    }
 
-    // Parallax Foreground Layer
-    for (uint32_t i = 0; i < levelSize; i++) {
-        uint32_t index = i + levelSize * 4;
+        // Parallax Foreground Layer
+        for (uint32_t i = 0; i < levelSize; i++) {
+            uint32_t index = i + levelSize * 4;
 
-        if (tmx->data[index] == TILE_ID_EMPTY) {
-            // Is a blank tile, don't do anything
-        }
-        else {
-            parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index], 0));
+            if (tmx->data[index] == TILE_ID_EMPTY) {
+                // Is a blank tile, don't do anything
+            }
+            else {
+                parallax.push_back(ParallaxTile((i % levelWidth) * SPRITE_SIZE, (i / levelWidth) * SPRITE_SIZE, tmx->data[index], 0));
+            }
         }
     }
 
@@ -4653,8 +4657,15 @@ void render_sg_icon() {
 
 #ifdef PICO_BUILD
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-    screen.text("itch.io:", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE * 2.5f), true, TextAlign::center_center);
-    screen.text("Scorpion Games UK", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE), true, TextAlign::center_center);
+
+    //screen.text("itch.io:", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE * 2.5f), true, TextAlign::center_center);
+    //screen.text("Scorpion Games UK", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - SPRITE_SIZE), true, TextAlign::center_center);
+    screen.text("scorpion", minimal_font, Point(0, SCREEN_HEIGHT - SPRITE_HALF * 3), true, TextAlign::center_left);
+    screen.text("-", minimal_font, Point(43, SCREEN_HEIGHT - SPRITE_HALF * 3), true, TextAlign::center_left);
+    screen.text("games", minimal_font, Point(46, SCREEN_HEIGHT - SPRITE_HALF * 3), true, TextAlign::center_left);
+    screen.text("-", minimal_font, Point(73, SCREEN_HEIGHT - SPRITE_HALF * 3), true, TextAlign::center_left);
+    screen.text("uk", minimal_font, Point(76, SCREEN_HEIGHT - SPRITE_HALF * 3), true, TextAlign::center_left);
+    screen.text(".itch.io", minimal_font, Point(87, SCREEN_HEIGHT - SPRITE_HALF * 3), true, TextAlign::center_left);
 #endif // PICO_BUILD
 }
 
