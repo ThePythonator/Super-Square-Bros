@@ -2,7 +2,7 @@
 
 namespace AudioHandler {
 	AudioHandler::AudioHandler() {
-		blit::channels[0].waveforms = Waveform::SQUARE;
+		blit::channels[0].waveforms = blit::Waveform::SQUARE;
 		blit::channels[0].frequency = 1400;
 		blit::channels[0].attack_ms = 5;
 		blit::channels[0].decay_ms = 100;
