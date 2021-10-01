@@ -2,12 +2,12 @@
 
 namespace AudioHandler {
 	AudioHandler::AudioHandler() {
-		channels[0].waveforms = Waveform::SQUARE;
-		channels[0].frequency = 1400;
-		channels[0].attack_ms = 5;
-		channels[0].decay_ms = 100;
-		channels[0].sustain = 0;
-		channels[0].release_ms = 5;
+		blit::channels[0].waveforms = Waveform::SQUARE;
+		blit::channels[0].frequency = 1400;
+		blit::channels[0].attack_ms = 5;
+		blit::channels[0].decay_ms = 100;
+		blit::channels[0].sustain = 0;
+		blit::channels[0].release_ms = 5;
 	}
 
 	void AudioHandler::set_volume(uint32_t volume) {
@@ -34,7 +34,7 @@ namespace AudioHandler {
 
 	void AudioHandler::play(uint8_t channel, uint8_t flags) {
 		if (channel <= 2) {
-			channels[0].trigger_attack();
+			blit::channels[0].trigger_attack();
 			t = 0.1;
 		}
 		/*mp3_channels[channel].pause();
@@ -54,7 +54,7 @@ namespace AudioHandler {
 		if (t > 0.0f) {
 			t -= dt;
 			if (t <= 0.0f) {
-				channels[0].trigger_release();
+				blit::channels[0].trigger_release();
 			}
 		}
 		/*for (uint8_t i = 0; i < 8; i++) {
