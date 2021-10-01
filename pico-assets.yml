@@ -47,13 +47,18 @@ assets.cpp:
     empty_tile: 255
     output_struct: true
     
-  assets/level8.tmx:
+  assets/level8_pico.tmx:
     name: asset_level8
     empty_tile: 255
     output_struct: true
     
-  assets/level9.tmx:
+  assets/level9_pico.tmx:
     name: asset_level9
+    empty_tile: 255
+    output_struct: true
+
+  assets/end_level.tmx:
+    name: asset_level10
     empty_tile: 255
     output_struct: true
 
@@ -67,7 +72,7 @@ assets.cpp:
     empty_tile: 255
     output_struct: true
     
-  assets/level_select.tmx:
+  assets/level_select_pico.tmx:
     name: asset_level_level_select
     empty_tile: 255
     output_struct: true

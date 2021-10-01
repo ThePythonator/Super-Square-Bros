@@ -58,7 +58,7 @@ assets.cpp:
     empty_tile: 255
     output_struct: true
     
-  assets/level9.tmx:
+  assets/end_level.tmx:
     name: asset_level9
     empty_tile: 255
     output_struct: true

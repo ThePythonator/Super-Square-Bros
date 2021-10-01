@@ -12,7 +12,9 @@ using namespace blit;
 //#define TESTING_MODE
 
 void init_game();
-//#define PICO_BUILD
+
+#define PICO_BUILD
+
 #ifdef PICO_BUILD
 const uint16_t SCREEN_WIDTH = 120;
 const uint16_t SCREEN_HEIGHT = 120;
@@ -23,7 +25,11 @@ const uint16_t SCREEN_HEIGHT = 120;
 #endif // PICO_BUILD
 
 
+#ifdef PICO_BUILD
+const uint8_t LEVEL_COUNT = 11;
+#else
 const uint8_t LEVEL_COUNT = 10;
+#endif // PICO_BUILD
 const uint8_t LEVEL_SELECT_NUMBER = LEVEL_COUNT + 2;
 const uint8_t LEVELS_PER_WORLD = 4;
 
@@ -337,6 +343,9 @@ const uint8_t* asset_levels[] = {
     asset_level7,
     asset_level8,
     asset_level9,
+#ifdef PICO_BUILD
+    asset_level10,
+#endif // PICO_BUILD
     asset_level_title,
     asset_level_char_select,
     asset_level_level_select
@@ -3759,7 +3768,7 @@ public:
             }
 
             // Move entity x
-            if(xVel != 0.0f) {
+            if (xVel != 0.0f) {
                 x += xVel * dt;
 
                 // Here check collisions...
@@ -4271,7 +4280,7 @@ void load_level(uint8_t levelNumber) {
         }
     }
     
-    if (gameSaveData.hackyFastMode >= 4) {
+    if (gameSaveData.hackyFastMode < 4) {
         // Background Layer
         for (uint32_t i = 0; i < levelSize; i++) {
             uint32_t index = i + levelSize * 3;
@@ -4394,7 +4403,7 @@ void load_level(uint8_t levelNumber) {
 
     // go backwards through parallax layers so that rendering is correct
 
-    if (gameSaveData.hackyFastMode >= 3) {
+    if (gameSaveData.hackyFastMode < 3) {
         // Parallax Background Layer
         for (uint32_t i = 0; i < levelSize; i++) {
             uint32_t index = i + levelSize * 5;
