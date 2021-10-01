@@ -666,6 +666,7 @@ enum class GameState {
     STATE_SG_ICON,
     STATE_INPUT_SELECT,
     STATE_MENU,
+    STATE_CREDITS,
     STATE_SETTINGS,
     STATE_CHARACTER_SELECT,
     STATE_LEVEL_SELECT,
@@ -4761,6 +4762,30 @@ void render_menu() {
     }
 }
 
+void render_credits() {
+    render_background();
+
+    render_level();
+
+    render_entities();
+
+    screen.pen = Pen(gameBackground.r, gameBackground.g, gameBackground.b, hudBackground.a); // use hudBackground.a to make background semi transparent
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+    screen.rectangle(Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)); // repeat to make darker
+
+    background_rect(0);
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text("Credits", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+
+    screen.text("Coding:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_left);
+    screen.text("Artwork:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_left);
+    screen.text("SFX:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_left);
+
+    screen.text("Gadgetoid: level design + performance boosts", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_center);
+    screen.text("Daft Freak: a lot of bug fixes and even more performance boosts", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + SPRITE_SIZE * 5), true, TextAlign::center_center);
+}
+
 void render_settings() {
     render_background();
 
@@ -5277,6 +5302,53 @@ void update_menu(float dt, ButtonStates& buttonStates) {
     }
 }
 
+void update_credits(float dt, ButtonStates& buttonStates) {
+    update_coins(dt);
+    update_checkpoint(dt);
+
+    if (transition[0].is_ready_to_open()) {
+        if (menuBack) {
+            menuBack = false;
+            start_menu();
+        }
+    }
+    else if (transition[0].is_open()) {
+        if (buttonStates.A == 2) {
+            /*audioHandler.play(0);
+
+            if (settingsItem == 0) {
+                gameSaveData.checkpoints = !gameSaveData.checkpoints;
+            }
+            else if (settingsItem == 1) {
+                gameSaveData.musicVolume = !gameSaveData.musicVolume;
+                audioHandler.set_volume(7, gameSaveData.musicVolume ? DEFAULT_VOLUME : 0);
+            }
+            else if (settingsItem == 2) {
+                gameSaveData.sfxVolume = !gameSaveData.sfxVolume;
+                for (uint8_t i = 0; i < 7; i++) {
+                    audioHandler.set_volume(i, gameSaveData.sfxVolume ? DEFAULT_VOLUME : 0);
+                }
+            }*/
+        }
+        else if (buttonStates.Y == 2) {
+            // Exit settings
+            audioHandler.play(0);
+
+            menuBack = true;
+            close_transition();
+        }
+        /*else if (buttonStates.UP == 2 && settingsItem > 0) {
+            settingsItem--;
+            audioHandler.play(0);
+        }
+        else if (buttonStates.DOWN == 2 && settingsItem < SETTINGS_COUNT) {
+            settingsItem++;
+            audioHandler.play(0);
+        }*/
+    }
+}
+
+
 void update_settings(float dt, ButtonStates& buttonStates) {
     update_coins(dt);
     update_checkpoint(dt);
@@ -5749,6 +5821,7 @@ void init_game() {
     }
 }
 
+#ifndef PICO_BUILD
 void load_audio() {
     // NOTE: CURRENTLY ISSUE WITH LEAVING PAUSE MENU, blip AUDIO IS PLAYED, BUT THEN NEW SOUND IS LOADED IN, STOPPING PLAYBACK.
 
@@ -5771,6 +5844,7 @@ void load_audio() {
     // Note: to play sfx0, call audioHandler.play(0)
     // For music, need to load sound when changing (i.e. audioHandler.load(7, asset_music_<music>, asset_music_<music>_length); audioHandler.play(7, 0b11);
 }
+#endif // PICO_BUILD
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -5831,6 +5905,9 @@ void render(uint32_t time) {
     }
     else if (gameState == GameState::STATE_MENU) {
         render_menu();
+    }
+    else if (gameState == GameState::STATE_SETTINGS) {
+        render_credits();
     }
     else if (gameState == GameState::STATE_SETTINGS) {
         render_settings();
@@ -5988,6 +6065,9 @@ void update(uint32_t time) {
     }
     else if (gameState == GameState::STATE_MENU) {
         update_menu(dt, buttonStates);
+    }
+    else if (gameState == GameState::STATE_CREDITS) {
+        update_credits(dt, buttonStates);
     }
     else if (gameState == GameState::STATE_SETTINGS) {
         update_settings(dt, buttonStates);
