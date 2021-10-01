@@ -1,0 +1,73 @@
+# All these assets will be created in assets.cpp, which CMake will
+# link automagically.
+# References can be picked up by including assets.hpp
+
+assets.cpp:
+
+  assets/spritesheet.png:
+    name: asset_sprites
+
+  assets/level0.tmx:
+    name: asset_level0
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level1.tmx:
+    name: asset_level1
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level2.tmx:
+    name: asset_level2
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level3.tmx:
+    name: asset_level3
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level4.tmx:
+    name: asset_level4
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level5.tmx:
+    name: asset_level5
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level6.tmx:
+    name: asset_level6
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level7.tmx:
+    name: asset_level7
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level8.tmx:
+    name: asset_level8
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level9.tmx:
+    name: asset_level9
+    empty_tile: 255
+    output_struct: true
+
+  assets/level_title.tmx:
+    name: asset_level_title
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level_character.tmx:
+    name: asset_level_char_select
+    empty_tile: 255
+    output_struct: true
+    
+  assets/level_select.tmx:
+    name: asset_level_level_select
+    empty_tile: 255
+    output_struct: true

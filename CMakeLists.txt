@@ -26,7 +26,13 @@ endif()
 find_package (32BLIT CONFIG REQUIRED PATHS ../32blit-sdk)
 
 blit_executable (${PROJECT_NAME} ${PROJECT_SOURCE})
-blit_assets_yaml (${PROJECT_NAME} assets.yml)
+
+if(PICO_SDK_PATH)
+	blit_assets_yaml (${PROJECT_NAME} pico-assets.yml)
+else()
+	blit_assets_yaml (${PROJECT_NAME} assets.yml)
+endif()
+
 blit_metadata (${PROJECT_NAME} metadata.yml)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ALLOW_HIRES=0)
 add_custom_target (flash DEPENDS ${PROJECT_NAME}.flash)
