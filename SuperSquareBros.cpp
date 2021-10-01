@@ -12,7 +12,7 @@ using namespace blit;
 //#define TESTING_MODE
 
 void init_game();
-#define PICO_BUILD
+//#define PICO_BUILD
 #ifdef PICO_BUILD
 const uint16_t SCREEN_WIDTH = 120;
 const uint16_t SCREEN_HEIGHT = 120;
@@ -616,6 +616,7 @@ uint8_t playerSelected = 0;
 uint8_t pauseMenuItem = 0;
 uint8_t menuItem = 0;
 uint8_t settingsItem = 0;
+uint8_t creditsItem = 0;
 
 float snowGenTimer = 0.0f;
 float confettiGenTimer = 0.0f;
@@ -961,6 +962,7 @@ const Colour inputSelectColour = Colour(255, 199, 89);
 const Colour hudBackground = Colour(7, 0, 14, 64);
 const Colour gameBackground = Colour(62, 106, 178);
 const Colour defaultWhite = Colour(255, 255, 242);
+const Colour niceBlue = Colour(0x91, 0xE0, 0xCC);
 Colour splashColour = Colour(7, 0, 14, 0);
 
 class Camera {
@@ -4552,6 +4554,17 @@ void start_menu() {
     open_transition();
 }
 
+void start_credits() {
+    gameState = GameState::STATE_CREDITS;
+
+    creditsItem = 0;
+
+    // Load menu level
+    load_level(LEVEL_COUNT);
+
+    open_transition();
+}
+
 void start_settings() {
     gameState = GameState::STATE_SETTINGS;
 
@@ -4745,15 +4758,23 @@ void render_menu() {
     if (menuItem == 0) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
     }
-    screen.text("Play", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT - 10), true, TextAlign::center_center);
+    screen.text("Play", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT - 20), true, TextAlign::center_center);
 
-    if (menuItem == 0) {
-        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
-    }
-    else {
+    if (menuItem == 1) {
         screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
     }
-    screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + 10), true, TextAlign::center_center);
+    else {
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    }
+    screen.text("Settings", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT), true, TextAlign::center_center);
+
+    if (menuItem == 2) {
+        screen.pen = Pen(inputSelectColour.r, inputSelectColour.g, inputSelectColour.b);
+    }
+    else {
+        screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    }
+    screen.text("Credits", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + 20), true, TextAlign::center_center);
 
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
 
@@ -4775,15 +4796,35 @@ void render_credits() {
 
     background_rect(0);
 
+    uint8_t offset = 0;
+#ifdef PICO_BUILD
+    offset = SPRITE_HALF;
+#endif // PICO_BUILD
+
+
     screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
     screen.text("Credits", minimal_font, Point(SCREEN_MID_WIDTH, 10), true, TextAlign::center_center);
+    
+    screen.text("Coding:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_HALF * 7 - offset), true, TextAlign::center_left);
+    screen.text("Artwork:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_HALF * 3 - offset), true, TextAlign::center_left);
+    screen.text("SFX:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_HALF - offset), true, TextAlign::center_left);
 
-    screen.text("Coding:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE * 3), true, TextAlign::center_left);
-    screen.text("Artwork:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_SIZE), true, TextAlign::center_left);
-    screen.text("SFX:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_SIZE), true, TextAlign::center_left);
+    screen.text("Special Thanks:", minimal_font, Point(TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_HALF * 5 - offset), true, TextAlign::center_left);
 
-    screen.text("Gadgetoid: level design + performance boosts", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + SPRITE_SIZE * 3), true, TextAlign::center_center);
-    screen.text("Daft Freak: a lot of bug fixes and even more performance boosts", minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_MID_HEIGHT + SPRITE_SIZE * 5), true, TextAlign::center_center);
+
+    screen.pen = Pen(niceBlue.r, niceBlue.g, niceBlue.b);
+    screen.text("Scorpion Games", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_HALF * 7 + offset), true, TextAlign::center_right);
+    screen.text("Scorpion Games", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT - SPRITE_HALF * 3 + offset), true, TextAlign::center_right);
+    screen.text("JFXR", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_HALF + offset), true, TextAlign::center_right);
+
+    screen.text("Gadgetoid", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_HALF * 5 + offset), true, TextAlign::center_right);
+    screen.text("Daft Freak", minimal_font, Point(SCREEN_WIDTH - TEXT_BORDER, SCREEN_MID_HEIGHT + SPRITE_HALF * 7 + offset), true, TextAlign::center_right);
+
+    // Press <key> to go back
+    background_rect(1);
+
+    screen.pen = Pen(defaultWhite.r, defaultWhite.g, defaultWhite.b);
+    screen.text(messageStrings[5][gameSaveData.inputType], minimal_font, Point(SCREEN_MID_WIDTH, SCREEN_HEIGHT - 9), true, TextAlign::center_left);
 }
 
 void render_settings() {
@@ -5273,8 +5314,11 @@ void update_menu(float dt, ButtonStates& buttonStates) {
                 if (menuItem == 0) {
                     start_character_select();
                 }
-                else {
+                else if (menuItem == 1) {
                     start_settings();
+                }
+                else {
+                    start_credits();
                 }
             }
         }
@@ -5290,12 +5334,12 @@ void update_menu(float dt, ButtonStates& buttonStates) {
                 menuBack = true;
                 close_transition();
             }
-            else if (buttonStates.UP == 2 && menuItem == 1) {
-                menuItem = 0;
+            else if (buttonStates.UP == 2 && menuItem > 0) {
+                menuItem--;
                 audioHandler.play(0);
             }
-            else if (buttonStates.DOWN == 2 && menuItem == 0) {
-                menuItem = 1;
+            else if (buttonStates.DOWN == 2 && menuItem < 2) {
+                menuItem++;
                 audioHandler.play(0);
             }
         }
@@ -5906,7 +5950,7 @@ void render(uint32_t time) {
     else if (gameState == GameState::STATE_MENU) {
         render_menu();
     }
-    else if (gameState == GameState::STATE_SETTINGS) {
+    else if (gameState == GameState::STATE_CREDITS) {
         render_credits();
     }
     else if (gameState == GameState::STATE_SETTINGS) {
