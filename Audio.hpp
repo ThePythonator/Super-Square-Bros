@@ -12,6 +12,8 @@ namespace AudioHandler {
 	public:
 		AudioHandler();
 
+		void init();
+
 		void set_volume(uint32_t = 0xffff);
 		void set_volume(uint8_t, uint32_t);
 		
@@ -22,9 +24,7 @@ namespace AudioHandler {
 		void update(float dt);
 
 	protected:
-#ifdef PICO_BUILD
-		float t = 0.0f;
-#else
+#ifndef PICO_BUILD
 		blit::MP3Stream mp3_channels[8];
 		const char* filenames[8] = {
 			"temp0.mp3", "temp1.mp3", "temp2.mp3", "temp3.mp3", "temp4.mp3", "temp5.mp3", "temp6.mp3", "temp7.mp3"

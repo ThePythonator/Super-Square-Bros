@@ -5874,8 +5874,9 @@ void init_game() {
     }
 }
 
-#ifndef PICO_BUILD
 void load_audio() {
+    audioHandler.init();
+#ifndef PICO_BUILD
     // NOTE: CURRENTLY ISSUE WITH LEAVING PAUSE MENU, blip AUDIO IS PLAYED, BUT THEN NEW SOUND IS LOADED IN, STOPPING PLAYBACK.
 
     // Set volume to a default
@@ -5896,8 +5897,8 @@ void load_audio() {
 
     // Note: to play sfx0, call audioHandler.play(0)
     // For music, need to load sound when changing (i.e. audioHandler.load(7, asset_music_<music>, asset_music_<music>_length); audioHandler.play(7, 0b11);
-}
 #endif // PICO_BUILD
+}
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -5936,9 +5937,7 @@ void init() {
     for (uint8_t i = 0; i < LEVEL_COUNT; i++) {
         allLevelSaveData[1][i] = load_level_data(1, i);
     }
-#ifndef PICO_BUILD
     load_audio();
-#endif // PICO_BUILD
 }
 
 ///////////////////////////////////////////////////////////////////////////

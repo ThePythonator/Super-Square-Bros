@@ -2,63 +2,106 @@
 
 namespace AudioHandler {
 	AudioHandler::AudioHandler() {
+	}
+
+	void AudioHandler::init() {
+		// Coin A / Select
 		blit::channels[0].waveforms = blit::Waveform::SQUARE;
-		blit::channels[0].frequency = 1400;
-		blit::channels[0].attack_ms = 5;
+		blit::channels[0].frequency = 880;
+		blit::channels[0].attack_ms = 100;
 		blit::channels[0].decay_ms = 100;
 		blit::channels[0].sustain = 0;
-		blit::channels[0].release_ms = 5;
+		blit::channels[0].release_ms = 0;
+
+		// Jump
+		blit::channels[1].waveforms = blit::Waveform::SQUARE;
+		blit::channels[1].frequency = 440;
+		blit::channels[1].attack_ms = 150;
+		blit::channels[1].decay_ms = 1;
+		blit::channels[1].sustain = 0;
+		blit::channels[1].release_ms = 0;
+
+		// Coin B
+		blit::channels[2].waveforms = blit::Waveform::SQUARE;
+		blit::channels[2].frequency = 932;
+		blit::channels[2].attack_ms = 100;
+		blit::channels[2].decay_ms = 100;
+		blit::channels[2].sustain = 0;
+		blit::channels[2].release_ms = 0;
+
+		// Enemy Death
+		blit::channels[3].waveforms = blit::Waveform::SQUARE;
+		blit::channels[3].frequency = 300;
+		blit::channels[3].attack_ms = 100;
+		blit::channels[3].decay_ms = 100;
+		blit::channels[3].sustain = 0;
+		blit::channels[3].release_ms = 0;
+
+		// Enemy Injured
+		blit::channels[4].waveforms = blit::Waveform::SQUARE;
+		blit::channels[4].frequency = 300;
+		blit::channels[4].attack_ms = 100;
+		blit::channels[4].decay_ms = 100;
+		blit::channels[4].sustain = 0;
+		blit::channels[4].release_ms = 0;
+
+		// Player Death
+		blit::channels[5].waveforms = blit::Waveform::SQUARE;
+		blit::channels[5].frequency = 300;
+		blit::channels[5].attack_ms = 100;
+		blit::channels[5].decay_ms = 100;
+		blit::channels[5].sustain = 0;
+		blit::channels[5].release_ms = 0;
+
+		// Player Injured
+		blit::channels[6].waveforms = blit::Waveform::SQUARE;
+		blit::channels[6].frequency = 300;
+		blit::channels[6].attack_ms = 100;
+		blit::channels[6].decay_ms = 100;
+		blit::channels[6].sustain = 0;
+		blit::channels[6].release_ms = 0;
 	}
 
 	void AudioHandler::set_volume(uint32_t volume) {
-		for (uint8_t i = 0; i < 8; i++) {
-			set_volume(i, volume);
-		}
+		(void)volume;
 	}
 
 	void AudioHandler::set_volume(uint8_t channel, uint32_t volume) {
-		//blit::channels[channel].volume = volume;
+		(void)channel;
+		(void)volume;
 	}
 
 	void AudioHandler::load(uint8_t channel, const uint8_t mp3_data[], const uint32_t mp3_size) {
-		if (channel > 7) {
-			return;
-		}
-		/*blit::File::add_buffer_file(filenames[channel], mp3_data, mp3_size);
-		load(channel, channel);*/
+		(void)channel;
+		(void)mp3_data;
+		(void)mp3_size;
 	}
 
 	void AudioHandler::load(uint8_t target_channel, uint8_t source_channel) {
-		//mp3_channels[target_channel].load(filenames[source_channel]);
+		(void)target_channel;
+		(void)source_channel;
 	}
 
 	void AudioHandler::play(uint8_t channel, uint8_t flags) {
-		if (channel <= 2) {
-			blit::channels[0].trigger_attack();
-			t = 0.1;
+		if (channel <= 6) {
+			blit::channels[channel].trigger_attack();
 		}
-		/*mp3_channels[channel].pause();
-		mp3_channels[channel].restart();
-		mp3_channels[channel].play(channel, flags);*/
-
-		// TODO: make a boop sound instead
 	}
 
 	bool AudioHandler::is_playing(uint8_t channel) {
 		// Requires player to press A for splash screen to end
 		return true;
-		//return blit::channels[channel].adsr_phase != blit::ADSRPhase::OFF;
 	}
 
 	void AudioHandler::update(float dt) {
-		if (t > 0.0f) {
-			t -= dt;
-			if (t <= 0.0f) {
-				blit::channels[0].trigger_release();
-			}
-		}
-		/*for (uint8_t i = 0; i < 8; i++) {
-			mp3_channels[i].update();
-		}*/
+		blit::channels[1].frequency = 600 + (blit::channels[1].adsr >> 16);
+
+		blit::channels[0].frequency = blit::channels[0].adsr_phase == blit::ADSRPhase::ATTACK ? 880 : 1318;
+		blit::channels[2].frequency = blit::channels[2].adsr_phase == blit::ADSRPhase::ATTACK ? 932 : 1396;
+
+		blit::channels[3].frequency = 300 - (blit::channels[1].adsr >> 16);
+		blit::channels[4].frequency = 300 - (blit::channels[1].adsr >> 16);
+		blit::channels[5].frequency = 300 - (blit::channels[1].adsr >> 16);
+		blit::channels[6].frequency = 300 - (blit::channels[1].adsr >> 16);
 	}
 }
