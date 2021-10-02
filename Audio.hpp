@@ -24,7 +24,17 @@ namespace AudioHandler {
 		void update(float dt);
 
 	protected:
-#ifndef PICO_BUILD
+#ifdef PICO_BUILD
+		const uint8_t tune_len = 24
+		uint8_t tune[tune_len] = {
+			63, 68, 72, 0, 0, 0, 0, 0,
+			65, 70, 73, 0, 0, 0, 0, 0,
+			75, 75, 75, 80, 0, 0, 0, 0,
+		};
+		uint8_t note = 0;
+		bool play_tune = true;
+		float t = 0.0f;
+#else
 		blit::MP3Stream mp3_channels[8];
 		const char* filenames[8] = {
 			"temp0.mp3", "temp1.mp3", "temp2.mp3", "temp3.mp3", "temp4.mp3", "temp5.mp3", "temp6.mp3", "temp7.mp3"

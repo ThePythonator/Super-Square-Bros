@@ -5923,6 +5923,7 @@ void init_game() {
 
 void load_audio() {
     audioHandler.init();
+
 #ifndef PICO_BUILD
     // NOTE: CURRENTLY ISSUE WITH LEAVING PAUSE MENU, blip AUDIO IS PLAYED, BUT THEN NEW SOUND IS LOADED IN, STOPPING PLAYBACK.
 
@@ -5939,12 +5940,13 @@ void load_audio() {
     // Music
     audioHandler.load(7, asset_music_splash, asset_music_splash_length);
 
-    // Start splash music playing
-    audioHandler.play(7);
 
     // Note: to play sfx0, call audioHandler.play(0)
     // For music, need to load sound when changing (i.e. audioHandler.load(7, asset_music_<music>, asset_music_<music>_length); audioHandler.play(7, 0b11);
 #endif // PICO_BUILD
+
+    // Start splash music playing
+    audioHandler.play(7);
 }
 
 ///////////////////////////////////////////////////////////////////////////

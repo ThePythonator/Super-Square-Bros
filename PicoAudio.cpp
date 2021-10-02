@@ -49,17 +49,25 @@ namespace AudioHandler {
 		blit::channels[5].waveforms = blit::Waveform::SQUARE;
 		blit::channels[5].frequency = 500;
 		blit::channels[5].attack_ms = 200;
-		blit::channels[5].decay_ms = 150;
+		blit::channels[5].decay_ms = 20;
 		blit::channels[5].sustain = 0;
 		blit::channels[5].release_ms = 0;
 
 		// Player Injured
 		blit::channels[6].waveforms = blit::Waveform::SQUARE;
 		blit::channels[6].frequency = 450;
-		blit::channels[6].attack_ms = 100;
-		blit::channels[6].decay_ms = 100;
+		blit::channels[6].attack_ms = 150;
+		blit::channels[6].decay_ms = 20;
 		blit::channels[6].sustain = 0;
 		blit::channels[6].release_ms = 0;
+
+		// Pico Tune!
+		blit::channels[7].waveforms = blit::Waveform::SQUARE;
+		blit::channels[7].frequency = 450;
+		blit::channels[7].attack_ms = 125; //500ms per beat
+		blit::channels[7].decay_ms = 20;
+		blit::channels[7].sustain = 0;
+		blit::channels[7].release_ms = 0;
 	}
 
 	void AudioHandler::set_volume(uint32_t volume) {
@@ -86,6 +94,12 @@ namespace AudioHandler {
 		if (channel <= 6) {
 			blit::channels[channel].trigger_attack();
 		}
+		else if (channel == 7) {
+			// Play a tune!
+			play_tune = true;
+			note = 0;
+			t = 0.0f;
+		}
 	}
 
 	bool AudioHandler::is_playing(uint8_t channel) {
@@ -105,5 +119,19 @@ namespace AudioHandler {
 		blit::channels[5].frequency = 500 - (blit::channels[5].adsr >> 16);
 
 		blit::channels[6].frequency = 450 - (blit::channels[6].adsr >> 16) / 2;
+
+		if (play_tune) {
+			t += dt;
+			if (t > 0.125f) {
+				t = 0.0f;
+				if (tune[note] != 0) {
+					blit::channels[7].frequency = calculate_frequency(tune[note]);
+				}
+				note++;
+				if (note == tune_len) {
+					playing = false;
+				}
+			}
+		}
 	}
 }
