@@ -129,7 +129,7 @@ namespace AudioHandler {
 				}
 				note++;
 				if (note == tune_len) {
-					playing = false;
+					play_tune = false;
 				}
 			}
 		}
