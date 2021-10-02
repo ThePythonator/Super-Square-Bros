@@ -26,8 +26,7 @@ namespace AudioHandler {
 
 	protected:
 #ifdef PICO_BUILD
-		const uint8_t tune_len = 24;
-		uint8_t tune[tune_len] = {
+		uint8_t tune[24] = {
 			63, 68, 72, 0, 0, 0, 0, 0,
 			65, 70, 73, 0, 0, 0, 0, 0,
 			75, 75, 75, 80, 0, 0, 0, 0,
