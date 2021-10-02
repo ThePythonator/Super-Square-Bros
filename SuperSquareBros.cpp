@@ -13,8 +13,6 @@ using namespace blit;
 
 void init_game();
 
-//#define PICO_BUILD
-
 #ifdef PICO_BUILD
 const uint16_t SCREEN_WIDTH = 120;
 const uint16_t SCREEN_HEIGHT = 120;

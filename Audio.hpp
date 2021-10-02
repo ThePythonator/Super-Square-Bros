@@ -1,9 +1,9 @@
 #pragma once
 
-#include "audio/mp3-stream.hpp"
-
 #ifdef PICO_BUILD
 #include "audio/audio.hpp"
+#else
+#include "audio/mp3-stream.hpp"
 #endif // !PICO_BUILD
 
 
