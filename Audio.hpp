@@ -27,9 +27,9 @@ namespace AudioHandler {
 	protected:
 #ifdef PICO_BUILD
 		uint8_t tune[24] = {
-			63, 68, 72, 0, 0, 0, 0, 0,
-			65, 70, 73, 0, 0, 0, 0, 0,
-			75, 75, 75, 80, 0, 0, 0, 0,
+			75, 80, 84, 0, 0, 0, 0, 0,
+			77, 82, 85, 0, 0, 0, 0, 0,
+			87, 87, 87, 92, 0, 0, 0, 0,
 		};
 		uint8_t note = 0;
 		bool play_tune = true;
