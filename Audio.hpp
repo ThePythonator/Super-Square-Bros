@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef PICO_BUILD
+#include <cmath>
 #include "audio/audio.hpp"
 #else
 #include "audio/mp3-stream.hpp"
