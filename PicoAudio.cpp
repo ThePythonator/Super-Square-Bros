@@ -126,6 +126,7 @@ namespace AudioHandler {
 				t = 0.0f;
 				if (tune[note] != 0) {
 					blit::channels[7].frequency = std::pow(2, (tune[note] - 69) / 12.0f) * 440;
+					blit::channels[7].trigger_attack();
 				}
 				note++;
 				if (note == 24) {
