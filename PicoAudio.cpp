@@ -47,15 +47,15 @@ namespace AudioHandler {
 
 		// Player Death
 		blit::channels[5].waveforms = blit::Waveform::SQUARE;
-		blit::channels[5].frequency = 300;
-		blit::channels[5].attack_ms = 150;
-		blit::channels[5].decay_ms = 100;
+		blit::channels[5].frequency = 500;
+		blit::channels[5].attack_ms = 200;
+		blit::channels[5].decay_ms = 150;
 		blit::channels[5].sustain = 0;
 		blit::channels[5].release_ms = 0;
 
 		// Player Injured
 		blit::channels[6].waveforms = blit::Waveform::SQUARE;
-		blit::channels[6].frequency = 300;
+		blit::channels[6].frequency = 450;
 		blit::channels[6].attack_ms = 100;
 		blit::channels[6].decay_ms = 100;
 		blit::channels[6].sustain = 0;
@@ -96,14 +96,14 @@ namespace AudioHandler {
 	void AudioHandler::update(float dt) {
 		blit::channels[1].frequency = 600 + (blit::channels[1].adsr >> 16);
 
-		//blit::channels[0].frequency = blit::channels[0].adsr_phase == blit::ADSRPhase::ATTACK ? 880 : 1318;
+		blit::channels[0].frequency = blit::channels[0].adsr_phase == blit::ADSRPhase::ATTACK ? 880 : 1318;
 		blit::channels[2].frequency = blit::channels[2].adsr_phase == blit::ADSRPhase::ATTACK ? 932 : 1396;
 
-		blit::channels[3].frequency = 300 - (blit::channels[3].adsr >> 16);
+		//blit::channels[3].frequency = 300 - (blit::channels[3].adsr >> 16);
 		//blit::channels[4].frequency = 300 - (blit::channels[1].adsr >> 16);
 
-		blit::channels[5].frequency = 400 - (blit::channels[5].adsr >> 16);
+		blit::channels[5].frequency = 500 - (blit::channels[5].adsr >> 16);
 
-		blit::channels[6].frequency = 300 - (blit::channels[6].adsr >> 16);
+		blit::channels[6].frequency = 450 - (blit::channels[6].adsr >> 16) / 2;
 	}
 }
