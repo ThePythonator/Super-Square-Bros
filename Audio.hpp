@@ -34,6 +34,8 @@ namespace AudioHandler {
 		uint8_t note = 0;
 		bool play_tune = true;
 		float t = 0.0f;
+		bool sfx_mute = false;
+		bool music_mute = false;
 #else
 		blit::MP3Stream mp3_channels[8];
 		const char* filenames[8] = {
