@@ -71,12 +71,12 @@ namespace AudioHandler {
 	}
 
 	void AudioHandler::set_volume(uint32_t volume) {
-		(void)volume;
+		sfx_mute = music_mute = volume == 0;
 	}
 
 	void AudioHandler::set_volume(uint8_t channel, uint32_t volume) {
-		(void)channel;
-		(void)volume;
+		if (channel <= 6) sfx_mute = volume == 0;
+		if (channel == 7) music_mute = volume == 0;
 	}
 
 	void AudioHandler::load(uint8_t channel, const uint8_t mp3_data[], const uint32_t mp3_size) {
@@ -91,10 +91,10 @@ namespace AudioHandler {
 	}
 
 	void AudioHandler::play(uint8_t channel, uint8_t flags) {
-		if (channel <= 6) {
+		if (channel <= 6 && !sfx_mute) {
 			blit::channels[channel].trigger_attack();
 		}
-		else if (channel == 7) {
+		else if (channel == 7 && !music_mute) {
 			// Play a tune!
 			play_tune = true;
 			note = 0;
