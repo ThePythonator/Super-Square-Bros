@@ -870,7 +870,7 @@ void reset_save() {
     gameSaveData.checkpoints = false;
     gameSaveData.musicVolume = true;
     gameSaveData.sfxVolume = true;
-    gameSaveData.hackyFastMode = 0;
+    gameSaveData.hackyFastMode = 1;
     save_game_data();
 
     allPlayerSaveData[0].levelReached = 0;
