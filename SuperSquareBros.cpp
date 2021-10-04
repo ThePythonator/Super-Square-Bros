@@ -890,6 +890,10 @@ void reset_save() {
     }
 }
 
+struct LevelData {
+    uint16_t levelWidth, levelHeight;
+} levelData;
+
 //struct PositionF {
 //    float x, y;
 //};
