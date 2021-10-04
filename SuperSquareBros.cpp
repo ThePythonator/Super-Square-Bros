@@ -749,10 +749,10 @@ struct GameSaveData {
     uint16_t version;
     uint8_t inputType;
     // Settings values
-    bool checkpoints;
-    bool musicVolume;
-    bool sfxVolume;
-    uint8_t hackyFastMode;
+    bool checkpoints = false;
+    bool musicVolume = true;
+    bool sfxVolume = true;
+    uint8_t hackyFastMode = 0;
 } gameSaveData;
 
 struct PlayerSaveData {
@@ -5877,6 +5877,10 @@ void init_game() {
 
         // Load menu level
         load_level(LEVEL_COUNT);
+
+        // Setup audio volumes (for some reason it isn't being loaded properly??)
+        audioHandler.set_volume(gameSaveData.sfxVolume ? DEFAULT_VOLUME : 0);
+        audioHandler.set_volume(7, gameSaveData.musicVolume ? DEFAULT_VOLUME : 0);
 
     }
     else {
