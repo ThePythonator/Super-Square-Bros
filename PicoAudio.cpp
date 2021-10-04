@@ -122,7 +122,7 @@ namespace AudioHandler {
 
 		if (play_tune) {
 			t += dt;
-			if (t > 0.130f) {
+			if (t > 0.125f) {
 				t = 0.0f;
 				if (tune[note] != 0) {
 					blit::channels[7].frequency = std::pow(2, (tune[note] - 69) / 12.0f) * 440;

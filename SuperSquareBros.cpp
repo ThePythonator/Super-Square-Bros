@@ -613,14 +613,14 @@ const float levelTargetTimes[LEVEL_COUNT][2] = {
     // Level 9
     {
         // Time
-        40.0f, // Gold TO CHECK + CHANGE IF NECESSARY
-        52.0f // Silver TO CHECK + CHANGE IF NECESSARY
+        20.0f, // Gold
+        24.0f // Silver
     },
     // Level 10
     {
         // Time
-        90.0f, // Gold TO CHECK + CHANGE IF NECESSARY
-        110.0f // Silver TO CHECK + CHANGE IF NECESSARY
+        80.0f, // Gold TO CHECK + CHANGE IF NECESSARY
+        100.0f // Silver TO CHECK + CHANGE IF NECESSARY
     },
 #else
     // Level 9
@@ -4505,16 +4505,22 @@ void load_level(uint8_t levelNumber) {
             uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
             //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
             uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
+#ifdef PICO_BUILD
+            endX = levelWidth;
+#endif // PICO_BUILD
             float x = (rand() % (endX - startX)) + startX;
             float y = (rand() % (levelData.levelHeight * SPRITE_SIZE + SCREEN_HEIGHT)) - SCREEN_MID_HEIGHT;
-            //if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
+#ifdef PICO_BUILD
+            if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) || rand() % 2 == 0) { // && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x
+#else
             if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
+#endif // PICO_BUILD
                 // At edges, only make a half as many particles
                 imageParticles.push_back(ImageParticle(x, y, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
             }
         }
     }
-    else if (currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8) {
+    else if (currentWorldNumber == SNOW_WORLD || currentLevelNumber == 8 || currentLevelNumber == 9) {
         // Generate snow particles
         for (uint16_t i = 0; i < SNOW_LEVEL_INIT_COUNT; i++) {
             // Get random position
@@ -5193,10 +5199,16 @@ void update_particles(float dt) {
             float yVel = rand() % 5 + 8;
             uint16_t startX = (levelTriggers[(SNOW_WORLD * LEVELS_PER_WORLD) - 1].x + levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) / 2;
             //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
-            //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
-            uint16_t endX = levelData.levelWidth; // check is ok
+            uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
+#ifdef PICO_BUILD
+            endX = levelWidth;
+#endif // PICO_BUILD
             float x = (rand() % (endX - startX)) + startX;
+#ifdef PICO_BUILD
             if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x) || rand() % 2 == 0) { // && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x
+#else
+            if ((x > levelTriggers[SNOW_WORLD * LEVELS_PER_WORLD].x && x < levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) || rand() % 2 == 0) {
+#endif // PICO_BUILD
                 // At edges, only make a half as many particles
                 imageParticles.push_back(ImageParticle(x, -SPRITE_SIZE * 8, xVel, yVel, 0, 0, snowParticleImages[rand() % snowParticleImages.size()]));
             }
@@ -5891,10 +5903,6 @@ void init_game() {
         // Load menu level
         load_level(LEVEL_COUNT);
 
-        // Setup audio
-        audioHandler.set_volume(gameSaveData.sfxVolume ? DEFAULT_VOLUME : 0);
-        audioHandler.set_volume(7, gameSaveData.musicVolume ? DEFAULT_VOLUME : 0);
-
     }
     else {
         // No save file or it failed to load, set up some defaults.
@@ -5927,8 +5935,12 @@ void load_audio() {
 #ifndef PICO_BUILD
     // NOTE: CURRENTLY ISSUE WITH LEAVING PAUSE MENU, blip AUDIO IS PLAYED, BUT THEN NEW SOUND IS LOADED IN, STOPPING PLAYBACK.
 
-    // Set volume to a default
-    audioHandler.set_volume(DEFAULT_VOLUME);
+
+
+    // Setup audio volumes
+    audioHandler.set_volume(gameSaveData.sfxVolume ? DEFAULT_VOLUME : 0);
+    audioHandler.set_volume(7, gameSaveData.musicVolume ? DEFAULT_VOLUME : 0);
+
     // Sfx
     audioHandler.load(0, asset_sound_select, asset_sound_select_length);
     audioHandler.load(1, asset_sound_jump, asset_sound_jump_length);
