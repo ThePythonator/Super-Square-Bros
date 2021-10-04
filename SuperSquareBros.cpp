@@ -5201,7 +5201,7 @@ void update_particles(float dt) {
             //uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) - 1].x + levelTriggers[(SNOW_WORLD + 1) * LEVELS_PER_WORLD].x) / 2;
             uint16_t endX = (levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD)].x + levelTriggers[((SNOW_WORLD + 1) * LEVELS_PER_WORLD) + 1].x) / 2;
 #ifdef PICO_BUILD
-            endX = levelWidth;
+            endX = levelData.levelWidth;
 #endif // PICO_BUILD
             float x = (rand() % (endX - startX)) + startX;
 #ifdef PICO_BUILD
