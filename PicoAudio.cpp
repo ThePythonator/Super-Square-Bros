@@ -64,8 +64,8 @@ namespace AudioHandler {
 		// Pico Tune!
 		blit::channels[7].waveforms = blit::Waveform::SQUARE;
 		blit::channels[7].frequency = 450;
-		blit::channels[7].attack_ms = 110; //500ish ms per beat
-		blit::channels[7].decay_ms = 20;
+		blit::channels[7].attack_ms = 110;
+		blit::channels[7].decay_ms = 5;
 		blit::channels[7].sustain = 0;
 		blit::channels[7].release_ms = 0;
 	}

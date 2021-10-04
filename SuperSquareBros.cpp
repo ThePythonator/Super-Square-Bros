@@ -680,10 +680,8 @@ bool bossBattle = false;
 float thankyouValue = 0.0f;
 
 #ifdef PICO_BUILD
-const uint8_t MAX_HACKY_FAST_MODE = 4;
+const uint8_t MAX_HACKY_FAST_MODE = 2;
 #endif // PICO_BUILD
-
-//uint8_t hackyFastMode = 0;
 
 
 uint8_t currentLevelNumber = NO_LEVEL_SELECTED;
@@ -870,7 +868,7 @@ void reset_save() {
     gameSaveData.checkpoints = false;
     gameSaveData.musicVolume = true;
     gameSaveData.sfxVolume = true;
-    gameSaveData.hackyFastMode = 1;
+    gameSaveData.hackyFastMode = 0;
     save_game_data();
 
     allPlayerSaveData[0].levelReached = 0;
@@ -891,11 +889,6 @@ void reset_save() {
         save_level_data(1, i);
     }
 }
-
-
-struct LevelData {
-    uint16_t levelWidth, levelHeight;
-} levelData;
 
 //struct PositionF {
 //    float x, y;
@@ -1999,20 +1992,19 @@ public:
     }
 
     bool colliding(Tile& tile) {
-        if (gameSaveData.hackyFastMode >= 1) {
-            // 24.8 fixed-point, thanks to Daft Freak
-            const int scale = 256;
-            int ix = int(x * scale);
-            int iy = int(y * scale);
+#ifdef PICO_BUILD
+        // 24.8 fixed-point, thanks to Daft Freak
+        const int scale = 256;
+        int ix = int(x * scale);
+        int iy = int(y * scale);
 
-            return ((tile.x + SPRITE_SIZE) * scale > ix + scale
-                && tile.x * scale < ix + (SPRITE_SIZE - 1) * scale
-                && (tile.y + SPRITE_SIZE) * scale > iy
-                && tile.y * scale < iy + SPRITE_SIZE * scale);
-        }
-        else {
-            return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
-        }
+        return ((tile.x + SPRITE_SIZE) * scale > ix + scale
+            && tile.x * scale < ix + (SPRITE_SIZE - 1) * scale
+            && (tile.y + SPRITE_SIZE) * scale > iy
+            && tile.y * scale < iy + SPRITE_SIZE * scale);
+#else
+        return (tile.x + SPRITE_SIZE > x + 1 && tile.x < x + SPRITE_SIZE - 1 && tile.y + SPRITE_SIZE > y && tile.y < y + SPRITE_SIZE);
+#endif // PICO_BUILD
     }
 
     void set_immune() {
@@ -4296,33 +4288,12 @@ void load_level(uint8_t levelNumber) {
 
             uint16_t x = i % levelWidth;
             uint16_t y = i / levelWidth;
-
-            // Move tiles surrounded on all sides to the background (thanks to Daft Freak)
-            /*if (gameSaveData.hackyFastMode >= 2) {
-
-                if (x > 0 && y > 0 && x < levelWidth - 1 && y < levelHeight - 1) {
-                    bool all_solid = true;
-
-                    for (uint16_t y2 = y - 1; y2 <= y + 1 && all_solid; y2++) {
-                        for (uint16_t x2 = x - 1; x2 <= x + 1 && all_solid; x2++) {
-                            if (tmx->data[x2 + y2 * levelWidth] == TILE_ID_EMPTY || tmx->data[x2 + y2 * levelWidth] == TILE_ID_COIN) {
-                                all_solid = false;
-                            }
-                        }
-                    }
-
-                    if (all_solid) {
-                        background.push_back(Tile(x * SPRITE_SIZE, y * SPRITE_SIZE, tmx->data[i]));
-                        continue;
-                    }
-                }
-            }*/
             
             foreground.push_back(Tile(x * SPRITE_SIZE, y * SPRITE_SIZE, tmx->data[i]));
         }
     }
     
-    if (gameSaveData.hackyFastMode < 4) {
+    if (gameSaveData.hackyFastMode < 2) {
         // Background Layer
         for (uint32_t i = 0; i < levelSize; i++) {
             uint32_t index = i + levelSize * 3;
@@ -4445,7 +4416,7 @@ void load_level(uint8_t levelNumber) {
 
     // go backwards through parallax layers so that rendering is correct
 
-    if (gameSaveData.hackyFastMode < 3) {
+    if (gameSaveData.hackyFastMode < 1) {
         // Parallax Background Layer
         for (uint32_t i = 0; i < levelSize; i++) {
             uint32_t index = i + levelSize * 5;
@@ -5906,6 +5877,7 @@ void init_game() {
     }
     else {
         // No save file or it failed to load, set up some defaults.
+        // Should I use reset_save here?
         gameSaveData.version = get_version(gameVersion);
 
         gameSaveData.inputType = InputType::CONTROLLER;
@@ -5913,6 +5885,8 @@ void init_game() {
         gameSaveData.checkpoints = false;
         gameSaveData.musicVolume = true;
         gameSaveData.sfxVolume = true;
+
+        gameSaveData.hackyFastMode = 0;
 
         // gameState is by default set to STATE_INPUT_SELECT
 

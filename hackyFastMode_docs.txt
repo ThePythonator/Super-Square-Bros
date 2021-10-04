@@ -2,10 +2,6 @@ hackyFastMode:
 
 0 - Nothing
 
-1 - Uses Daft Freak's fixed point collision code.
+1 - Don't load parallax layers (clouds)
 
-2 - Nothing. I'd like to not use particles for this but it's not as simple as I hoped.
-
-3 - Don't load parallax layers (clouds)
-
-4 - Don't load background tiles
+2 - Don't load background tiles
