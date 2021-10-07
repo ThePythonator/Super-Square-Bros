@@ -167,7 +167,7 @@ jobs:
 
     # Push the tar file to the release
     - name: Upload tar
-      if: github.event_name == 'release' && matrix.release-suffix != ''
+      if: matrix.release-suffix != '' #github.event_name == 'release' && 
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -179,7 +179,7 @@ jobs:
 
     # Push the zip file to the release
     - name: Upload zip
-      if: github.event_name == 'release' && matrix.release-suffix != ''
+      if: matrix.release-suffix != '' #github.event_name == 'release' && 
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
