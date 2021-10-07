@@ -159,7 +159,7 @@ jobs:
 
     # When it's a release, generate tar/zip files of the build
     - name: Package Release
-      if: github.event_name == 'release' && matrix.release-suffix != ''
+      if: matrix.release-suffix != ''
       shell: bash
       working-directory: ${{runner.workspace}}/main/build
       run: |
@@ -167,7 +167,7 @@ jobs:
 
     # Push the tar file to the release
     - name: Upload tar
-      if: matrix.release-suffix != '' #github.event_name == 'release' && 
+      if: github.event_name == 'release' && matrix.release-suffix != ''
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -179,7 +179,7 @@ jobs:
 
     # Push the zip file to the release
     - name: Upload zip
-      if: matrix.release-suffix != '' #github.event_name == 'release' && 
+      if: github.event_name == 'release' && matrix.release-suffix != ''
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
