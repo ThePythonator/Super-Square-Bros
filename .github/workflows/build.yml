@@ -194,8 +194,5 @@ jobs:
       if: github.event_name != 'release'
       uses: actions/upload-artifact@v2
       with:
-        name: ${{env.RELEASE_FILE}}.zip
-        path: |
-          bin/*
-          README.md
-          LICENSE.md
+        name: ${{env.RELEASE_FILE}}
+        path: ${{runner.workspace}}/main/build/${{env.RELEASE_FILE}}.zip
