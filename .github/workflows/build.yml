@@ -196,6 +196,6 @@ jobs:
       with:
         name: ${{env.RELEASE_FILE}}.zip
         path: |
-        bin/*
-        README.md
-        LICENSE.md
+          bin/*
+          README.md
+          LICENSE.md
