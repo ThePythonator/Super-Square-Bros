@@ -9,6 +9,7 @@ using namespace blit;
 // e.g. screen.sprite(id, Point(x, y), Point(0, 0), 2.0f, SpriteTransform::NONE
 
 #define RESET_SAVE_DATA_IF_MINOR_DIFF
+//#define RESET_SAVE_DATA_ALWAYS
 //#define TESTING_MODE
 
 void init_game();
@@ -5855,12 +5856,22 @@ void init_game() {
         else if (get_version_struct(gameSaveData.version).minor != gameVersion.minor) {
             reset = true;
         }
-#endif
+#endif // RESET_SAVE_DATA_IF_MINOR_DIFF
+
+#ifdef RESET_SAVE_DATA_ALWAYS
+        reset = true;
+#endif // RESET_SAVE_DATA_ALWAYS
 
         if (reset) {
             GameVersion saveDataVersion = get_version_struct(gameSaveData.version);
 
+
+#ifdef RESET_SAVE_DATA_ALWAYS
+            printf("Warning: RESET_SAVE_DATA_ALWAYS is set! Save version is %d (v%d.%d.%d), but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, saveDataVersion.major, saveDataVersion.minor, saveDataVersion.build, get_version(gameVersion), gameVersion.major, gameVersion.minor, gameVersion.build);
+#else
             printf("Warning: Saved game data is out of date, save version is %d (v%d.%d.%d), but firmware version is %d (v%d.%d.%d)\n", gameSaveData.version, saveDataVersion.major, saveDataVersion.minor, saveDataVersion.build, get_version(gameVersion), gameVersion.major, gameVersion.minor, gameVersion.build);
+#endif // RESET_SAVE_DATA_ALWAYS
+
             printf("Resetting save data...\n");
 
             success = false;

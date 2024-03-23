@@ -9,8 +9,7 @@
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "variables": []
+      "ctestCommandArgs": ""
     },
     {
       "name": "x64-Release",
@@ -25,7 +24,7 @@
       "variables": [
         {
           "name": "32BLIT_DIR",
-          "value": "C:/Users/capta_fjj2zz9/OneDrive/Development/32Blit/32blit-sdk",
+          "value": "C:/Users/jsh/Development/32blit/32blit-sdk",
           "type": "PATH"
         }
       ]
